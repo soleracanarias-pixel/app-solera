@@ -347,7 +347,7 @@ function entrar() {
         if (!navigator.onLine && guardado && guardado === pinIntento) {
           var t = (S.datos.trabajadores || []).filter(function (x) { return String(x.codigo) === String(codigo); })[0];
           terminar({ codigo: t.codigo, nombre: t.nombre, categoria: t.categoria });
-        } else aviso('loginAviso', e.message, 'err');
+        } else { pin = ''; pintarPin(); aviso('loginAviso', e.message + ' — vuelve a escribir el PIN.', 'err'); }
       });
     }).finally(function () { btn.disabled = false; });
 }
