@@ -7,8 +7,14 @@
 <meta name="theme-color" content="#343434">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600;700&family=Source+Sans+3:wght@400;600&display=swap" rel="stylesheet">
-<link rel="manifest" href="manifest.json">
-<link rel="apple-touch-icon" href="icon-192.png">
+<script>
+// ?modo=almacen (acceso directo "SOLERA Almacén", almacen.html): misma app, arranca en Almacén y sin la pestaña Parte
+var MODO_ALMACEN = /[?&]modo=almacen(&|$)/.test(location.search);
+if (MODO_ALMACEN) {
+  document.write('<link rel="manifest" href="manifest-almacen.json"><link rel="apple-touch-icon" href="icon-almacen-192.png">');
+  document.title = 'SOLERA Almacén';
+} else document.write('<link rel="manifest" href="manifest.json"><link rel="apple-touch-icon" href="icon-192.png">');
+</script>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <style>
@@ -68,6 +74,12 @@ textarea{min-height:80px;resize:vertical}
 .modal .pie .btn{margin:0}
 .lista .item{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--borde);gap:8px}
 .lista .item:last-child{border:0}
+.modo-almacen nav button[data-p="parte"]{display:none}
+.modo-almacen header h1{letter-spacing:1px;white-space:nowrap}
+.lista .item.toca{cursor:pointer}
+.historial{padding:0 0 10px;font-size:13px;color:var(--gris)}
+.historial div{padding:5px 0;border-top:1px dashed var(--borde)}
+.historial b{color:var(--texto)}
 .fecha-campo{position:relative}
 .fecha-campo span{display:block;padding:11px;border:1px solid var(--borde);border-radius:8px;background:#fff;font-size:16px;min-height:44px}
 .fecha-campo input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer}
@@ -191,6 +203,9 @@ a{color:var(--azul)}
     <label>Cantidad</label><input type="number" id="movCant" inputmode="decimal" step="any" min="0">
     <div id="movObraBloque"><label>Obra</label><input type="text" id="movObraTxt" placeholder="Escribe la obra…" autocomplete="off"><div class="sugs" id="movObraSugs" style="display:none"></div><select id="movObra" style="display:none"></select></div>
     <label>Nota (albarán, proveedor…)</label><input type="text" id="movNota">
+    <input type="file" id="movFotoInput" accept="image/*" multiple style="display:none">
+    <button class="btn sec peq" id="movBtnFoto">📷 Foto (albarán, material…)</button>
+    <div class="fotos" id="movFotos"></div>
     <div class="fila">
       <button class="btn peq sec" id="movCancelar">Cancelar</button>
       <button class="btn peq verde" id="movGuardar">Guardar</button>
@@ -268,7 +283,7 @@ var DB = {
 };
 
 // ---------------------------------------------------------------- estado
-var S = { datos: null, usuario: null, firma: null, fotos: [], pantalla: 'parte', movTipo: 'ENTRADA' };
+var S = { datos: null, usuario: null, firma: null, fotos: [], movFotos: [], pantalla: 'parte', movTipo: 'ENTRADA' };
 
 function toast(msg) { var t = $('toast'); t.textContent = msg; t.classList.add('ver'); clearTimeout(t._t); t._t = setTimeout(function () { t.classList.remove('ver'); }, 2600); }
 function aviso(id, msg, tipo) { $(id).innerHTML = msg ? '<div class="aviso ' + (tipo || '') + '">' + msg + '</div>' : ''; }
@@ -345,7 +360,7 @@ function mostrarLogin() {
 function mostrarApp() {
   $('btnSalir').style.display = ''; $('nav').style.display = '';
   $('quien').textContent = S.usuario.nombre;
-  cambiar('parte');
+  cambiar(MODO_ALMACEN ? 'almacen' : 'parte');
   nuevoParte();
 }
 function cambiar(p) {
@@ -493,10 +508,11 @@ $('firmante').onblur = function () { $('firmanteSugs').style.display = 'none'; }
 $('firmanteEmail').oninput = function () { S.emailAuto = false; };
 
 // ---------------------------------------------------------------- fotos
-function pintarFotos() {
-  $('fotos').innerHTML = S.fotos.map(function (f, i) { return '<div><img src="' + f + '"><b data-i="' + i + '">×</b></div>'; }).join('');
-  $('fotos').querySelectorAll('b').forEach(function (b) { b.onclick = function () { S.fotos.splice(+b.dataset.i, 1); pintarFotos(); }; });
+function pintarFotosEn(id, fotos) {
+  $(id).innerHTML = fotos.map(function (f, i) { return '<div><img src="' + f + '"><b data-i="' + i + '">×</b></div>'; }).join('');
+  $(id).querySelectorAll('b').forEach(function (b) { b.onclick = function () { fotos.splice(+b.dataset.i, 1); pintarFotosEn(id, fotos); }; });
 }
+function pintarFotos() { pintarFotosEn('fotos', S.fotos); }
 function comprimir(file) {
   return new Promise(function (res) {
     var img = new Image(), url = URL.createObjectURL(file);
@@ -514,6 +530,11 @@ $('btnFoto').onclick = function () { $('fotoInput').click(); };
 $('fotoInput').onchange = function () {
   var fs = Array.prototype.slice.call(this.files || []); this.value = '';
   Promise.all(fs.map(comprimir)).then(function (r) { r.forEach(function (d) { if (d) S.fotos.push(d); }); pintarFotos(); });
+};
+$('movBtnFoto').onclick = function () { $('movFotoInput').click(); };
+$('movFotoInput').onchange = function () {
+  var fs = Array.prototype.slice.call(this.files || []); this.value = '';
+  Promise.all(fs.map(comprimir)).then(function (r) { r.forEach(function (d) { if (d) S.movFotos.push(d); }); pintarFotosEn('movFotos', S.movFotos); });
 };
 
 // ---------------------------------------------------------------- firma
@@ -585,14 +606,31 @@ function pintarStock() {
   var lista = stockLocal().filter(function (m) { return !q || (m.nombre + ' ' + m.codigo).toLowerCase().indexOf(q) >= 0; });
   $('stockLista').innerHTML = lista.length ? lista.map(function (m) {
     var bajo = m.stock <= m.stock_min;
-    return '<div class="item"><div><b>' + esc(m.nombre) + '</b><small>' + esc(m.codigo) + (bajo ? ' · <span style="color:var(--rojo)">pedir</span>' : '') + '</small></div>' +
+    return '<div class="item toca" data-cod="' + esc(m.codigo) + '"><div><b>' + esc(m.nombre) + '</b><small>' + esc(m.codigo) + (bajo ? ' · <span style="color:var(--rojo)">pedir</span>' : '') + '</small></div>' +
       '<div class="stock' + (bajo ? ' bajo' : '') + '">' + m.stock + ' <small style="display:inline">' + esc(m.unidad) + '</small></div></div>';
   }).join('') : '<div class="aviso">Sin materiales. Pulsa "Actualizar listas" en Enviados o da de alta materiales en la hoja.</div>';
 }
 $('buscarMat').oninput = pintarStock;
+// al tocar un material: sus últimos 10 movimientos (se piden al servidor)
+$('stockLista').onclick = function (e) {
+  var it = e.target.closest('.item.toca'); if (!it) return;
+  var sig = it.nextElementSibling;
+  if (sig && sig.classList.contains('historial')) { sig.remove(); return; }
+  var h = document.createElement('div'); h.className = 'historial'; h.textContent = 'Cargando movimientos…';
+  it.after(h);
+  if (!navigator.onLine) { h.textContent = 'Sin conexión: el historial se ve con cobertura.'; return; }
+  api('movimientos', { material: it.dataset.cod }).then(function (j) {
+    h.innerHTML = j.movimientos.length ? j.movimientos.map(function (m) {
+      return '<div><b>' + esc(m.fecha) + ' · ' + esc(m.tipo) + ' ' + esc(m.cantidad) + ' ' + esc(m.unidad || '') + '</b>' +
+        (m.obra ? ' · ' + esc(m.obra) : '') + (m.usuario ? ' · ' + esc(m.usuario) : '') + (m.nota ? ' · ' + esc(m.nota) : '') +
+        (m.fotos || []).map(function (u, i) { return ' · <a href="' + esc(u) + '" target="_blank">📷 foto' + (m.fotos.length > 1 ? ' ' + (i + 1) : '') + '</a>'; }).join('') + '</div>';
+    }).join('') : 'Sin movimientos todavía.';
+  }).catch(function (e) { h.textContent = 'No se pudo cargar: ' + e.message; });
+};
 function abrirMov(tipo) {
   S.movTipo = tipo; $('movForm').style.display = ''; $('movTitulo').textContent = tipo === 'ENTRADA' ? 'Entrada al almacén' : 'Salida a obra';
   $('movObraBloque').style.display = tipo === 'ENTRADA' ? 'none' : ''; $('movCant').value = ''; $('movNota').value = '';
+  S.movFotos = []; pintarFotosEn('movFotos', S.movFotos);
   $('movForm').scrollIntoView({ behavior: 'smooth' });
 }
 $('btnEntrada').onclick = function () { abrirMov('ENTRADA'); };
@@ -603,7 +641,7 @@ $('movGuardar').onclick = function () {
   if (!mat || !cant) return toast('Elige material y cantidad');
   if (S.movTipo === 'SALIDA' && !$('movObra').value) return toast('Elige la obra');
   var obraSel = $('movObra'), obraTxt = S.movTipo === 'SALIDA' ? obraSel.options[obraSel.selectedIndex].text : '';
-  var mov = { id: uid(), tipo: 'mov', movTipo: S.movTipo, material: mat, cantidad: cant, obra: obraTxt, nota: $('movNota').value.trim(), fecha: hoyISO(), usuario: S.usuario.nombre, creadoEn: new Date().toISOString() };
+  var mov = { id: uid(), tipo: 'mov', movTipo: S.movTipo, material: mat, cantidad: cant, obra: obraTxt, nota: $('movNota').value.trim(), fotos: S.movFotos.slice(), fecha: hoyISO(), usuario: S.usuario.nombre, creadoEn: new Date().toISOString() };
   // ajuste optimista del stock local
   stockLocal().forEach(function (m) { if (m.codigo === mat) m.stock += (S.movTipo === 'ENTRADA' ? cant : -cant); });
   DB.put('kv', S.datos, 'datos');
@@ -629,7 +667,7 @@ function sincronizar() {
       p = p.then(function () {
         var llamada = it.tipo === 'parte'
           ? api('crearParte', { parte: it })
-          : api('movimiento', { mov: { id: it.id, tipo: it.movTipo, material: it.material, cantidad: it.cantidad, obra: it.obra, nota: it.nota, fecha: it.fecha, usuario: it.usuario } });
+          : api('movimiento', { mov: { id: it.id, tipo: it.movTipo, material: it.material, cantidad: it.cantidad, obra: it.obra, nota: it.nota, fotos: it.fotos || [], fecha: it.fecha, usuario: it.usuario } });
         return llamada.then(function (j) {
           enviados++;
           var h = { id: it.id, tipo: it.tipo, fecha: it.fecha, obra: it.obraNombre || it.obra, numero: j.numero || '', pdf_url: j.pdf_url || '', firmado: !!it.firma, enviadoEn: new Date().toISOString(), copia: j.copia_enviada_a || '', copiaError: j.copia_error || '', resumen: it.tipo === 'mov' ? it.movTipo + ' ' + it.cantidad + ' ' + it.material : '' };
@@ -669,6 +707,8 @@ $('btnSync').onclick = function () { if (!navigator.onLine) return toast('Sin co
 document.querySelectorAll('nav button').forEach(function (b) { b.onclick = function () { cambiar(b.dataset.p); }; });
 window.addEventListener('online', function () { estadoRed(); sincronizar(); });
 window.addEventListener('offline', estadoRed);
+
+if (MODO_ALMACEN) { document.body.classList.add('modo-almacen'); document.querySelector('header h1').textContent = 'SOLERA · ALMACÉN'; }
 
 DB.abrir().then(function () {
   return Promise.all([DB.get('kv', 'datos'), DB.get('kv', 'usuario')]);

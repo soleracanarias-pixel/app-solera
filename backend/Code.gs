@@ -27,11 +27,11 @@ var HOJAS = {
   MATERIALES: ['codigo','nombre','unidad','stock_min','activo','orden','categoria'],
   PARTES: ['id','numero','fecha','obra_codigo','obra','cliente','creado_por','trabajadores','total_horas','trabajos','materiales','medios','observaciones','firmado','firmante','pdf_url','fotos','creado_en','origen','firmado_en','copia_enviada_a','copia_enviada_en','copia_error'],
   PARTES_LINEAS: ['id','numero','fecha','obra','trabajador_codigo','trabajador','categoria','horas','horas_extra','firmado'],
-  MOVIMIENTOS: ['id','fecha','tipo','material_codigo','material','cantidad','unidad','obra','parte_numero','usuario','nota','creado_en'],
+  MOVIMIENTOS: ['id','fecha','tipo','material_codigo','material','cantidad','unidad','obra','parte_numero','usuario','nota','creado_en','fotos'],
   STOCK: ['codigo','nombre','unidad','entradas','salidas','stock','stock_min','aviso'],
   FIRMANTES: ['nombre','email','obra_ultima','veces','actualizado_en']
 };
-var ESQUEMA = '3';            // subir cuando cambien las columnas de HOJAS
+var ESQUEMA = '4';            // subir cuando cambien las columnas de HOJAS
 var EMAIL_COPIA = 'soleracanarias@gmail.com';
 var CSV_NOMBRE = 'PARTES APP 2026.csv';  // se crea en la carpeta CARPETA_CSV_ID de CONFIG (CLIENTES\PARTES\APP)
 var CSV_COLUMNAS = ['N_PARTE','FECHA','DIA_SEMANA','CLIENTE','OBRA','COD_OBRA_APP','RESP_CLIENTE','RESP_CERT','RESP_SOLERA','MATRICULA',
@@ -157,6 +157,7 @@ function doPost(e) {
       case 'movimiento': lock.waitLock(30000); return json_(movimiento_(body.mov));
       case 'stock': return json_({ ok: true, stock: stock_() });
       case 'partes': return json_({ ok: true, partes: ultimosPartes_(body.limite || 30) });
+      case 'movimientos': return json_({ ok: true, movimientos: movimientosMaterial_(body.material, 10) });
       default: return json_({ ok: false, error: 'Acción desconocida' });
     }
   } catch (err) {
@@ -348,10 +349,31 @@ function movimiento_(m) {
   var mat = filas_('MATERIALES').filter(function (f) { return String(f.codigo) === String(m.material); })[0];
   if (!mat) throw new Error('Material no encontrado');
   var tipo = m.tipo === 'ENTRADA' ? 'ENTRADA' : 'SALIDA';
-  hoja_('MOVIMIENTOS').appendRow([m.id, fechaES_(m.fecha || new Date().toISOString()), tipo, String(mat.codigo), mat.nombre,
-    Number(m.cantidad) || 0, mat.unidad, m.obra || '', '', m.usuario || '', m.nota || '', ahora_()]);
+  var fecha = m.fecha || new Date().toISOString();
+  // fotos en <CARPETA_PARTES>/ALMACEN/<MES>/ "DD-MM-AAAA ENTRADA|SALIDA <material> <nota>.jpg"
+  var fotosUrls = [], idCarpeta = config_('CARPETA_PARTES_ID');
+  if (m.fotos && m.fotos.length && idCarpeta) {
+    var carp = subcarpeta_(subcarpeta_(DriveApp.getFolderById(idCarpeta), 'ALMACEN'), mesDe_(fecha));
+    var base = [fechaNombre_(fecha), tipo, mat.nombre, m.nota || ''].join(' ').replace(/[\\/:*?"<>|]/g, '-').replace(/\s+/g, ' ').trim();
+    m.fotos.forEach(function (f, i) {
+      var b = blobDeDataUrl_(f, base + (m.fotos.length > 1 ? ' (' + (i + 1) + ')' : '') + '.jpg');
+      if (b) fotosUrls.push(carp.createFile(b).getUrl());
+    });
+  }
+  anadirFila_('MOVIMIENTOS', { id: m.id, fecha: fechaES_(fecha), tipo: tipo, material_codigo: String(mat.codigo), material: mat.nombre,
+    cantidad: Number(m.cantidad) || 0, unidad: mat.unidad, obra: m.obra || '', parte_numero: '', usuario: m.usuario || '',
+    nota: m.nota || '', creado_en: ahora_(), fotos: fotosUrls.join(' ') });
   avisarStock_([String(mat.codigo)]);                  // una ENTRADA que repone rearma el aviso
-  return { ok: true };
+  return { ok: true, fotos: fotosUrls };
+}
+
+// últimos movimientos de un material, el más reciente primero
+function movimientosMaterial_(codigo, n) {
+  return filas_('MOVIMIENTOS').filter(function (f) { return String(f.material_codigo) === String(codigo); })
+    .slice(-n).reverse().map(function (f) {
+      return { fecha: txtFecha_(f.fecha, 'dd/MM/yyyy'), tipo: f.tipo, cantidad: f.cantidad, unidad: f.unidad, obra: f.obra,
+        usuario: f.usuario, nota: f.nota, fotos: String(f.fotos || '').split(' ').filter(function (u) { return u; }) };
+    });
 }
 
 // aviso por correo cuando un material baja al stock mínimo (solo al cruzarlo, no en cada salida)

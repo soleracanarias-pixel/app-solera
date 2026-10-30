@@ -1,6 +1,7 @@
 // Service worker APP SOLERA — guarda la app en el móvil para que abra sin cobertura
-var CACHE = 'solera-v2';
-var FICHEROS = ['./', './index.html', './config.js', './manifest.json', './icon-192.png', './icon-512.png'];
+var CACHE = 'solera-v3';
+var FICHEROS = ['./', './index.html', './config.js', './manifest.json', './icon-192.png', './icon-512.png',
+  './almacen.html', './manifest-almacen.json', './icon-almacen-192.png', './icon-almacen-512.png'];
 
 self.addEventListener('install', function (e) {
   e.waitUntil(caches.open(CACHE).then(function (c) { return c.addAll(FICHEROS); }).then(function () { return self.skipWaiting(); }));
@@ -17,5 +18,5 @@ self.addEventListener('fetch', function (e) {
   // red primero (para coger versiones nuevas), caché si no hay red
   e.respondWith(fetch(e.request, { cache: 'no-cache' }).then(function (r) {
     var copia = r.clone(); caches.open(CACHE).then(function (c) { c.put(e.request, copia); }); return r;
-  }).catch(function () { return caches.match(e.request).then(function (r) { return r || caches.match('./index.html'); }); }));
+  }).catch(function () { return caches.match(e.request, { ignoreSearch: true }).then(function (r) { return r || caches.match('./index.html'); }); }));
 });

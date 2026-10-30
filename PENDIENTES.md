@@ -6,6 +6,9 @@ Cosas pedidas que todavía NO se han hecho. Se borran de aquí cuando estén hec
 - **Quitar las horas extra del parte.** Solo horas en bruto (una casilla de horas por trabajador).
   Las extras las calcula la oficina; el parte es para el cliente. Afecta a la pantalla del parte,
   al PDF (columna "Extra"), a PARTES_LINEAS (horas_extra) y al CSV. *(Pedido 30/10/2026, esperar OK para hacerlo.)*
+- **A la vez: elegir la categoría de cada trabajador en el parte (PEÓN / OFICIAL).** Depende del día o del
+  trabajo: a veces un peón hace de oficial y al revés. Por defecto, la de la hoja TRABAJADORES. Es solo para
+  el cliente (PDF y facturación), NO cuenta para nóminas ni cambia TRABAJADORES. *(Pedido 30/10/2026, esperar OK.)*
 - Foto para reconocer el material (propuesta; decidir con Fable si se hace y con qué servicio).
 - Módulo de herramientas (fase 2).
 
