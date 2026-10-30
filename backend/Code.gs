@@ -253,17 +253,20 @@ function herrDonde_(escribir) {
   return lista;
 }
 
-// alta de una máquina nueva: le da el número siguiente de su tipo (BAT-01, BAT-02…)
-function altaHerramienta_(prefijo, usuario) {
+// alta de una máquina nueva: el móvil propone el número (ya escrito en la máquina y visible en la foto);
+// si otro lo ha cogido a la vez, se le da el siguiente libre y se avisa
+function altaHerramienta_(prefijo, usuario, propuesto) {
   var t = filas_('HERR_TIPOS').filter(function (f) { return String(f.prefijo) === String(prefijo); })[0];
   if (!t) throw new Error('Tipo de herramienta no encontrado');
-  var max = 0;
+  var max = 0, usados = {};
   filas_('HERRAMIENTAS').forEach(function (f) {
-    var p = String(f.codigo).split('-'); if (p[0] === t.prefijo) max = Math.max(max, Number(p[1]) || 0);
+    var p = String(f.codigo).split('-'); usados[f.codigo] = true;
+    if (p[0] === t.prefijo) max = Math.max(max, Number(p[1]) || 0);
   });
-  var codigo = t.prefijo + '-' + ('0' + (max + 1)).slice(-2);
+  var valido = new RegExp('^' + t.prefijo + '-\\d{2,}$').test(String(propuesto || '')) && !usados[propuesto];
+  var codigo = valido ? String(propuesto) : t.prefijo + '-' + ('0' + (max + 1)).slice(-2);
   anadirFila_('HERRAMIENTAS', { codigo: codigo, tipo: t.tipo, activo: 'SI', alta_fecha: ahora_(), alta_por: usuario || '' });
-  return { codigo: codigo, nombre: codigo + ' · ' + t.tipo, unidad: 'ud' };
+  return { codigo: codigo, nombre: codigo + ' · ' + t.tipo, unidad: 'ud', cambiado: !!propuesto && codigo !== propuesto };
 }
 
 function ultimosPartes_(n) {
@@ -406,7 +409,7 @@ function movimiento_(m) {
   if (ya) return { ok: true, repetido: true, numero: ya.numero || '' };
   var her = c === CLASES.HER, mat;
   // alta, o herramienta que aún no tenía número (se le da uno al llevarla/devolverla)
-  if (her && (m.tipo === 'ENTRADA' || (!m.material && m.tipoHer))) mat = altaHerramienta_(m.tipoHer, m.usuario);
+  if (her && (m.tipo === 'ENTRADA' || (!m.material && m.tipoHer))) mat = altaHerramienta_(m.tipoHer, m.usuario, m.codigoNuevo);
   else if (her) {
     var u = filas_('HERRAMIENTAS').filter(function (f) { return String(f.codigo) === String(m.material); })[0];
     if (!u) throw new Error('Herramienta no encontrada: ' + (m.material || ''));
@@ -444,7 +447,7 @@ function movimiento_(m) {
     avisarStock_([String(mat.codigo)]);   // una ENTRADA que repone rearma el aviso
     if (tipo !== 'ENTRADA') try { porObra_(c); } catch (err) { console.error('POR_OBRA: ' + err); }
   }
-  return { ok: true, numero: numero, fotos: fotosUrls, herramienta: her ? mat.codigo : '' };
+  return { ok: true, numero: numero, fotos: fotosUrls, herramienta: her ? mat.codigo : '', cambiado: !!mat.cambiado };
 }
 
 // POR_OBRA: por obra y material, lo que salió del almacén, lo que volvió y lo gastado (salido - devuelto).

@@ -13,7 +13,9 @@ Cosas pedidas que todavía NO se han hecho. Se borran de aquí cuando estén hec
   y elegirlo en Entrada/Salida/Devolución (no cambiar ahora).
 - Probar la huella en los móviles reales (si da error, la app enseña el motivo: pasárselo a Claude).
 - Foto para reconocer el material (propuesta; decidir con Fable si se hace y con qué servicio).
-- Módulo de herramientas (fase 2).
+- Herramientas: de momento se numeran con ROTULADOR (Edding 750 / uni PX-20) al hacer la foto.
+  Más adelante: pegatinas con QR (rotuladora Brother con cinta TZe-S o imprenta), PDF de pegatinas
+  desde HERRAMIENTAS y escanear el QR desde la app.
 - **Meter material desde la foto de una factura o albarán: NO en la app del móvil.** Es para Mateo o Gregorio,
   como algo aparte (de momento, pasándole la foto a Claude; más adelante, quizá una app de escritorio
   ligada al sistema). *(30/10/2026)*

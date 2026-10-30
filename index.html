@@ -228,6 +228,7 @@ a{color:var(--azul)}
     <h2 id="movTitulo">Movimiento</h2>
     <div class="ayuda" id="movCuando"></div>
     <label id="movMatLabel">Material</label><input type="text" id="movMatTxt" placeholder="Escribe el material…" autocomplete="off"><div class="sugs" id="movMatSugs" style="display:none"></div>
+    <div id="numeroNuevo" class="aviso" style="display:none;font-size:16px"></div>
     <div id="movCantBloque"><label>Cantidad</label><input type="number" id="movCant" inputmode="decimal" step="any" min="0"></div>
     <div id="movObraBloque"><label>Obra</label><input type="text" id="movObraTxt" placeholder="Escribe la obra…" autocomplete="off"><div class="sugs" id="movObraSugs" style="display:none"></div><select id="movObra" style="display:none"></select>
       <label id="movPersonaLabel">¿Quién se lo lleva?</label><input type="text" id="movPersonaTxt" autocomplete="off"><div class="sugs" id="movPersonaSugs" style="display:none"></div>
@@ -560,6 +561,7 @@ buscador($('movMatTxt'), $('movMatSugs'), function () {
   }));
 }, function (m) {
   S.movMat = m;
+  mostrarNumeroNuevo();
   // al devolver una herramienta, la obra donde estaba sale ya puesta
   if (m && S.movClase === 'HER' && S.movTipo === 'DEVOLUCION' && m.donde && m.donde !== 'ALMACÉN') {
     var o = obras().filter(function (x) { return x.nombre === m.donde; })[0];
@@ -749,6 +751,20 @@ function pintarStock() {
 $('buscarMat').oninput = pintarStock;
 $('verStock').onclick = function () { var b = $('stockBloque'), ver = b.style.display === 'none'; b.style.display = ver ? '' : 'none'; if (ver) pintarStock(); };
 $('verHerr').onclick = function () { var b = $('herrBloque'), ver = b.style.display === 'none'; b.style.display = ver ? '' : 'none'; if (ver) pintarHerr(); };
+// número para una herramienta nueva: se da en el momento para escribirlo con rotulador y que salga en la foto
+function siguienteNumero(prefijo) {
+  var max = 0;
+  herrLocal().map(function (h) { return h.codigo; }).concat(S.numerosPendientes || []).forEach(function (c) {
+    var p = String(c).split('-'); if (p[0] === prefijo) max = Math.max(max, Number(p[1]) || 0);
+  });
+  return prefijo + '-' + ('0' + (max + 1)).slice(-2);
+}
+function mostrarNumeroNuevo() {
+  var m = S.movMat, nuevo = m && S.movClase === 'HER' && (S.movTipo === 'ENTRADA' || m.nuevo);
+  S.codigoNuevo = nuevo ? siguienteNumero(m.prefijo) : '';
+  $('numeroNuevo').style.display = nuevo ? '' : 'none';
+  $('numeroNuevo').innerHTML = nuevo ? 'Número para esta máquina: <b style="font-size:22px">' + S.codigoNuevo + '</b><br>✍️ Escríbelo con el rotulador en la máquina y haz la foto donde se vea.' : '';
+}
 // herramientas una a una (BAT-01…): dónde está cada una y quién la tiene (al tocarla, sus últimos movimientos)
 function herrLocal() { return (S.datos && S.datos.herramientas) || []; }
 function pintarHerr() {
@@ -800,6 +816,7 @@ function abrirMov(tipo, clase) {
   $('movMatTxt').value = ''; S.movMat = null; S.movCuando = ahoraES();
   $('movCuando').textContent = 'Fecha y hora: ' + S.movCuando + ' · el nº se asigna al enviarlo';
   S.movFotos = []; pintarFotosEn('movFotos', S.movFotos);
+  S.codigoNuevo = ''; $('numeroNuevo').style.display = 'none';
 }
 $('btnEntrada').onclick = function () { abrirMov('ENTRADA'); };
 $('btnSalida').onclick = function () { abrirMov('SALIDA'); };
@@ -819,9 +836,13 @@ $('movGuardar').onclick = function () {
   if (conObra && !$('movObra').value) return toast('Elige la obra');
   var obraSel = $('movObra'), obraTxt = conObra ? obraSel.options[obraSel.selectedIndex].text : '';
   var persona = conObra ? ($('movPersonaTxt').value.trim() || S.usuario.nombre) : '';
-  var mov = { id: uid(), tipo: 'mov', clase: S.movClase, persona: persona, movTipo: S.movTipo, material: mat, materialNombre: matNombre, tipoHer: her && (S.movTipo === 'ENTRADA' || S.movMat.nuevo) ? S.movMat.prefijo : '', hora: S.movCuando.slice(11), cantidad: cant, obra: obraTxt, nota: $('movNota').value.trim(), fotos: S.movFotos.slice(), fecha: hoyISO(), usuario: S.usuario.nombre, creadoEn: new Date().toISOString() };
+  var mov = { id: uid(), tipo: 'mov', clase: S.movClase, persona: persona, movTipo: S.movTipo, material: mat, materialNombre: matNombre, tipoHer: her && (S.movTipo === 'ENTRADA' || S.movMat.nuevo) ? S.movMat.prefijo : '', codigoNuevo: S.codigoNuevo || '', hora: S.movCuando.slice(11), cantidad: cant, obra: obraTxt, nota: $('movNota').value.trim(), fotos: S.movFotos.slice(), fecha: hoyISO(), usuario: S.usuario.nombre, creadoEn: new Date().toISOString() };
   // ajuste optimista del stock local
-  if (her) herrLocal().forEach(function (h) {
+  if (her && S.codigoNuevo) {   // la nueva entra ya en la lista del móvil, para no repetir su número
+    (S.numerosPendientes = S.numerosPendientes || []).push(S.codigoNuevo);
+    herrLocal().push({ codigo: S.codigoNuevo, tipo: S.movMat.tipo || S.movMat.nombre, nombre: S.codigoNuevo + ' · ' + (S.movMat.tipo || S.movMat.nombre),
+      donde: S.movTipo === 'SALIDA' ? obraTxt : 'ALMACÉN', quien: persona || S.usuario.nombre, desde: S.movCuando });
+  } else if (her) herrLocal().forEach(function (h) {
     if (h.codigo === mat) { h.donde = S.movTipo === 'SALIDA' ? obraTxt : 'ALMACÉN'; h.quien = persona || S.usuario.nombre; h.desde = S.movCuando; }
   });
   else stockLocal().forEach(function (m) { if (m.codigo === mat) m.stock += (S.movTipo === 'SALIDA' ? -cant : cant); });
@@ -848,11 +869,11 @@ function sincronizar() {
       p = p.then(function () {
         var llamada = it.tipo === 'parte'
           ? api('crearParte', { parte: it })
-          : api('movimiento', { mov: { id: it.id, tipo: it.movTipo, material: it.material, cantidad: it.cantidad, obra: it.obra, nota: it.nota, fotos: it.fotos || [], fecha: it.fecha, usuario: it.usuario, materialNombre: it.materialNombre, hora: it.hora, clase: it.clase || 'MAT', persona: it.persona || '', tipoHer: it.tipoHer || '' } });
+          : api('movimiento', { mov: { id: it.id, tipo: it.movTipo, material: it.material, cantidad: it.cantidad, obra: it.obra, nota: it.nota, fotos: it.fotos || [], fecha: it.fecha, usuario: it.usuario, materialNombre: it.materialNombre, hora: it.hora, clase: it.clase || 'MAT', persona: it.persona || '', tipoHer: it.tipoHer || '', codigoNuevo: it.codigoNuevo || '' } });
         return llamada.then(function (j) {
           enviados++;
           var h = { id: it.id, tipo: it.tipo, fecha: it.fecha, obra: it.obraNombre || it.obra, numero: j.numero || '', pdf_url: j.pdf_url || '', firmado: !!it.firma, enviadoEn: new Date().toISOString(), copia: j.copia_enviada_a || '', copiaError: j.copia_error || '', resumen: it.tipo === 'mov' ? (it.clase === 'HER'
-            ? '🔧 ' + (it.movTipo === 'ENTRADA' ? 'ALTA ' : it.movTipo + ' ') + it.materialNombre + (it.tipoHer ? ' → número ' + (j.herramienta || '?') + ' (márcalo en la máquina)' : '')
+            ? '🔧 ' + (it.movTipo === 'ENTRADA' ? 'ALTA ' : it.movTipo + ' ') + it.materialNombre + (it.tipoHer ? ' → número ' + (j.herramienta || '?') + (j.cambiado ? ' ⚠️ CAMBIADO: tenía ' + it.codigoNuevo + ', corrige el número en la máquina' : '') : '')
             : it.movTipo + ' ' + it.cantidad + ' ' + (it.materialNombre || it.material)) + (it.persona ? ' · ' + it.persona : '') : '', hora: it.hora || '' };
           return DB.put('hist', h).then(function () { return DB.del('cola', it.id); });
         }).catch(function (e) {
