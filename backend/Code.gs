@@ -130,7 +130,7 @@ function doPost(e) {
 function login_(b) {
   var t = filas_('TRABAJADORES').filter(function (f) { return String(f.codigo) === String(b.codigo) && si_(f.activo); })[0];
   if (!t) return { ok: false, error: 'Trabajador no encontrado' };
-  if (String(t.pin) !== String(b.pin)) return { ok: false, error: 'PIN incorrecto' };
+  if (String(t.pin).padStart(4, '0') !== String(b.pin).padStart(4, '0')) return { ok: false, error: 'PIN incorrecto' };
   return { ok: true, trabajador: { codigo: t.codigo, nombre: t.nombre, categoria: t.categoria, encargado: si_(t.encargado) } };
 }
 

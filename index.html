@@ -348,10 +348,18 @@ function opciones(sel, lista, valor, texto, vacio) {
 }
 function pintarListas() {
   var d = S.datos || { trabajadores: [], obras: [], materiales: [] };
-  opciones($('loginTrab'), d.trabajadores, 'codigo', 'nombre', '— elige tu nombre —');
-  opciones($('obra'), d.obras, 'codigo', 'nombre', '— elige la obra —');
-  opciones($('movObra'), d.obras, 'codigo', 'nombre', '— obra —');
-  opciones($('movMat'), d.materiales, 'codigo', 'nombre', '— material —');
+  // repinta un select conservando lo elegido si esa opción sigue existiendo
+  var repintar = function (sel, lista, vacio) {
+    var antes = sel.value;
+    opciones(sel, lista, 'codigo', 'nombre', vacio);
+    if (antes && Array.prototype.some.call(sel.options, function (o) { return o.value === antes; })) sel.value = antes;
+  };
+  repintar($('loginTrab'), d.trabajadores, '— elige tu nombre —');
+  repintar($('obra'), d.obras, '— elige la obra —');
+  repintar($('movObra'), d.obras, '— obra —');
+  repintar($('movMat'), d.materiales, '— material —');
+  document.querySelectorAll('#trabs .t-cod').forEach(function (s) { repintar(s, d.trabajadores, '— trabajador —'); });
+  document.querySelectorAll('#mats .m-cod').forEach(function (s) { repintar(s, d.materiales, '— material —'); });
 }
 
 // ---------------------------------------------------------------- parte: trabajadores y materiales

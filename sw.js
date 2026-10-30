@@ -1,5 +1,5 @@
 // Service worker APP SOLERA — guarda la app en el móvil para que abra sin cobertura
-var CACHE = 'solera-v1';
+var CACHE = 'solera-v2';
 var FICHEROS = ['./', './index.html', './config.js', './manifest.json', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', function (e) {
@@ -15,7 +15,7 @@ self.addEventListener('fetch', function (e) {
   var url = new URL(e.request.url);
   if (url.origin !== location.origin) return;
   // red primero (para coger versiones nuevas), caché si no hay red
-  e.respondWith(fetch(e.request).then(function (r) {
+  e.respondWith(fetch(e.request, { cache: 'no-cache' }).then(function (r) {
     var copia = r.clone(); caches.open(CACHE).then(function (c) { c.put(e.request, copia); }); return r;
   }).catch(function () { return caches.match(e.request).then(function (r) { return r || caches.match('./index.html'); }); }));
 });
