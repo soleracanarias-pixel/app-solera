@@ -14,6 +14,9 @@ Cosas pedidas que todavía NO se han hecho. Se borran de aquí cuando estén hec
 - Probar la huella en los móviles reales (si da error, la app enseña el motivo: pasárselo a Claude).
 - Foto para reconocer el material (propuesta; decidir con Fable si se hace y con qué servicio).
 - Módulo de herramientas (fase 2).
+- **Meter material desde la foto de una factura o albarán: NO en la app del móvil.** Es para Mateo o Gregorio,
+  como algo aparte (de momento, pasándole la foto a Claude; más adelante, quizá una app de escritorio
+  ligada al sistema). *(30/10/2026)*
 
 ## Hoja APP SOLERA (lo hace Mateo: el sistema no deja a Claude borrar filas)
 - Borrar el parte de prueba nº 90001: 1 fila en PARTES, 2 en PARTES_LINEAS y 1 en MOVIMIENTOS
