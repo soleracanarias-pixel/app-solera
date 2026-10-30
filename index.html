@@ -8,6 +8,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600;700&family=Source+Sans+3:wght@400;600&display=swap" rel="stylesheet">
 <script>
+// la app SOLERA tiene como ámbito index.html (así no se mezcla con "SOLERA Almacén", que vive en almacen/)
+if (/\/$/.test(location.pathname)) location.replace('index.html' + location.search);
 // ?modo=almacen (acceso directo "SOLERA Almacén", almacen.html): misma app, arranca en Almacén y sin la pestaña Parte
 var MODO_ALMACEN = /[?&]modo=almacen(&|$)/.test(location.search);
 if (MODO_ALMACEN) {
