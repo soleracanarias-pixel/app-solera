@@ -212,6 +212,7 @@ a{color:var(--azul)}
       <button class="btn peq verde" id="btnEntrada">⬇ Entrada</button>
       <button class="btn peq" id="btnSalida">⬆ Salida a obra</button>
     </div>
+    <button class="btn peq sec" id="btnDevolucion" style="width:100%">↩ Devolución de obra (vuelve al almacén)</button>
   </div>
   <div class="tarjeta lista" id="stockLista"></div>
 
@@ -713,7 +714,7 @@ $('stockLista').onclick = function (e) {
   }).catch(function (e) { h.textContent = 'No se pudo cargar: ' + e.message; });
 };
 function abrirMov(tipo) {
-  S.movTipo = tipo; $('movForm').style.display = ''; $('movTitulo').textContent = tipo === 'ENTRADA' ? 'Entrada al almacén' : 'Salida a obra';
+  S.movTipo = tipo; $('movForm').style.display = ''; $('movTitulo').textContent = { ENTRADA: 'Entrada al almacén', SALIDA: 'Salida a obra', DEVOLUCION: 'Devolución de obra (vuelve al almacén)' }[tipo];
   $('movObraBloque').style.display = tipo === 'ENTRADA' ? 'none' : ''; $('movCant').value = ''; $('movNota').value = '';
   $('movMatTxt').value = ''; S.movMat = null; S.movCuando = ahoraES();
   $('movCuando').textContent = 'Fecha y hora: ' + S.movCuando + ' · el nº se asigna al enviarlo';
@@ -722,17 +723,19 @@ function abrirMov(tipo) {
 }
 $('btnEntrada').onclick = function () { abrirMov('ENTRADA'); };
 $('btnSalida').onclick = function () { abrirMov('SALIDA'); };
+$('btnDevolucion').onclick = function () { abrirMov('DEVOLUCION'); };
 $('movCancelar').onclick = function () { $('movForm').style.display = 'none'; };
 $('movGuardar').onclick = function () {
   var nombreMat = $('movMatTxt').value.trim(), cant = +$('movCant').value;
   if (!nombreMat || !cant) return toast('Escribe material y cantidad');
   // si no se eligió de la lista, va como texto libre (código OTRO, no cuenta en el stock)
   var mat = S.movMat ? String(S.movMat.codigo) : 'OTRO', matNombre = S.movMat ? S.movMat.nombre : nombreMat.toUpperCase();
-  if (S.movTipo === 'SALIDA' && !$('movObra').value) return toast('Elige la obra');
-  var obraSel = $('movObra'), obraTxt = S.movTipo === 'SALIDA' ? obraSel.options[obraSel.selectedIndex].text : '';
+  var conObra = S.movTipo !== 'ENTRADA';   // salida y devolución van siempre ligadas a una obra
+  if (conObra && !$('movObra').value) return toast('Elige la obra');
+  var obraSel = $('movObra'), obraTxt = conObra ? obraSel.options[obraSel.selectedIndex].text : '';
   var mov = { id: uid(), tipo: 'mov', movTipo: S.movTipo, material: mat, materialNombre: matNombre, hora: S.movCuando.slice(11), cantidad: cant, obra: obraTxt, nota: $('movNota').value.trim(), fotos: S.movFotos.slice(), fecha: hoyISO(), usuario: S.usuario.nombre, creadoEn: new Date().toISOString() };
   // ajuste optimista del stock local
-  stockLocal().forEach(function (m) { if (m.codigo === mat) m.stock += (S.movTipo === 'ENTRADA' ? cant : -cant); });
+  stockLocal().forEach(function (m) { if (m.codigo === mat) m.stock += (S.movTipo === 'SALIDA' ? -cant : cant); });
   DB.put('kv', S.datos, 'datos');
   DB.put('cola', mov).then(function () { $('movForm').style.display = 'none'; pintarStock(); toast('Movimiento guardado'); actualizarPend(); sincronizar(); });
 };

@@ -29,9 +29,10 @@ var HOJAS = {
   PARTES_LINEAS: ['id','numero','fecha','obra','trabajador_codigo','trabajador','categoria','horas','horas_extra','firmado'],
   MOVIMIENTOS: ['id','fecha','tipo','material_codigo','material','cantidad','unidad','obra','parte_numero','usuario','nota','creado_en','fotos','numero','hora'],
   STOCK: ['codigo','nombre','unidad','entradas','salidas','stock','stock_min','aviso'],
-  FIRMANTES: ['nombre','email','obra_ultima','veces','actualizado_en']
+  FIRMANTES: ['nombre','email','obra_ultima','veces','actualizado_en'],
+  POR_OBRA: ['obra','material_codigo','material','unidad','salido','devuelto','gastado']
 };
-var ESQUEMA = '5';            // subir cuando cambien las columnas de HOJAS
+var ESQUEMA = '6';            // subir cuando cambien las columnas de HOJAS
 var EMAIL_COPIA = 'soleracanarias@gmail.com';
 var CSV_NOMBRE = 'PARTES APP 2026.csv';  // se crea en la carpeta CARPETA_CSV_ID de CONFIG (CLIENTES\PARTES\APP)
 var CSV_COLUMNAS = ['N_PARTE','FECHA','DIA_SEMANA','CLIENTE','OBRA','COD_OBRA_APP','RESP_CLIENTE','RESP_CERT','RESP_SOLERA','MATRICULA',
@@ -62,11 +63,11 @@ function instalar() {
     st.getRange('A2').setFormula('=ARRAYFORMULA(IF(MATERIALES!A2:A="";;MATERIALES!A2:A))');
     st.getRange('B2').setFormula('=ARRAYFORMULA(IF(MATERIALES!A2:A="";;MATERIALES!B2:B))');
     st.getRange('C2').setFormula('=ARRAYFORMULA(IF(MATERIALES!A2:A="";;MATERIALES!C2:C))');
-    st.getRange('D2').setFormula('=ARRAYFORMULA(IF(A2:A="";;SUMIFS(MOVIMIENTOS!F:F;MOVIMIENTOS!D:D;A2:A;MOVIMIENTOS!C:C;"ENTRADA")))');
+    st.getRange('D2').setFormula('=ARRAYFORMULA(IF(A2:A="";;SUMIFS(MOVIMIENTOS!F:F;MOVIMIENTOS!D:D;A2:A;MOVIMIENTOS!C:C;"ENTRADA")+SUMIFS(MOVIMIENTOS!F:F;MOVIMIENTOS!D:D;A2:A;MOVIMIENTOS!C:C;"DEVOLUCION")))');
     st.getRange('E2').setFormula('=ARRAYFORMULA(IF(A2:A="";;SUMIFS(MOVIMIENTOS!F:F;MOVIMIENTOS!D:D;A2:A;MOVIMIENTOS!C:C;"SALIDA")))');
     st.getRange('F2').setFormula('=ARRAYFORMULA(IF(A2:A="";;D2:D-E2:E))');
     st.getRange('G2').setFormula('=ARRAYFORMULA(IF(MATERIALES!A2:A="";;MATERIALES!D2:D))');
-    st.getRange('H2').setFormula('=ARRAYFORMULA(IF(A2:A="";;IF(F2:F<=G2:G;"PEDIR";"")))');
+    st.getRange('H2').setFormula('=ARRAYFORMULA(IF(A2:A="";;IF((G2:G>0)*(F2:F<=G2:G);"PEDIR";"")))');
   }
   SpreadsheetApp.getUi().alert('APP SOLERA instalada. Rellena TRABAJADORES, OBRAS, MATERIALES y CARPETA_PARTES_ID en CONFIG; luego publica como aplicación web.');
 }
@@ -197,7 +198,7 @@ function stock_() {
   var acc = {};
   filas_('MOVIMIENTOS').forEach(function (m) {
     var k = String(m.material_codigo); acc[k] = acc[k] || { e: 0, s: 0 };
-    if (m.tipo === 'ENTRADA') acc[k].e += Number(m.cantidad) || 0; else acc[k].s += Number(m.cantidad) || 0;
+    if (m.tipo === 'ENTRADA' || m.tipo === 'DEVOLUCION') acc[k].e += Number(m.cantidad) || 0; else acc[k].s += Number(m.cantidad) || 0;
   });
   return mats.map(function (f) {
     var a = acc[String(f.codigo)] || { e: 0, s: 0 };
@@ -263,10 +264,7 @@ function crearParte_(p) {
     hl.appendRow([p.id, numero, fechaES_(p.fecha), obra.nombre, t.codigo, t.nombre, t.categoria || '', Number(t.horas) || 0, Number(t.extra) || 0, firmado ? 'SI' : 'NO']);
   });
 
-  var hm = hoja_('MOVIMIENTOS');
-  materiales.forEach(function (m, i) {
-    hm.appendRow([p.id + '-m' + i, fechaES_(p.fecha), 'SALIDA', String(m.codigo), m.nombre, Number(m.cantidad), m.unidad || '', obra.nombre, numero, p.creadoPor || '', 'Desde parte', creadoEn]);
-  });
+  // los materiales del parte son lo que se cobra al cliente: NO tocan el almacén (eso va por Entrada/Salida/Devolución)
 
   // copia por correo al firmante; si falla, el parte queda guardado igual y se anota el error
   var copia = { copia_enviada_a: '', copia_error: '' };
@@ -286,7 +284,6 @@ function crearParte_(p) {
   }
   if (p.firmante) guardarFirmante_(p.firmante, String(p.firmanteEmail || '').trim(), obra.nombre);
   try { exportarCSV(); } catch (err) { console.error('CSV: ' + err); }
-  avisarStock_(materiales.map(function (m) { return String(m.codigo); }));
 
   return { ok: true, numero: numero, pdf_url: pdfUrl, copia_enviada_a: copia.copia_enviada_a, copia_error: copia.copia_error };
 }
@@ -354,7 +351,7 @@ function movimiento_(m) {
   var n = Number(config_('SIGUIENTE_MOV')) || 1;
   setConfig_('SIGUIENTE_MOV', n + 1);
   var numero = 'A' + ('000' + n).slice(-4);
-  var tipo = m.tipo === 'ENTRADA' ? 'ENTRADA' : 'SALIDA';
+  var tipo = m.tipo === 'ENTRADA' || m.tipo === 'DEVOLUCION' ? m.tipo : 'SALIDA';
   var fecha = m.fecha || new Date().toISOString();
   // fotos en <CARPETA_PARTES>/ALMACEN/<MES>/ "DD-MM-AAAA A0001 ENTRADA|SALIDA <material> <comentario>.jpg"
   var fotosUrls = [], idCarpeta = config_('CARPETA_PARTES_ID');
@@ -370,7 +367,24 @@ function movimiento_(m) {
     cantidad: Number(m.cantidad) || 0, unidad: mat.unidad, obra: m.obra || '', parte_numero: '', usuario: m.usuario || '',
     nota: m.nota || '', creado_en: ahora_(), fotos: fotosUrls.join(' '), numero: numero, hora: m.hora ? "'" + m.hora : '' });   // con ' para que la hoja no lo convierta en fecha
   avisarStock_([String(mat.codigo)]);                  // una ENTRADA que repone rearma el aviso
+  if (tipo !== 'ENTRADA') try { porObra_(); } catch (err) { console.error('POR_OBRA: ' + err); }
   return { ok: true, numero: numero, fotos: fotosUrls };
+}
+
+// POR_OBRA: por obra y material, lo que salió del almacén, lo que volvió y lo gastado (salido - devuelto).
+// Es control interno; lo que se cobra al cliente es lo que pone el parte.
+function porObra_() {
+  var acc = {}, orden = [];
+  filas_('MOVIMIENTOS').forEach(function (m) {
+    if ((m.tipo !== 'SALIDA' && m.tipo !== 'DEVOLUCION') || !m.obra) return;
+    var k = m.obra + '|' + m.material_codigo + '|' + m.material;
+    if (!acc[k]) { acc[k] = { obra: m.obra, codigo: m.material_codigo, material: m.material, unidad: m.unidad, salido: 0, devuelto: 0 }; orden.push(k); }
+    acc[k][m.tipo === 'SALIDA' ? 'salido' : 'devuelto'] += Number(m.cantidad) || 0;
+  });
+  var filas = orden.sort().map(function (k) { var a = acc[k]; return [a.obra, a.codigo, a.material, a.unidad, a.salido, a.devuelto, a.salido - a.devuelto]; });
+  var h = hoja_('POR_OBRA');
+  if (h.getLastRow() > 1) h.getRange(2, 1, h.getLastRow() - 1, HOJAS.POR_OBRA.length).clearContent();
+  if (filas.length) h.getRange(2, 1, filas.length, HOJAS.POR_OBRA.length).setValues(filas);
 }
 
 // últimos movimientos de un material, el más reciente primero
