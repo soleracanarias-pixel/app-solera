@@ -27,11 +27,11 @@ var HOJAS = {
   MATERIALES: ['codigo','nombre','unidad','stock_min','activo','orden','categoria'],
   PARTES: ['id','numero','fecha','obra_codigo','obra','cliente','creado_por','trabajadores','total_horas','trabajos','materiales','medios','observaciones','firmado','firmante','pdf_url','fotos','creado_en','origen','firmado_en','copia_enviada_a','copia_enviada_en','copia_error'],
   PARTES_LINEAS: ['id','numero','fecha','obra','trabajador_codigo','trabajador','categoria','horas','horas_extra','firmado'],
-  MOVIMIENTOS: ['id','fecha','tipo','material_codigo','material','cantidad','unidad','obra','parte_numero','usuario','nota','creado_en','fotos'],
+  MOVIMIENTOS: ['id','fecha','tipo','material_codigo','material','cantidad','unidad','obra','parte_numero','usuario','nota','creado_en','fotos','numero','hora'],
   STOCK: ['codigo','nombre','unidad','entradas','salidas','stock','stock_min','aviso'],
   FIRMANTES: ['nombre','email','obra_ultima','veces','actualizado_en']
 };
-var ESQUEMA = '4';            // subir cuando cambien las columnas de HOJAS
+var ESQUEMA = '5';            // subir cuando cambien las columnas de HOJAS
 var EMAIL_COPIA = 'soleracanarias@gmail.com';
 var CSV_NOMBRE = 'PARTES APP 2026.csv';  // se crea en la carpeta CARPETA_CSV_ID de CONFIG (CLIENTES\PARTES\APP)
 var CSV_COLUMNAS = ['N_PARTE','FECHA','DIA_SEMANA','CLIENTE','OBRA','COD_OBRA_APP','RESP_CLIENTE','RESP_CERT','RESP_SOLERA','MATRICULA',
@@ -345,16 +345,22 @@ function pdfParte_(p, numero, obra, trabajadores, totalHoras, materiales) {
 function movimiento_(m) {
   if (!m || !m.id) throw new Error('Movimiento sin id');
   var ya = filas_('MOVIMIENTOS').filter(function (f) { return f.id === m.id; })[0];
-  if (ya) return { ok: true, repetido: true };
+  if (ya) return { ok: true, repetido: true, numero: ya.numero || '' };
   var mat = filas_('MATERIALES').filter(function (f) { return String(f.codigo) === String(m.material); })[0];
+  // cosas que no están en la lista de materiales: se guardan con su nombre y código OTRO (no cuentan en el stock)
+  if (!mat && m.materialNombre) mat = { codigo: 'OTRO', nombre: String(m.materialNombre).trim().toUpperCase(), unidad: m.unidad || '' };
   if (!mat) throw new Error('Material no encontrado');
+  // número propio de cada movimiento de almacén: A0001, A0002…
+  var n = Number(config_('SIGUIENTE_MOV')) || 1;
+  setConfig_('SIGUIENTE_MOV', n + 1);
+  var numero = 'A' + ('000' + n).slice(-4);
   var tipo = m.tipo === 'ENTRADA' ? 'ENTRADA' : 'SALIDA';
   var fecha = m.fecha || new Date().toISOString();
-  // fotos en <CARPETA_PARTES>/ALMACEN/<MES>/ "DD-MM-AAAA ENTRADA|SALIDA <material> <nota>.jpg"
+  // fotos en <CARPETA_PARTES>/ALMACEN/<MES>/ "DD-MM-AAAA A0001 ENTRADA|SALIDA <material> <comentario>.jpg"
   var fotosUrls = [], idCarpeta = config_('CARPETA_PARTES_ID');
   if (m.fotos && m.fotos.length && idCarpeta) {
     var carp = subcarpeta_(subcarpeta_(DriveApp.getFolderById(idCarpeta), 'ALMACEN'), mesDe_(fecha));
-    var base = [fechaNombre_(fecha), tipo, mat.nombre, m.nota || ''].join(' ').replace(/[\\/:*?"<>|]/g, '-').replace(/\s+/g, ' ').trim();
+    var base = [fechaNombre_(fecha), numero, tipo, mat.nombre, m.nota || ''].join(' ').replace(/[\\/:*?"<>|]/g, '-').replace(/\s+/g, ' ').trim();
     m.fotos.forEach(function (f, i) {
       var b = blobDeDataUrl_(f, base + (m.fotos.length > 1 ? ' (' + (i + 1) + ')' : '') + '.jpg');
       if (b) fotosUrls.push(carp.createFile(b).getUrl());
@@ -362,16 +368,16 @@ function movimiento_(m) {
   }
   anadirFila_('MOVIMIENTOS', { id: m.id, fecha: fechaES_(fecha), tipo: tipo, material_codigo: String(mat.codigo), material: mat.nombre,
     cantidad: Number(m.cantidad) || 0, unidad: mat.unidad, obra: m.obra || '', parte_numero: '', usuario: m.usuario || '',
-    nota: m.nota || '', creado_en: ahora_(), fotos: fotosUrls.join(' ') });
+    nota: m.nota || '', creado_en: ahora_(), fotos: fotosUrls.join(' '), numero: numero, hora: m.hora ? "'" + m.hora : '' });   // con ' para que la hoja no lo convierta en fecha
   avisarStock_([String(mat.codigo)]);                  // una ENTRADA que repone rearma el aviso
-  return { ok: true, fotos: fotosUrls };
+  return { ok: true, numero: numero, fotos: fotosUrls };
 }
 
 // últimos movimientos de un material, el más reciente primero
 function movimientosMaterial_(codigo, n) {
   return filas_('MOVIMIENTOS').filter(function (f) { return String(f.material_codigo) === String(codigo); })
     .slice(-n).reverse().map(function (f) {
-      return { fecha: txtFecha_(f.fecha, 'dd/MM/yyyy'), tipo: f.tipo, cantidad: f.cantidad, unidad: f.unidad, obra: f.obra,
+      return { numero: f.numero || '', hora: String(f.hora || ''), fecha: txtFecha_(f.fecha, 'dd/MM/yyyy'), tipo: f.tipo, cantidad: f.cantidad, unidad: f.unidad, obra: f.obra,
         usuario: f.usuario, nota: f.nota, fotos: String(f.fotos || '').split(' ').filter(function (u) { return u; }) };
     });
 }

@@ -211,10 +211,11 @@ a{color:var(--azul)}
 
   <div class="tarjeta" id="movForm" style="display:none">
     <h2 id="movTitulo">Movimiento</h2>
-    <label>Material</label><select id="movMat"></select>
+    <div class="ayuda" id="movCuando"></div>
+    <label>Material</label><input type="text" id="movMatTxt" placeholder="Escribe el material…" autocomplete="off"><div class="sugs" id="movMatSugs" style="display:none"></div>
     <label>Cantidad</label><input type="number" id="movCant" inputmode="decimal" step="any" min="0">
     <div id="movObraBloque"><label>Obra</label><input type="text" id="movObraTxt" placeholder="Escribe la obra…" autocomplete="off"><div class="sugs" id="movObraSugs" style="display:none"></div><select id="movObra" style="display:none"></select></div>
-    <label>Nota (albarán, proveedor…)</label><input type="text" id="movNota">
+    <label>Comentario (albarán, proveedor…)</label><input type="text" id="movNota">
     <input type="file" id="movFotoInput" accept="image/*" multiple style="display:none">
     <button class="btn sec peq" id="movBtnFoto">📷 Foto (albarán, material…)</button>
     <div class="fotos" id="movFotos"></div>
@@ -447,7 +448,6 @@ function pintarListas() {
   repintar($('obra'), d.obras, '— elige la obra —');
   repintar($('movObra'), d.obras, '— obra —');
   verObra('obra', 'obraTxt'); verObra('movObra', 'movObraTxt');
-  repintar($('movMat'), d.materiales, '— material —');
   document.querySelectorAll('#trabs .t-cod').forEach(function (s) { repintar(s, d.trabajadores, '— trabajador —'); });
 }
 
@@ -490,6 +490,7 @@ function verObra(sel, txt) { var s = $(sel); if (s.value && s.selectedIndex >= 0
 function obras() { return (S.datos && S.datos.obras) || []; }
 buscador($('obraTxt'), $('obraSugs'), obras, function (o) { $('obra').value = o ? String(o.codigo) : ''; });
 buscador($('movObraTxt'), $('movObraSugs'), obras, function (o) { $('movObra').value = o ? String(o.codigo) : ''; });
+buscador($('movMatTxt'), $('movMatSugs'), function () { return (S.datos && S.datos.materiales) || []; }, function (m) { S.movMat = m; });
 
 function filaMat() {
   var div = document.createElement('div'); div.className = 'fila mat'; div.dataset.cod = '';
@@ -680,7 +681,7 @@ $('stockLista').onclick = function (e) {
   if (!navigator.onLine) { h.textContent = 'Sin conexión: el historial se ve con cobertura.'; return; }
   api('movimientos', { material: it.dataset.cod }).then(function (j) {
     h.innerHTML = j.movimientos.length ? j.movimientos.map(function (m) {
-      return '<div><b>' + esc(m.fecha) + ' · ' + esc(m.tipo) + ' ' + esc(m.cantidad) + ' ' + esc(m.unidad || '') + '</b>' +
+      return '<div><b>' + (m.numero ? 'Nº ' + esc(m.numero) + ' · ' : '') + esc(m.fecha) + (m.hora ? ' ' + esc(m.hora) : '') + ' · ' + esc(m.tipo) + ' ' + esc(m.cantidad) + ' ' + esc(m.unidad || '') + '</b>' +
         (m.obra ? ' · ' + esc(m.obra) : '') + (m.usuario ? ' · ' + esc(m.usuario) : '') + (m.nota ? ' · ' + esc(m.nota) : '') +
         (m.fotos || []).map(function (u, i) { return ' · <a href="' + esc(u) + '" target="_blank">📷 foto' + (m.fotos.length > 1 ? ' ' + (i + 1) : '') + '</a>'; }).join('') + '</div>';
     }).join('') : 'Sin movimientos todavía.';
@@ -689,6 +690,8 @@ $('stockLista').onclick = function (e) {
 function abrirMov(tipo) {
   S.movTipo = tipo; $('movForm').style.display = ''; $('movTitulo').textContent = tipo === 'ENTRADA' ? 'Entrada al almacén' : 'Salida a obra';
   $('movObraBloque').style.display = tipo === 'ENTRADA' ? 'none' : ''; $('movCant').value = ''; $('movNota').value = '';
+  $('movMatTxt').value = ''; S.movMat = null; S.movCuando = ahoraES();
+  $('movCuando').textContent = 'Fecha y hora: ' + S.movCuando + ' · el nº se asigna al enviarlo';
   S.movFotos = []; pintarFotosEn('movFotos', S.movFotos);
   $('movForm').scrollIntoView({ behavior: 'smooth' });
 }
@@ -696,11 +699,13 @@ $('btnEntrada').onclick = function () { abrirMov('ENTRADA'); };
 $('btnSalida').onclick = function () { abrirMov('SALIDA'); };
 $('movCancelar').onclick = function () { $('movForm').style.display = 'none'; };
 $('movGuardar').onclick = function () {
-  var mat = $('movMat').value, cant = +$('movCant').value;
-  if (!mat || !cant) return toast('Elige material y cantidad');
+  var nombreMat = $('movMatTxt').value.trim(), cant = +$('movCant').value;
+  if (!nombreMat || !cant) return toast('Escribe material y cantidad');
+  // si no se eligió de la lista, va como texto libre (código OTRO, no cuenta en el stock)
+  var mat = S.movMat ? String(S.movMat.codigo) : 'OTRO', matNombre = S.movMat ? S.movMat.nombre : nombreMat.toUpperCase();
   if (S.movTipo === 'SALIDA' && !$('movObra').value) return toast('Elige la obra');
   var obraSel = $('movObra'), obraTxt = S.movTipo === 'SALIDA' ? obraSel.options[obraSel.selectedIndex].text : '';
-  var mov = { id: uid(), tipo: 'mov', movTipo: S.movTipo, material: mat, cantidad: cant, obra: obraTxt, nota: $('movNota').value.trim(), fotos: S.movFotos.slice(), fecha: hoyISO(), usuario: S.usuario.nombre, creadoEn: new Date().toISOString() };
+  var mov = { id: uid(), tipo: 'mov', movTipo: S.movTipo, material: mat, materialNombre: matNombre, hora: S.movCuando.slice(11), cantidad: cant, obra: obraTxt, nota: $('movNota').value.trim(), fotos: S.movFotos.slice(), fecha: hoyISO(), usuario: S.usuario.nombre, creadoEn: new Date().toISOString() };
   // ajuste optimista del stock local
   stockLocal().forEach(function (m) { if (m.codigo === mat) m.stock += (S.movTipo === 'ENTRADA' ? cant : -cant); });
   DB.put('kv', S.datos, 'datos');
@@ -726,10 +731,10 @@ function sincronizar() {
       p = p.then(function () {
         var llamada = it.tipo === 'parte'
           ? api('crearParte', { parte: it })
-          : api('movimiento', { mov: { id: it.id, tipo: it.movTipo, material: it.material, cantidad: it.cantidad, obra: it.obra, nota: it.nota, fotos: it.fotos || [], fecha: it.fecha, usuario: it.usuario } });
+          : api('movimiento', { mov: { id: it.id, tipo: it.movTipo, material: it.material, cantidad: it.cantidad, obra: it.obra, nota: it.nota, fotos: it.fotos || [], fecha: it.fecha, usuario: it.usuario, materialNombre: it.materialNombre, hora: it.hora } });
         return llamada.then(function (j) {
           enviados++;
-          var h = { id: it.id, tipo: it.tipo, fecha: it.fecha, obra: it.obraNombre || it.obra, numero: j.numero || '', pdf_url: j.pdf_url || '', firmado: !!it.firma, enviadoEn: new Date().toISOString(), copia: j.copia_enviada_a || '', copiaError: j.copia_error || '', resumen: it.tipo === 'mov' ? it.movTipo + ' ' + it.cantidad + ' ' + it.material : '' };
+          var h = { id: it.id, tipo: it.tipo, fecha: it.fecha, obra: it.obraNombre || it.obra, numero: j.numero || '', pdf_url: j.pdf_url || '', firmado: !!it.firma, enviadoEn: new Date().toISOString(), copia: j.copia_enviada_a || '', copiaError: j.copia_error || '', resumen: it.tipo === 'mov' ? it.movTipo + ' ' + it.cantidad + ' ' + (it.materialNombre || it.material) : '', hora: it.hora || '' };
           return DB.put('hist', h).then(function () { return DB.del('cola', it.id); });
         }).catch(function (e) {
           it.error = e.message; it.intentos = (it.intentos || 0) + 1; return DB.put('cola', it);
@@ -744,13 +749,13 @@ function sincronizar() {
 function pintarEnviados() {
   DB.all('cola').then(function (c) {
     $('colaLista').innerHTML = c.length ? c.map(function (it) {
-      return '<div class="item"><div><b>' + (it.tipo === 'parte' ? 'Parte · ' + esc(it.obraNombre) : 'Almacén · ' + esc(it.movTipo) + ' ' + it.cantidad + ' ' + esc(it.material)) + '</b><small>' + fechaES(it.fecha) + (it.error ? ' · <span style="color:var(--rojo)">' + esc(it.error) + '</span>' : '') + '</small></div><span class="chip ' + (it.error ? 'err' : 'pend') + '">' + (it.error ? 'reintentar' : 'pendiente') + '</span></div>';
+      return '<div class="item"><div><b>' + (it.tipo === 'parte' ? 'Parte · ' + esc(it.obraNombre) : 'Almacén · ' + esc(it.movTipo) + ' ' + it.cantidad + ' ' + esc(it.materialNombre || it.material)) + '</b><small>' + fechaES(it.fecha) + (it.hora ? ' ' + esc(it.hora) : '') + (it.error ? ' · <span style="color:var(--rojo)">' + esc(it.error) + '</span>' : '') + '</small></div><span class="chip ' + (it.error ? 'err' : 'pend') + '">' + (it.error ? 'reintentar' : 'pendiente') + '</span></div>';
     }).join('') : '<div class="aviso ok">Todo enviado.</div>';
   });
   DB.all('hist').then(function (h) {
     h.sort(function (a, b) { return a.enviadoEn < b.enviadoEn ? 1 : -1; }); h = h.slice(0, 50);
     $('histLista').innerHTML = h.length ? h.map(function (it) {
-      if (it.tipo === 'mov') return '<div class="item"><div><b>Almacén · ' + esc(it.resumen) + '</b><small>' + fechaES(it.fecha) + '</small></div><span class="chip ok">ok</span></div>';
+      if (it.tipo === 'mov') return '<div class="item"><div><b>' + (it.numero ? 'Nº ' + esc(it.numero) + ' · ' : 'Almacén · ') + esc(it.resumen) + '</b><small>' + fechaES(it.fecha) + (it.hora ? ' ' + esc(it.hora) : '') + '</small></div><span class="chip ok">ok</span></div>';
       return '<div class="item"><div><b>Nº ' + esc(it.numero) + ' · ' + esc(it.obra) + '</b><small>' + fechaES(it.fecha) + (it.firmado ? ' · firmado' : ' · sin firma') + (it.copia ? ' · copia enviada a ' + esc(it.copia) : '') + (it.copiaError ? ' · <span style="color:var(--rojo)">copia no enviada</span>' : '') + '</small></div>' + (it.pdf_url ? '<a class="chip ok" href="' + esc(it.pdf_url) + '" target="_blank">PDF</a>' : '<span class="chip ok">ok</span>') + '</div>';
     }).join('') : '<div class="aviso">Aún no hay partes enviados desde este móvil.</div>';
   });
