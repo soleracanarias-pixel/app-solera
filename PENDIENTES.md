@@ -9,6 +9,13 @@ Cosas pedidas que todavía NO se han hecho. Se borran de aquí cuando estén hec
 - **A la vez: elegir la categoría de cada trabajador en el parte (PEÓN / OFICIAL).** Depende del día o del
   trabajo: a veces un peón hace de oficial y al revés. Por defecto, la de la hoja TRABAJADORES. Es solo para
   el cliente (PDF y facturación), NO cuenta para nóminas ni cambia TRABAJADORES. *(Pedido 30/10/2026, esperar OK.)*
+- **Separar almacén y parte.** Ahora cada material del parte crea una SALIDA automática en MOVIMIENTOS
+  (doble descuento si también se hace la salida en Almacén). Propuesta: el parte NO toca el almacén (solo
+  PDF/cliente/facturación: pone lo que se cobra, p. ej. 5 bolsas); en Almacén, botones Entrada, Salida a obra
+  y **Devolución de obra** (p. ej. salen 5 a Majuelos, vuelven 2 → stock +2; por obra: salió 5, volvió 2,
+  gastado 3). *(Pedido 30/10/2026, esperar OK.)*
+- Decidir cómo se abre la app (todos saben el PIN del móvil): abrir directo / huella / pedir siempre el
+  PIN personal de la app con el nombre ya puesto (recomendado).
 - Foto para reconocer el material (propuesta; decidir con Fable si se hace y con qué servicio).
 - Módulo de herramientas (fase 2).
 
