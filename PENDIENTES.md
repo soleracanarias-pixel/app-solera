@@ -1,0 +1,20 @@
+# APP SOLERA — pendientes
+
+Cosas pedidas que todavía NO se han hecho. Se borran de aquí cuando estén hechas.
+
+## App
+- **Quitar las horas extra del parte.** Solo horas en bruto (una casilla de horas por trabajador).
+  Las extras las calcula la oficina; el parte es para el cliente. Afecta a la pantalla del parte,
+  al PDF (columna "Extra"), a PARTES_LINEAS (horas_extra) y al CSV. *(Pedido 30/10/2026, esperar OK para hacerlo.)*
+- Foto para reconocer el material (propuesta; decidir con Fable si se hace y con qué servicio).
+- Módulo de herramientas (fase 2).
+
+## Hoja APP SOLERA (lo hace Mateo: el sistema no deja a Claude borrar filas)
+- Borrar el parte de prueba nº 90001: 1 fila en PARTES, 2 en PARTES_LINEAS y 1 en MOVIMIENTOS
+  (sus 2 PDF ya están en la papelera de Drive). Y cualquier parte de prueba posterior.
+- Categoría del trabajador 22, Jesús Enrique Herrera.
+- Rellenar `stock_min` en MATERIALES para que salten los avisos de stock.
+
+## Al acabar las pruebas
+- Activar el CSV: poner en CONFIG `CARPETA_CSV_ID` = `1Zjj8Guqk55MsSyEYoxnNd75mlfTr-Hhe` (carpeta CLIENTES\PARTES\APP).
+- Revisar los artículos de proveedor de `MATERIALES APP.csv` (algunos cruces no son exactos).
