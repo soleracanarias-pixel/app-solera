@@ -129,13 +129,16 @@ a{color:var(--azul)}
       <select id="loginTrab"></select>
     </div>
     <div id="huellaBloque" style="display:none">
-      <button class="btn verde" id="btnHuella">👆 Entrar con huella o PIN del móvil</button>
+      <button class="btn verde" id="btnHuella">👆 Entrar con huella, cara o PIN del móvil</button>
+      <a href="#" id="usarPinApp" class="ayuda">Entrar con el PIN de la app</a> ·
       <a href="#" id="quitarHuella" class="ayuda">Quitar la huella en este móvil</a>
     </div>
-    <label>PIN</label>
-    <div class="pin" id="pinVista"></div>
-    <div class="pinpad" id="pinpad"></div>
-    <button class="btn" id="btnEntrar">Entrar</button>
+    <div id="pinBloque">
+      <label>PIN</label>
+      <div class="pin" id="pinVista"></div>
+      <div class="pinpad" id="pinpad"></div>
+      <button class="btn" id="btnEntrar">Entrar</button>
+    </div>
     <button class="btn sec" id="btnCargar">Actualizar listas (necesita datos)</button>
   </div>
 </section>
@@ -396,7 +399,7 @@ function ofrecerHuella(u) {
     if ((h && String(h.codigo) === String(u.codigo)) || r[1] === String(u.codigo)) return;   // ya puesta, o dijo que no
     return huella.disponible().then(function (si) {
       if (!si) return;
-      if (!confirm('¿Quieres entrar con la huella en este móvil a partir de ahora?')) return DB.put('kv', String(u.codigo), 'huellaNo');
+      if (!confirm('¿Activar la huella? A partir de ahora entrarás como desbloqueas tu móvil (huella, cara o su PIN), sin el PIN de la app.')) return DB.put('kv', String(u.codigo), 'huellaNo');
       return huella.crear(u).then(function (id) { return DB.put('kv', { codigo: u.codigo, id: id }, 'huella'); })
         .then(function () { toast('Huella activada'); });
     });
@@ -410,17 +413,27 @@ function mostrarLogin() {
     S.dueno = d || null;
     $('duenoBloque').style.display = d ? '' : 'none'; $('loginLista').style.display = d ? 'none' : '';
     if (d) { $('duenoNombre').textContent = d.nombre; $('loginTrab').value = String(d.codigo); }
-    $('huellaBloque').style.display = d && h && String(h.codigo) === String(d.codigo) ? '' : 'none';
+    var conHuella = !!(d && h && String(h.codigo) === String(d.codigo));
+    // con huella: se entra con la huella o el PIN del propio móvil; el PIN de la app queda como plan B
+    $('huellaBloque').style.display = conHuella ? '' : 'none';
+    $('pinBloque').style.display = conHuella ? 'none' : '';
+    if (conHuella && !S.huellaPedida) { S.huellaPedida = true; entrarConHuella(true); }   // al abrir la app, la pide sola
   });
   cambiar('login');
 }
 $('cambiarPersona').onclick = function (e) { e.preventDefault(); S.cambiandoPersona = true; $('loginTrab').value = ''; mostrarLogin(); };
-$('btnHuella').onclick = function () {
+function entrarConHuella(automatico) {
   DB.get('kv', 'huella').then(function (h) { return huella.comprobar(h.id); }).then(function () {
     S.usuario = S.dueno; return DB.put('kv', S.usuario, 'usuario');
   }).then(function () { mostrarApp(); })
-    .catch(function (e) { aviso('loginAviso', 'No se ha podido usar la huella (' + motivo(e) + '). Entra con el PIN de la app.', 'err'); });
-};
+    .catch(function (e) {
+      if (automatico) return;   // si el móvil no deja pedirla sola, se pulsa el botón
+      aviso('loginAviso', 'No se ha podido usar la huella (' + motivo(e) + '). Prueba otra vez o entra con el PIN de la app.', 'err');
+      $('pinBloque').style.display = '';
+    });
+}
+$('btnHuella').onclick = function () { entrarConHuella(false); };
+$('usarPinApp').onclick = function (e) { e.preventDefault(); $('pinBloque').style.display = ''; };
 // sin huella, la app abre directamente (la protege el bloqueo del propio móvil)
 $('quitarHuella').onclick = function (e) {
   e.preventDefault();
