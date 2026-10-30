@@ -121,7 +121,9 @@ a{color:var(--azul)}
       <div><label>Fecha</label><div class="fecha-campo"><span id="fechaVer"></span><input type="date" id="fecha"></div></div>
     </div>
     <label>Obra</label>
-    <select id="obra"></select>
+    <input type="text" id="obraTxt" placeholder="Escribe la obra…" autocomplete="off">
+    <div class="sugs" id="obraSugs" style="display:none"></div>
+    <select id="obra" style="display:none"></select>
   </div>
 
   <div class="tarjeta">
@@ -187,7 +189,7 @@ a{color:var(--azul)}
     <h2 id="movTitulo">Movimiento</h2>
     <label>Material</label><select id="movMat"></select>
     <label>Cantidad</label><input type="number" id="movCant" inputmode="decimal" step="any" min="0">
-    <div id="movObraBloque"><label>Obra</label><select id="movObra"></select></div>
+    <div id="movObraBloque"><label>Obra</label><input type="text" id="movObraTxt" placeholder="Escribe la obra…" autocomplete="off"><div class="sugs" id="movObraSugs" style="display:none"></div><select id="movObra" style="display:none"></select></div>
     <label>Nota (albarán, proveedor…)</label><input type="text" id="movNota">
     <div class="fila">
       <button class="btn peq sec" id="movCancelar">Cancelar</button>
@@ -371,6 +373,7 @@ function pintarListas() {
   repintar($('loginTrab'), d.trabajadores, '— elige tu nombre —');
   repintar($('obra'), d.obras, '— elige la obra —');
   repintar($('movObra'), d.obras, '— obra —');
+  verObra('obra', 'obraTxt'); verObra('movObra', 'movObraTxt');
   repintar($('movMat'), d.materiales, '— material —');
   document.querySelectorAll('#trabs .t-cod').forEach(function (s) { repintar(s, d.trabajadores, '— trabajador —'); });
 }
@@ -389,28 +392,40 @@ function filaTrab(datos) {
   div.querySelectorAll('input').forEach(function (i) { i.oninput = totalHoras; });
   $('trabs').appendChild(div); totalHoras();
 }
+// campo de texto con sugerencias al escribir ("maj" -> MERCADONA 2184 LOS MAJUELOS); la lista ya viene ordenada por uso.
+// elegir(item, alEscribir) recibe el elemento elegido, o null si lo escrito no coincide con ninguno
+function buscador(txt, caja, lista, elegir) {
+  var mostrar = function () {
+    var palabras = normal(txt.value).split(' ').filter(Boolean);
+    var res = lista().filter(function (x) {
+      var ws = normal(x.nombre).split(/[^a-z0-9,]+/);
+      return palabras.every(function (p) { return ws.some(function (w) { return w.indexOf(p) === 0; }); });
+    }).slice(0, 8);
+    var exacto = res.filter(function (x) { return normal(x.nombre) === normal(txt.value); })[0];
+    elegir(exacto || null, true);
+    caja.innerHTML = res.map(function (x, i) { return '<div data-i="' + i + '">' + esc(x.nombre) + '</div>'; }).join('');
+    caja.querySelectorAll('div').forEach(function (o) {
+      o.onmousedown = function (e) { e.preventDefault(); var x = res[+o.dataset.i]; txt.value = x.nombre; caja.style.display = 'none'; elegir(x, false); };
+    });
+    caja.style.display = res.length && !exacto ? '' : 'none';
+  };
+  txt.oninput = txt.onfocus = mostrar;
+  txt.onblur = function () { caja.style.display = 'none'; };
+}
+// el select oculto guarda la obra elegida; el texto visible la enseña
+function verObra(sel, txt) { var s = $(sel); if (s.value && s.selectedIndex >= 0) $(txt).value = s.options[s.selectedIndex].text; }
+function obras() { return (S.datos && S.datos.obras) || []; }
+buscador($('obraTxt'), $('obraSugs'), obras, function (o) { $('obra').value = o ? String(o.codigo) : ''; });
+buscador($('movObraTxt'), $('movObraSugs'), obras, function (o) { $('movObra').value = o ? String(o.codigo) : ''; });
+
 function filaMat() {
   var div = document.createElement('div'); div.className = 'fila mat'; div.dataset.cod = '';
   div.innerHTML = '<div><input type="text" class="m-txt" placeholder="Escribe el material…" autocomplete="off"><div class="sugs" style="display:none"></div></div>' +
     '<div class="corto"><input type="number" class="m-c" inputmode="decimal" step="any" min="0" placeholder="Cant."></div><button class="x">×</button>';
-  var txt = div.querySelector('.m-txt'), caja = div.querySelector('.sugs');
-  // sugerencias según se escribe, primero lo más usado (la lista ya viene ordenada así desde la hoja)
-  var sugerir = function () {
-    var palabras = normal(txt.value).split(' ').filter(Boolean);
-    var lista = ((S.datos && S.datos.materiales) || []).filter(function (m) {
-      var ws = normal(m.nombre).split(/[^a-z0-9ñ,]+/);
-      return palabras.every(function (p) { return ws.some(function (w) { return w.indexOf(p) === 0; }); });
-    }).slice(0, 8);
-    var exacto = lista.filter(function (m) { return normal(m.nombre) === normal(txt.value); })[0];
-    div.dataset.cod = exacto ? exacto.codigo : '';
-    caja.innerHTML = lista.map(function (m, i) { return '<div data-i="' + i + '">' + esc(m.nombre) + '</div>'; }).join('');
-    caja.querySelectorAll('div').forEach(function (o) {
-      o.onmousedown = function (e) { e.preventDefault(); var m = lista[+o.dataset.i]; txt.value = m.nombre; div.dataset.cod = m.codigo; caja.style.display = 'none'; div.querySelector('.m-c').focus(); };
-    });
-    caja.style.display = lista.length && !exacto ? '' : 'none';
-  };
-  txt.oninput = txt.onfocus = sugerir;
-  txt.onblur = function () { caja.style.display = 'none'; };
+  buscador(div.querySelector('.m-txt'), div.querySelector('.sugs'), function () { return (S.datos && S.datos.materiales) || []; }, function (m, alEscribir) {
+    div.dataset.cod = m ? m.codigo : '';
+    if (m && !alEscribir) div.querySelector('.m-c').focus();
+  });
   div.querySelector('.x').onclick = function () { div.remove(); };
   $('mats').appendChild(div);
 }
@@ -450,7 +465,7 @@ function nuevoParte() {
   // el que crea el parte va el primero
   if (S.usuario && S.datos) filaTrab({ codigo: S.usuario.codigo, horas: 8 });
   // última obra usada
-  DB.get('kv', 'ultimaObra').then(function (o) { if (o) $('obra').value = o; });
+  DB.get('kv', 'ultimaObra').then(function (o) { if (o) { $('obra').value = o; verObra('obra', 'obraTxt'); } });
 }
 
 // fecha: se enseña siempre como dd/mm/aaaa; el selector nativo queda invisible encima
