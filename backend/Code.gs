@@ -10,7 +10,8 @@
  *  4. Rellenar TRABAJADORES (código, nombre, categoría, PIN), OBRAS y MATERIALES.
  *     En CONFIG poner CARPETA_PARTES_ID = id de la carpeta de Drive donde irán los PDF
  *     (el id es lo que va después de /folders/ en la dirección de la carpeta).
- *     Opcional: CARPETA_CSV_ID = id de la carpeta CLIENTES\PARTES (ahí se rehace "PARTES APP 2026.csv")
+ *     Opcional: CARPETA_CSV_ID = id de la carpeta CLIENTES\PARTES\APP (ahí se rehace "PARTES APP 2026.csv";
+ *     va aparte del maestro para no mezclar los datos de la app con los reales)
  *     y AVISOS_EMAIL = correo que recibe los avisos de stock mínimo.
  *  5. Implementar > Nueva implementación > Aplicación web:
  *        Ejecutar como: Yo      ·      Quién tiene acceso: Cualquier usuario
@@ -32,7 +33,7 @@ var HOJAS = {
 };
 var ESQUEMA = '2';            // subir cuando cambien las columnas de HOJAS
 var EMAIL_COPIA = 'soleracanarias@gmail.com';
-var CSV_NOMBRE = 'PARTES APP 2026.csv';  // se crea en la carpeta CARPETA_CSV_ID de CONFIG (CLIENTES\PARTES)
+var CSV_NOMBRE = 'PARTES APP 2026.csv';  // se crea en la carpeta CARPETA_CSV_ID de CONFIG (CLIENTES\PARTES\APP)
 var CSV_COLUMNAS = ['N_PARTE','FECHA','DIA_SEMANA','CLIENTE','OBRA','COD_OBRA_APP','RESP_CLIENTE','RESP_CERT','RESP_SOLERA','MATRICULA',
   'CONDUCTOR','TIPO_DIA','FIRMADO','OPERARIO_PARTE','COD_OPERARIO_APP','CATEGORIA_PARTE','HORAS','HORAS_TEXTO_PARTE','TRABAJOS',
   'MATERIALES_Y_MEDIOS','PORTES','TRANSPORTES','EN_APP','NOTAS','LEIDO_EL'];
@@ -373,7 +374,7 @@ function avisarStock_(codigos) {
 
 // ---------------------------------------------------------------- CSV para "DATOS PARTES LEIDOS 2026"
 // Rehace "PARTES APP 2026.csv" con todas las líneas de la app, con las mismas columnas y formato que el CSV maestro
-// (separador ;, BOM UTF-8, una fila por trabajador). El maestro no se toca: se une con el proceso habitual.
+// (separador ;, BOM UTF-8, CRLF, una fila por trabajador, categorías OF/PE). El maestro no se toca.
 // Se ejecuta solo tras cada parte; también se puede lanzar a mano desde el editor.
 function exportarCSV() {
   var idCarpeta = config_('CARPETA_CSV_ID');
@@ -385,7 +386,7 @@ function exportarCSV() {
     var matMedios = [p.materiales, p.medios].filter(function (x) { return x; }).join('; ');
     var notas = ['Parte de la APP SOLERA', p.observaciones, p.pdf_url].filter(function (x) { return x; }).join('. ');
     lineas.push([l.numero, fecha, diaSemana_(fecha), p.cliente || '', l.obra, p.obra_codigo || '', p.firmante || '', '', p.creado_por || '', '',
-      '', 'NORMAL', si_(l.firmado) ? 'SI' : 'NO', l.trabajador, l.trabajador_codigo, l.categoria || '', numES_(horas),
+      '', 'NORMAL', si_(l.firmado) ? 'SI' : 'NO', l.trabajador, l.trabajador_codigo, catCSV_(l.categoria), numES_(horas),
       numES_(Number(l.horas) || 0) + ' h' + (Number(l.horas_extra) ? ' + ' + numES_(Number(l.horas_extra)) + ' h extra' : ''),
       p.trabajos || '', matMedios, '', '', 'NO', notas, txtFecha_(p.creado_en, 'dd/MM/yyyy')].map(celdaCSV_).join(';'));
   });
@@ -397,6 +398,9 @@ function exportarCSV() {
 function celdaCSV_(v) {
   var t = String(v == null ? '' : v).replace(/\r?\n/g, ' ');
   return /[;"]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t;
+}
+function catCSV_(c) { // las categorías del maestro van abreviadas
+  var k = normal_(c); return k === 'oficial' ? 'OF' : (k === 'peon' ? 'PE' : String(c || ''));
 }
 function numES_(n) { return String(Math.round(n * 100) / 100).replace('.', ','); }
 // la hoja puede devolver la fecha como texto 'dd/mm/aaaa' o como fecha de verdad
