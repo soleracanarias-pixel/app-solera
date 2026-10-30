@@ -10,6 +10,8 @@
  *  4. Rellenar TRABAJADORES (código, nombre, categoría, PIN), OBRAS y MATERIALES.
  *     En CONFIG poner CARPETA_PARTES_ID = id de la carpeta de Drive donde irán los PDF
  *     (el id es lo que va después de /folders/ en la dirección de la carpeta).
+ *     Opcional: CARPETA_CSV_ID = id de la carpeta CLIENTES\\PARTES (ahí se rehace "PARTES APP 2026.csv")
+ *     y AVISOS_EMAIL = correo que recibe los avisos de stock mínimo.
  *  5. Implementar > Nueva implementación > Aplicación web:
  *        Ejecutar como: Yo      ·      Quién tiene acceso: Cualquier usuario
  *     Copiar la URL (acaba en /exec) y ponerla en web/config.js junto con el TOKEN de CONFIG.
@@ -30,6 +32,10 @@ var HOJAS = {
 };
 var ESQUEMA = '2';            // subir cuando cambien las columnas de HOJAS
 var EMAIL_COPIA = 'soleracanarias@gmail.com';
+var CSV_NOMBRE = 'PARTES APP 2026.csv';  // se crea en la carpeta CARPETA_CSV_ID de CONFIG (CLIENTES\\PARTES)
+var CSV_COLUMNAS = ['N_PARTE','FECHA','DIA_SEMANA','CLIENTE','OBRA','COD_OBRA_APP','RESP_CLIENTE','RESP_CERT','RESP_SOLERA','MATRICULA',
+  'CONDUCTOR','TIPO_DIA','FIRMADO','OPERARIO_PARTE','COD_OPERARIO_APP','CATEGORIA_PARTE','HORAS','HORAS_TEXTO_PARTE','TRABAJOS',
+  'MATERIALES_Y_MEDIOS','PORTES','TRANSPORTES','EN_APP','NOTAS','LEIDO_EL'];
 
 // ---------------------------------------------------------------- instalación
 function instalar() {
@@ -40,6 +46,8 @@ function instalar() {
     cfg.appendRow(['TOKEN', Utilities.getUuid().replace(/-/g, '').slice(0, 20)]);
     cfg.appendRow(['CARPETA_PARTES_ID', '']);
     cfg.appendRow(['SIGUIENTE_NUMERO', 90001]);
+    cfg.appendRow(['CARPETA_CSV_ID', '']);
+    cfg.appendRow(['AVISOS_EMAIL', EMAIL_COPIA]);
     cfg.appendRow(['EMPRESA', 'SOLERA CANARIAS TÉCNICA SL · CIF B13789649 · Calle Quiquirá, bajo, nº 1 · 38300 La Orotava']);
   }
   var tr = ss.getSheetByName('TRABAJADORES');
@@ -274,6 +282,8 @@ function crearParte_(p) {
     ponerEnFila_('PARTES', fila, { copia_enviada_a: copia.copia_enviada_a, copia_enviada_en: copia.copia_enviada_a ? ahora_() : '', copia_error: copia.copia_error });
   }
   if (p.firmante) guardarFirmante_(p.firmante, String(p.firmanteEmail || '').trim(), obra.nombre);
+  try { exportarCSV(); } catch (err) { console.error('CSV: ' + err); }
+  avisarStock_(materiales.map(function (m) { return String(m.codigo); }));
 
   return { ok: true, numero: numero, pdf_url: pdfUrl, copia_enviada_a: copia.copia_enviada_a, copia_error: copia.copia_error };
 }
@@ -338,5 +348,65 @@ function movimiento_(m) {
   var tipo = m.tipo === 'ENTRADA' ? 'ENTRADA' : 'SALIDA';
   hoja_('MOVIMIENTOS').appendRow([m.id, fechaES_(m.fecha || new Date().toISOString()), tipo, String(mat.codigo), mat.nombre,
     Number(m.cantidad) || 0, mat.unidad, m.obra || '', '', m.usuario || '', m.nota || '', ahora_()]);
+  avisarStock_([String(mat.codigo)]);                  // una ENTRADA que repone rearma el aviso
   return { ok: true };
+}
+
+// aviso por correo cuando un material baja al stock mínimo (solo al cruzarlo, no en cada salida)
+function avisarStock_(codigos) {
+  if (!codigos.length) return;
+  try {
+    var props = PropertiesService.getScriptProperties();
+    var bajos = stock_().filter(function (m) {
+      if (codigos.indexOf(m.codigo) < 0 || !(m.stock_min > 0)) return false;
+      var clave = 'AVISO_STOCK_' + m.codigo, bajo = m.stock <= m.stock_min, avisado = props.getProperty(clave) === 'SI';
+      props.setProperty(clave, bajo ? 'SI' : 'NO');      // al reponer por encima del mínimo se puede volver a avisar
+      return bajo && !avisado;
+    });
+    if (!bajos.length) return;
+    var lista = bajos.map(function (m) { return '- ' + m.nombre + ' (' + m.codigo + '): quedan ' + m.stock + ' ' + (m.unidad || '') + ', mínimo ' + m.stock_min; }).join('\n');
+    GmailApp.sendEmail(config_('AVISOS_EMAIL') || EMAIL_COPIA, 'APP SOLERA · Stock bajo: ' + bajos.map(function (m) { return m.nombre; }).join(', '),
+      'Estos materiales han llegado al stock mínimo y hay que pedirlos:\n\n' + lista + '\n\nAviso automático de la app SOLERA (' + ahora_() + ').',
+      { name: 'APP SOLERA' });
+  } catch (err) { console.error('Aviso stock: ' + err); }
+}
+
+// ---------------------------------------------------------------- CSV para "DATOS PARTES LEIDOS 2026"
+// Rehace "PARTES APP 2026.csv" con todas las líneas de la app, con las mismas columnas y formato que el CSV maestro
+// (separador ;, BOM UTF-8, una fila por trabajador). El maestro no se toca: se une con el proceso habitual.
+// Se ejecuta solo tras cada parte; también se puede lanzar a mano desde el editor.
+function exportarCSV() {
+  var idCarpeta = config_('CARPETA_CSV_ID');
+  if (!idCarpeta) return { ok: false, error: 'Falta CARPETA_CSV_ID en CONFIG' };
+  var partes = {}; filas_('PARTES').forEach(function (f) { partes[f.id] = f; });
+  var lineas = [CSV_COLUMNAS.join(';')];
+  filas_('PARTES_LINEAS').forEach(function (l) {
+    var p = partes[l.id] || {}, fecha = txtFecha_(l.fecha, 'dd-MM-yyyy'), horas = (Number(l.horas) || 0) + (Number(l.horas_extra) || 0);
+    var matMedios = [p.materiales, p.medios].filter(function (x) { return x; }).join('; ');
+    var notas = ['Parte de la APP SOLERA', p.observaciones, p.pdf_url].filter(function (x) { return x; }).join('. ');
+    lineas.push([l.numero, fecha, diaSemana_(fecha), p.cliente || '', l.obra, p.obra_codigo || '', p.firmante || '', '', p.creado_por || '', '',
+      '', 'NORMAL', si_(l.firmado) ? 'SI' : 'NO', l.trabajador, l.trabajador_codigo, l.categoria || '', numES_(horas),
+      numES_(Number(l.horas) || 0) + ' h' + (Number(l.horas_extra) ? ' + ' + numES_(Number(l.horas_extra)) + ' h extra' : ''),
+      p.trabajos || '', matMedios, '', '', 'NO', notas, txtFecha_(p.creado_en, 'dd/MM/yyyy')].map(celdaCSV_).join(';'));
+  });
+  var texto = '\uFEFF' + lineas.join('\r\n') + '\r\n';
+  var carpeta = DriveApp.getFolderById(idCarpeta), it = carpeta.getFilesByName(CSV_NOMBRE);
+  if (it.hasNext()) it.next().setContent(texto); else carpeta.createFile(CSV_NOMBRE, texto, MimeType.CSV);
+  return { ok: true, filas: lineas.length - 1 };
+}
+function celdaCSV_(v) {
+  var t = String(v == null ? '' : v).replace(/\r?\n/g, ' ');
+  return /[;"]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t;
+}
+function numES_(n) { return String(Math.round(n * 100) / 100).replace('.', ','); }
+// la hoja puede devolver la fecha como texto 'dd/mm/aaaa' o como fecha de verdad
+function txtFecha_(v, formato) {
+  if (Object.prototype.toString.call(v) === '[object Date]') return Utilities.formatDate(v, 'Atlantic/Canary', formato);
+  var m = String(v || '').match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+  if (!m) return String(v || '');
+  return formato === 'dd-MM-yyyy' ? m[1] + '-' + m[2] + '-' + m[3] : m[1] + '/' + m[2] + '/' + m[3];
+}
+function diaSemana_(ddmmyyyy) {
+  var p = ddmmyyyy.split('-'); if (p.length !== 3) return '';
+  return 'DLMXJVS'.charAt(new Date(Number(p[2]), Number(p[1]) - 1, Number(p[0])).getDay());
 }
