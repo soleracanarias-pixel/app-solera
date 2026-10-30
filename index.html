@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>SOLERA</title>
+<meta name="theme-color" content="#343434">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600;700&family=Source+Sans+3:wght@400;600&display=swap" rel="stylesheet">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<style>
+:root{--azul:#343434;--azul2:#646464;--ambar:#f9b526;--fondo:#f4f4f4;--borde:#d9d9d9;--texto:#222;--gris:#646464;--rojo:#c62828;--verde:#2e7d32}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--fondo);color:var(--texto);font:16px/1.4 'Source Sans 3',-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+button,input,select,textarea{font:inherit;color:inherit}
+header{background:var(--azul);color:#fff;border-bottom:3px solid var(--ambar);padding:calc(env(safe-area-inset-top) + 10px) 14px 10px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:5}
+header h1{font-size:18px;margin:0;letter-spacing:3px;font-family:'Prompt',sans-serif;font-weight:600;color:var(--ambar)}
+.tarjeta h2,.btn,.modal .cab b,nav button.activa{font-family:'Prompt',sans-serif}
+header .quien{font-size:12px;opacity:.85}
+.estado{font-size:12px;padding:3px 9px;border-radius:12px;background:rgba(255,255,255,.18)}
+.estado.off{background:var(--ambar);color:#343434}
+main{padding:12px 12px 90px;max-width:720px;margin:0 auto}
+.pantalla{display:none}.pantalla.activa{display:block}
+nav{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--borde);display:flex;padding-bottom:env(safe-area-inset-bottom);z-index:5}
+nav button{flex:1;border:0;background:none;padding:10px 4px 8px;font-size:12px;color:var(--gris);display:flex;flex-direction:column;align-items:center;gap:2px}
+nav button svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:2}
+nav button.activa{color:var(--azul);font-weight:600;border-top:3px solid var(--ambar);margin-top:-1px}
+nav .punto{position:absolute;margin-left:28px;margin-top:-2px;background:var(--rojo);color:#fff;font-size:10px;border-radius:9px;min-width:18px;height:18px;line-height:18px;text-align:center;padding:0 4px}
+.tarjeta{background:#fff;border:1px solid var(--borde);border-radius:12px;padding:14px;margin-bottom:12px}
+.tarjeta h2{font-size:14px;margin:0 0 10px;color:var(--azul);text-transform:uppercase;letter-spacing:.5px}
+label{display:block;font-size:13px;color:var(--gris);margin:8px 0 3px}
+input[type=text],input[type=number],input[type=date],input[type=password],select,textarea{width:100%;padding:11px;border:1px solid var(--borde);border-radius:8px;background:#fff;font-size:16px}
+textarea{min-height:80px;resize:vertical}
+.fila{display:flex;gap:8px;align-items:flex-end}
+.fila>*{flex:1;min-width:0}
+.fila .corto{flex:0 0 64px}
+.fila .icono{flex:0 0 44px}
+.btn{display:block;width:100%;padding:14px;border:0;border-radius:10px;background:var(--ambar);color:#343434;font-size:17px;font-weight:600;margin-top:10px;cursor:pointer}
+.btn:disabled{opacity:.5}
+.btn.sec{background:#fff;color:var(--azul);border:2px solid var(--azul)}
+.btn.rojo,.btn.verde{color:#fff}
+.btn.peq{padding:9px;font-size:14px;margin-top:6px;width:auto;display:inline-block}
+.btn.rojo{background:var(--rojo)}
+.btn.verde{background:var(--verde)}
+.x{border:1px solid var(--borde);background:#fff;border-radius:8px;height:44px;width:44px;color:var(--rojo);font-size:20px}
+.linea{border-top:1px dashed var(--borde);margin:8px 0}
+.aviso{padding:10px 12px;border-radius:8px;background:#fff8e1;border:1px solid #ffe08a;font-size:14px;margin:8px 0}
+.aviso.ok{background:#e8f5e9;border-color:#a5d6a7}
+.aviso.err{background:#ffebee;border-color:#ef9a9a}
+.pinpad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px}
+.pinpad button{padding:18px;font-size:22px;border:1px solid var(--borde);background:#fff;border-radius:12px}
+.pin{letter-spacing:12px;text-align:center;font-size:28px;height:54px;line-height:54px;background:#fff;border:1px solid var(--borde);border-radius:8px}
+.fotos{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.fotos div{position:relative;width:84px;height:84px;border-radius:8px;overflow:hidden;border:1px solid var(--borde)}
+.fotos img{width:100%;height:100%;object-fit:cover}
+.fotos b{position:absolute;top:2px;right:2px;background:rgba(0,0,0,.6);color:#fff;border-radius:50%;width:22px;height:22px;text-align:center;line-height:22px;font-size:14px}
+.firma-prev{border:1px solid var(--borde);border-radius:8px;background:#fff;height:90px;display:flex;align-items:center;justify-content:center;color:var(--gris);overflow:hidden}
+.firma-prev img{height:100%}
+.modal{position:fixed;inset:0;background:#fff;z-index:20;display:none;flex-direction:column}
+.modal.activa{display:flex}
+.modal .cab{padding:12px;background:var(--azul);color:#fff;display:flex;justify-content:space-between;align-items:center}
+.modal canvas{flex:1;touch-action:none;background:#fff;background-image:linear-gradient(#eee 1px,transparent 1px);background-size:100% 40px}
+.modal .cab{border-bottom:3px solid var(--ambar)}
+.modal .pie{display:flex;gap:8px;padding:10px}
+.modal .pie .btn{margin:0}
+.lista .item{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--borde);gap:8px}
+.lista .item:last-child{border:0}
+.lista small{color:var(--gris);display:block}
+.chip{font-size:12px;padding:3px 8px;border-radius:10px;background:#eef1f7;color:var(--azul);white-space:nowrap}
+.chip.pend{background:#fff3d6;color:#9a6a00}.chip.ok{background:#e8f5e9;color:var(--verde)}.chip.err{background:#ffebee;color:var(--rojo)}
+.stock{font-weight:700;font-size:18px;min-width:70px;text-align:right}
+.stock.bajo{color:var(--rojo)}
+.buscar{position:sticky;top:58px;z-index:3;background:var(--fondo);padding:4px 0 8px}
+.total{font-weight:700;color:var(--azul);text-align:right;margin-top:6px}
+.toast{position:fixed;left:50%;bottom:80px;transform:translateX(-50%);background:#222;color:#fff;padding:10px 16px;border-radius:20px;font-size:14px;opacity:0;transition:.3s;z-index:30;pointer-events:none;max-width:90%}
+.toast.ver{opacity:1}
+a{color:var(--azul)}
+</style>
+</head>
+<body>
+<header>
+  <div><h1>SOLERA</h1><div class="quien" id="quien"></div></div>
+  <div style="display:flex;gap:8px;align-items:center">
+    <span class="estado" id="estado">—</span>
+    <button id="btnSalir" class="x" style="display:none;color:#fff;background:none;border-color:rgba(255,255,255,.4);width:auto;padding:0 10px;font-size:13px;height:30px">Salir</button>
+  </div>
+</header>
+
+<main>
+<!-- LOGIN -->
+<section class="pantalla" id="p-login">
+  <div class="tarjeta">
+    <h2>Entrar</h2>
+    <div id="loginAviso"></div>
+    <label>¿Quién eres?</label>
+    <select id="loginTrab"></select>
+    <label>PIN</label>
+    <div class="pin" id="pinVista"></div>
+    <div class="pinpad" id="pinpad"></div>
+    <button class="btn" id="btnEntrar">Entrar</button>
+    <button class="btn sec" id="btnCargar">Actualizar listas (necesita datos)</button>
+  </div>
+</section>
+
+<!-- PARTE -->
+<section class="pantalla" id="p-parte">
+  <div class="tarjeta">
+    <h2>Nuevo parte</h2>
+    <div class="fila">
+      <div><label>Fecha</label><input type="date" id="fecha"></div>
+    </div>
+    <label>Obra</label>
+    <select id="obra"></select>
+  </div>
+
+  <div class="tarjeta">
+    <h2>Personal</h2>
+    <div id="trabs"></div>
+    <button class="btn sec peq" id="addTrab">+ Añadir trabajador</button>
+    <div class="total" id="totalHoras">Total: 0 h</div>
+  </div>
+
+  <div class="tarjeta">
+    <h2>Trabajos realizados</h2>
+    <textarea id="trabajos" placeholder="Qué se ha hecho hoy…"></textarea>
+  </div>
+
+  <div class="tarjeta">
+    <h2>Materiales usados</h2>
+    <div id="mats"></div>
+    <button class="btn sec peq" id="addMat">+ Añadir material</button>
+    <label>Medios / maquinaria / portes</label>
+    <input type="text" id="medios" placeholder="Martillo perforador, furgón, contenedor…">
+    <label>Observaciones</label>
+    <input type="text" id="observaciones">
+  </div>
+
+  <div class="tarjeta">
+    <h2>Fotos de la obra</h2>
+    <input type="file" id="fotoInput" accept="image/*" capture="environment" multiple style="display:none">
+    <button class="btn sec peq" id="btnFoto">📷 Hacer / elegir foto</button>
+    <div class="fotos" id="fotos"></div>
+  </div>
+
+  <div class="tarjeta">
+    <h2>Conforme del cliente</h2>
+    <label>Nombre de quien firma (opcional)</label>
+    <input type="text" id="firmante" placeholder="Encargado de la tienda…">
+    <div class="firma-prev" id="firmaPrev">Sin firma</div>
+    <div class="fila">
+      <button class="btn sec peq" id="btnFirmar">✍️ Firmar</button>
+      <button class="btn sec peq" id="btnBorrarFirma" style="color:var(--rojo);border-color:var(--rojo)">Quitar firma</button>
+    </div>
+  </div>
+
+  <div id="parteAviso"></div>
+  <button class="btn verde" id="btnGuardarParte">Guardar parte</button>
+</section>
+
+<!-- ALMACÉN -->
+<section class="pantalla" id="p-almacen">
+  <div class="buscar"><input type="text" id="buscarMat" placeholder="Buscar material…"></div>
+  <div class="tarjeta">
+    <div class="fila">
+      <button class="btn peq verde" id="btnEntrada">⬇ Entrada</button>
+      <button class="btn peq" id="btnSalida">⬆ Salida a obra</button>
+    </div>
+  </div>
+  <div class="tarjeta lista" id="stockLista"></div>
+
+  <div class="tarjeta" id="movForm" style="display:none">
+    <h2 id="movTitulo">Movimiento</h2>
+    <label>Material</label><select id="movMat"></select>
+    <label>Cantidad</label><input type="number" id="movCant" inputmode="decimal" step="any" min="0">
+    <div id="movObraBloque"><label>Obra</label><select id="movObra"></select></div>
+    <label>Nota (albarán, proveedor…)</label><input type="text" id="movNota">
+    <div class="fila">
+      <button class="btn peq sec" id="movCancelar">Cancelar</button>
+      <button class="btn peq verde" id="movGuardar">Guardar</button>
+    </div>
+  </div>
+</section>
+
+<!-- ENVIADOS -->
+<section class="pantalla" id="p-enviados">
+  <div class="tarjeta">
+    <h2>Pendientes de enviar</h2>
+    <div class="lista" id="colaLista"></div>
+    <button class="btn peq" id="btnSync">Enviar ahora</button>
+  </div>
+  <div class="tarjeta">
+    <h2>Partes enviados</h2>
+    <div class="lista" id="histLista"></div>
+  </div>
+</section>
+</main>
+
+<nav id="nav">
+  <button data-p="parte" class="activa"><svg viewBox="0 0 24 24"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h5"/></svg>Parte</button>
+  <button data-p="almacen"><svg viewBox="0 0 24 24"><path d="M3 9l9-6 9 6v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/><path d="M8 21v-8h8v8"/></svg>Almacén</button>
+  <button data-p="enviados"><svg viewBox="0 0 24 24"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4z"/></svg>Enviados<span class="punto" id="pendNum" style="display:none"></span></button>
+</nav>
+
+<!-- MODAL FIRMA -->
+<div class="modal" id="modalFirma">
+  <div class="cab"><b>Firme aquí el conforme</b><span id="firmaObra" style="font-size:13px;opacity:.85"></span></div>
+  <canvas id="lienzo"></canvas>
+  <div class="pie">
+    <button class="btn sec" id="firmaLimpiar">Limpiar</button>
+    <button class="btn rojo" id="firmaCancelar">Cancelar</button>
+    <button class="btn verde" id="firmaOk">Aceptar</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="config.js"></script>
+<script>
+(function () {
+'use strict';
+var CFG = window.SOLERA_CONFIG || {};
+var $ = function (id) { return document.getElementById(id); };
+
+// ---------------------------------------------------------------- almacenamiento local (IndexedDB)
+var DB = {
+  db: null,
+  abrir: function () {
+    return new Promise(function (res, rej) {
+      var r = indexedDB.open('solera', 1);
+      r.onupgradeneeded = function () {
+        var d = r.result;
+        d.createObjectStore('cola', { keyPath: 'id' });
+        d.createObjectStore('hist', { keyPath: 'id' });
+        d.createObjectStore('kv');
+      };
+      r.onsuccess = function () { DB.db = r.result; res(); };
+      r.onerror = function () { rej(r.error); };
+    });
+  },
+  op: function (store, modo, fn) {
+    return new Promise(function (res, rej) {
+      var t = DB.db.transaction(store, modo), s = t.objectStore(store), out = fn(s);
+      t.oncomplete = function () { res(out ? out.result : undefined); };
+      t.onerror = function () { rej(t.error); };
+    });
+  },
+  put: function (store, v, k) { return DB.op(store, 'readwrite', function (s) { return k !== undefined ? s.put(v, k) : s.put(v); }); },
+  del: function (store, k) { return DB.op(store, 'readwrite', function (s) { return s.delete(k); }); },
+  get: function (store, k) { return DB.op(store, 'readonly', function (s) { return s.get(k); }); },
+  all: function (store) { return DB.op(store, 'readonly', function (s) { return s.getAll(); }); }
+};
+
+// ---------------------------------------------------------------- estado
+var S = { datos: null, usuario: null, firma: null, fotos: [], pantalla: 'parte', movTipo: 'ENTRADA' };
+
+function toast(msg) { var t = $('toast'); t.textContent = msg; t.classList.add('ver'); clearTimeout(t._t); t._t = setTimeout(function () { t.classList.remove('ver'); }, 2600); }
+function aviso(id, msg, tipo) { $(id).innerHTML = msg ? '<div class="aviso ' + (tipo || '') + '">' + msg + '</div>' : ''; }
+function hoyISO() { var d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+function fechaES(iso) { var p = String(iso).slice(0, 10).split('-'); return p[2] + '/' + p[1] + '/' + p[0]; }
+function uid() { return Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8); }
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+
+function estadoRed() {
+  var e = $('estado');
+  if (!navigator.onLine) { e.textContent = 'Sin conexión'; e.className = 'estado off'; }
+  else { e.textContent = 'Conectado'; e.className = 'estado'; }
+}
+
+// ---------------------------------------------------------------- API
+function api(action, extra) {
+  var body = Object.assign({ action: action, token: CFG.TOKEN }, extra || {});
+  return fetch(CFG.API_URL, { method: 'POST', body: JSON.stringify(body), headers: { 'Content-Type': 'text/plain;charset=utf-8' } })
+    .then(function (r) { return r.json(); })
+    .then(function (j) { if (!j.ok) throw new Error(j.error || 'Error del servidor'); return j; });
+}
+
+function cargarDatos(silencioso) {
+  if (!silencioso) toast('Actualizando listas…');
+  return api('bootstrap').then(function (j) {
+    S.datos = j; return DB.put('kv', j, 'datos');
+  }).then(function () { pintarListas(); if (!silencioso) toast('Listas actualizadas'); })
+    .catch(function (e) { if (!silencioso) toast('No se pudo actualizar: ' + e.message); });
+}
+
+// ---------------------------------------------------------------- login
+var pin = '';
+function pintarPin() { $('pinVista').textContent = '•'.repeat(pin.length); }
+function montarPinpad() {
+  var p = $('pinpad'); p.innerHTML = '';
+  ['1','2','3','4','5','6','7','8','9','C','0','⌫'].forEach(function (k) {
+    var b = document.createElement('button'); b.textContent = k;
+    b.onclick = function () {
+      if (k === 'C') pin = ''; else if (k === '⌫') pin = pin.slice(0, -1); else if (pin.length < 4) pin += k;
+      pintarPin();
+    };
+    p.appendChild(b);
+  });
+}
+function entrar() {
+  var codigo = $('loginTrab').value;
+  if (!codigo) return aviso('loginAviso', 'Primero pulsa "Actualizar listas" con conexión.', 'err');
+  if (pin.length < 4) return aviso('loginAviso', 'Escribe tu PIN de 4 cifras.', 'err');
+  var btn = $('btnEntrar'); btn.disabled = true;
+  var terminar = function (u) {
+    S.usuario = u; pin = ''; pintarPin();
+    DB.put('kv', u, 'usuario').then(function () { mostrarApp(); });
+  };
+  var pinIntento = pin;
+  api('login', { codigo: codigo, pin: pin }).then(function (j) { DB.put('kv', pinIntento, 'pin-' + codigo); terminar(j.trabajador); })
+    .catch(function (e) {
+      // sin conexión: se permite entrar si ese usuario ya entró antes en este móvil con el mismo PIN
+      DB.get('kv', 'pin-' + codigo).then(function (guardado) {
+        if (!navigator.onLine && guardado && guardado === pinIntento) {
+          var t = (S.datos.trabajadores || []).filter(function (x) { return String(x.codigo) === String(codigo); })[0];
+          terminar({ codigo: t.codigo, nombre: t.nombre, categoria: t.categoria });
+        } else aviso('loginAviso', e.message, 'err');
+      });
+    }).finally(function () { btn.disabled = false; });
+}
+function salir() { S.usuario = null; DB.del('kv', 'usuario'); mostrarLogin(); }
+
+function mostrarLogin() {
+  $('btnSalir').style.display = 'none'; $('nav').style.display = 'none'; $('quien').textContent = '';
+  cambiar('login');
+}
+function mostrarApp() {
+  $('btnSalir').style.display = ''; $('nav').style.display = '';
+  $('quien').textContent = S.usuario.nombre;
+  cambiar('parte');
+  nuevoParte();
+}
+function cambiar(p) {
+  S.pantalla = p;
+  document.querySelectorAll('.pantalla').forEach(function (s) { s.classList.toggle('activa', s.id === 'p-' + p); });
+  document.querySelectorAll('nav button').forEach(function (b) { b.classList.toggle('activa', b.dataset.p === p); });
+  if (p === 'almacen') pintarStock();
+  if (p === 'enviados') pintarEnviados();
+  window.scrollTo(0, 0);
+}
+
+// ---------------------------------------------------------------- listas
+function opciones(sel, lista, valor, texto, vacio) {
+  sel.innerHTML = (vacio ? '<option value="">' + vacio + '</option>' : '') +
+    lista.map(function (x) { return '<option value="' + esc(x[valor]) + '">' + esc(x[texto]) + '</option>'; }).join('');
+}
+function pintarListas() {
+  var d = S.datos || { trabajadores: [], obras: [], materiales: [] };
+  opciones($('loginTrab'), d.trabajadores, 'codigo', 'nombre', '— elige tu nombre —');
+  opciones($('obra'), d.obras, 'codigo', 'nombre', '— elige la obra —');
+  opciones($('movObra'), d.obras, 'codigo', 'nombre', '— obra —');
+  opciones($('movMat'), d.materiales, 'codigo', 'nombre', '— material —');
+}
+
+// ---------------------------------------------------------------- parte: trabajadores y materiales
+function filaTrab(datos) {
+  var d = S.datos, div = document.createElement('div'); div.className = 'fila trab';
+  div.innerHTML = '<div><select class="t-cod"></select></div>' +
+    '<div class="corto"><input type="number" class="t-h" inputmode="decimal" step="0.5" min="0" placeholder="Horas"></div>' +
+    '<div class="corto"><input type="number" class="t-x" inputmode="decimal" step="0.5" min="0" placeholder="Extra"></div>' +
+    '<button class="x" title="Quitar">×</button>';
+  opciones(div.querySelector('.t-cod'), d.trabajadores, 'codigo', 'nombre', '— trabajador —');
+  if (datos) { div.querySelector('.t-cod').value = datos.codigo; div.querySelector('.t-h').value = datos.horas; }
+  else div.querySelector('.t-h').value = 8;
+  div.querySelector('.x').onclick = function () { div.remove(); totalHoras(); };
+  div.querySelectorAll('input').forEach(function (i) { i.oninput = totalHoras; });
+  $('trabs').appendChild(div); totalHoras();
+}
+function filaMat() {
+  var d = S.datos, div = document.createElement('div'); div.className = 'fila mat';
+  div.innerHTML = '<div><select class="m-cod"></select></div><div class="corto"><input type="number" class="m-c" inputmode="decimal" step="any" min="0" placeholder="Cant."></div><button class="x">×</button>';
+  opciones(div.querySelector('.m-cod'), d.materiales, 'codigo', 'nombre', '— material —');
+  div.querySelector('.x').onclick = function () { div.remove(); };
+  $('mats').appendChild(div);
+}
+function totalHoras() {
+  var t = 0;
+  document.querySelectorAll('#trabs .trab').forEach(function (f) { t += (+f.querySelector('.t-h').value || 0) + (+f.querySelector('.t-x').value || 0); });
+  $('totalHoras').textContent = 'Total: ' + t + ' h';
+}
+function leerTrabs() {
+  var mapa = {}; (S.datos.trabajadores || []).forEach(function (t) { mapa[String(t.codigo)] = t; });
+  var out = [];
+  document.querySelectorAll('#trabs .trab').forEach(function (f) {
+    var c = f.querySelector('.t-cod').value; if (!c) return;
+    var t = mapa[c] || {};
+    out.push({ codigo: c, nombre: t.nombre || c, categoria: t.categoria || '', horas: +f.querySelector('.t-h').value || 0, extra: +f.querySelector('.t-x').value || 0 });
+  });
+  return out;
+}
+function leerMats() {
+  var mapa = {}; (S.datos.materiales || []).forEach(function (m) { mapa[String(m.codigo)] = m; });
+  var out = [];
+  document.querySelectorAll('#mats .mat').forEach(function (f) {
+    var c = f.querySelector('.m-cod').value, q = +f.querySelector('.m-c').value || 0; if (!c || !q) return;
+    var m = mapa[c] || {};
+    out.push({ codigo: c, nombre: m.nombre || c, unidad: m.unidad || '', cantidad: q });
+  });
+  return out;
+}
+
+function nuevoParte() {
+  $('fecha').value = hoyISO();
+  $('trabs').innerHTML = ''; $('mats').innerHTML = '';
+  ['trabajos', 'medios', 'observaciones', 'firmante'].forEach(function (i) { $(i).value = ''; });
+  S.fotos = []; S.firma = null; pintarFotos(); pintarFirma(); aviso('parteAviso', '');
+  // el que crea el parte va el primero
+  if (S.usuario && S.datos) filaTrab({ codigo: S.usuario.codigo, horas: 8 });
+  // última obra usada
+  DB.get('kv', 'ultimaObra').then(function (o) { if (o) $('obra').value = o; });
+}
+
+// ---------------------------------------------------------------- fotos
+function pintarFotos() {
+  $('fotos').innerHTML = S.fotos.map(function (f, i) { return '<div><img src="' + f + '"><b data-i="' + i + '">×</b></div>'; }).join('');
+  $('fotos').querySelectorAll('b').forEach(function (b) { b.onclick = function () { S.fotos.splice(+b.dataset.i, 1); pintarFotos(); }; });
+}
+function comprimir(file) {
+  return new Promise(function (res) {
+    var img = new Image(), url = URL.createObjectURL(file);
+    img.onload = function () {
+      var MAX = 1280, w = img.width, h = img.height, k = Math.min(1, MAX / Math.max(w, h));
+      var c = document.createElement('canvas'); c.width = Math.round(w * k); c.height = Math.round(h * k);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url); res(c.toDataURL('image/jpeg', 0.72));
+    };
+    img.onerror = function () { res(null); };
+    img.src = url;
+  });
+}
+$('btnFoto').onclick = function () { $('fotoInput').click(); };
+$('fotoInput').onchange = function () {
+  var fs = Array.prototype.slice.call(this.files || []); this.value = '';
+  Promise.all(fs.map(comprimir)).then(function (r) { r.forEach(function (d) { if (d) S.fotos.push(d); }); pintarFotos(); });
+};
+
+// ---------------------------------------------------------------- firma
+var lienzo = $('lienzo'), ctx, dibujando = false, hayTrazo = false;
+function abrirFirma() {
+  var m = $('modalFirma'); m.classList.add('activa');
+  var ob = $('obra'); $('firmaObra').textContent = ob.options[ob.selectedIndex] ? ob.options[ob.selectedIndex].text : '';
+  requestAnimationFrame(function () {
+    var r = lienzo.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+    lienzo.width = r.width * dpr; lienzo.height = r.height * dpr;
+    ctx = lienzo.getContext('2d'); ctx.scale(dpr, dpr);
+    ctx.lineWidth = 2.5; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = '#343434';
+    hayTrazo = false;
+  });
+}
+function pos(e) { var r = lienzo.getBoundingClientRect(), p = e.touches ? e.touches[0] : e; return [p.clientX - r.left, p.clientY - r.top]; }
+lienzo.addEventListener('pointerdown', function (e) { dibujando = true; var p = pos(e); ctx.beginPath(); ctx.moveTo(p[0], p[1]); lienzo.setPointerCapture(e.pointerId); });
+lienzo.addEventListener('pointermove', function (e) { if (!dibujando) return; var p = pos(e); ctx.lineTo(p[0], p[1]); ctx.stroke(); hayTrazo = true; });
+['pointerup', 'pointercancel', 'pointerleave'].forEach(function (ev) { lienzo.addEventListener(ev, function () { dibujando = false; }); });
+$('firmaLimpiar').onclick = function () { ctx.clearRect(0, 0, lienzo.width, lienzo.height); hayTrazo = false; };
+$('firmaCancelar').onclick = function () { $('modalFirma').classList.remove('activa'); };
+$('firmaOk').onclick = function () {
+  if (!hayTrazo) return toast('No hay firma');
+  // recortar al trazo
+  var w = lienzo.width, h = lienzo.height, d = lienzo.getContext('2d').getImageData(0, 0, w, h).data, x0 = w, y0 = h, x1 = 0, y1 = 0;
+  for (var y = 0; y < h; y++) for (var x = 0; x < w; x++) if (d[(y * w + x) * 4 + 3] > 0) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+  var c = document.createElement('canvas'), m = 10; c.width = x1 - x0 + m * 2; c.height = y1 - y0 + m * 2;
+  var cc = c.getContext('2d'); cc.fillStyle = '#fff'; cc.fillRect(0, 0, c.width, c.height);
+  cc.drawImage(lienzo, x0 - m, y0 - m, c.width, c.height, 0, 0, c.width, c.height);
+  S.firma = c.toDataURL('image/png'); pintarFirma();
+  $('modalFirma').classList.remove('activa');
+};
+function pintarFirma() { $('firmaPrev').innerHTML = S.firma ? '<img src="' + S.firma + '">' : 'Sin firma'; }
+$('btnFirmar').onclick = abrirFirma;
+$('btnBorrarFirma').onclick = function () { S.firma = null; pintarFirma(); };
+
+// ---------------------------------------------------------------- guardar parte (cola)
+$('btnGuardarParte').onclick = function () {
+  var obra = $('obra').value, trabs = leerTrabs();
+  if (!obra) return aviso('parteAviso', 'Elige la obra.', 'err');
+  if (!trabs.length) return aviso('parteAviso', 'Añade al menos un trabajador.', 'err');
+  if (!$('trabajos').value.trim()) return aviso('parteAviso', 'Escribe los trabajos realizados.', 'err');
+  if (!S.firma && !confirm('El parte va SIN FIRMA del cliente. ¿Guardar igualmente?')) return;
+  var obraTxt = $('obra').options[$('obra').selectedIndex].text;
+  var parte = {
+    id: uid(), tipo: 'parte', fecha: $('fecha').value || hoyISO(), obra: obra, obraNombre: obraTxt,
+    trabajadores: trabs, trabajos: $('trabajos').value.trim(), materiales: leerMats(),
+    medios: $('medios').value.trim(), observaciones: $('observaciones').value.trim(),
+    firma: S.firma, firmante: $('firmante').value.trim(), fotos: S.fotos.slice(),
+    creadoPor: S.usuario.nombre, creadoEn: new Date().toISOString()
+  };
+  DB.put('cola', parte).then(function () { return DB.put('kv', obra, 'ultimaObra'); }).then(function () {
+    toast('Parte guardado. Enviando…'); nuevoParte(); actualizarPend(); sincronizar();
+  });
+};
+
+// ---------------------------------------------------------------- almacén
+function stockLocal() { return (S.datos && S.datos.stock) || []; }
+function pintarStock() {
+  var q = $('buscarMat').value.trim().toLowerCase();
+  var lista = stockLocal().filter(function (m) { return !q || (m.nombre + ' ' + m.codigo).toLowerCase().indexOf(q) >= 0; });
+  $('stockLista').innerHTML = lista.length ? lista.map(function (m) {
+    var bajo = m.stock <= m.stock_min;
+    return '<div class="item"><div><b>' + esc(m.nombre) + '</b><small>' + esc(m.codigo) + (bajo ? ' · <span style="color:var(--rojo)">pedir</span>' : '') + '</small></div>' +
+      '<div class="stock' + (bajo ? ' bajo' : '') + '">' + m.stock + ' <small style="display:inline">' + esc(m.unidad) + '</small></div></div>';
+  }).join('') : '<div class="aviso">Sin materiales. Pulsa "Actualizar listas" en Enviados o da de alta materiales en la hoja.</div>';
+}
+$('buscarMat').oninput = pintarStock;
+function abrirMov(tipo) {
+  S.movTipo = tipo; $('movForm').style.display = ''; $('movTitulo').textContent = tipo === 'ENTRADA' ? 'Entrada al almacén' : 'Salida a obra';
+  $('movObraBloque').style.display = tipo === 'ENTRADA' ? 'none' : ''; $('movCant').value = ''; $('movNota').value = '';
+  $('movForm').scrollIntoView({ behavior: 'smooth' });
+}
+$('btnEntrada').onclick = function () { abrirMov('ENTRADA'); };
+$('btnSalida').onclick = function () { abrirMov('SALIDA'); };
+$('movCancelar').onclick = function () { $('movForm').style.display = 'none'; };
+$('movGuardar').onclick = function () {
+  var mat = $('movMat').value, cant = +$('movCant').value;
+  if (!mat || !cant) return toast('Elige material y cantidad');
+  if (S.movTipo === 'SALIDA' && !$('movObra').value) return toast('Elige la obra');
+  var obraSel = $('movObra'), obraTxt = S.movTipo === 'SALIDA' ? obraSel.options[obraSel.selectedIndex].text : '';
+  var mov = { id: uid(), tipo: 'mov', movTipo: S.movTipo, material: mat, cantidad: cant, obra: obraTxt, nota: $('movNota').value.trim(), fecha: hoyISO(), usuario: S.usuario.nombre, creadoEn: new Date().toISOString() };
+  // ajuste optimista del stock local
+  stockLocal().forEach(function (m) { if (m.codigo === mat) m.stock += (S.movTipo === 'ENTRADA' ? cant : -cant); });
+  DB.put('kv', S.datos, 'datos');
+  DB.put('cola', mov).then(function () { $('movForm').style.display = 'none'; pintarStock(); toast('Movimiento guardado'); actualizarPend(); sincronizar(); });
+};
+
+// ---------------------------------------------------------------- sincronización
+var sincronizando = false;
+function actualizarPend() {
+  return DB.all('cola').then(function (c) {
+    var n = c.length, p = $('pendNum'); p.textContent = n; p.style.display = n ? '' : 'none';
+    if (S.pantalla === 'enviados') pintarEnviados();
+    return n;
+  });
+}
+function sincronizar() {
+  if (sincronizando || !navigator.onLine) return Promise.resolve();
+  sincronizando = true;
+  return DB.all('cola').then(function (cola) {
+    cola.sort(function (a, b) { return a.creadoEn < b.creadoEn ? -1 : 1; });
+    var p = Promise.resolve(), enviados = 0;
+    cola.forEach(function (it) {
+      p = p.then(function () {
+        var llamada = it.tipo === 'parte'
+          ? api('crearParte', { parte: it })
+          : api('movimiento', { mov: { id: it.id, tipo: it.movTipo, material: it.material, cantidad: it.cantidad, obra: it.obra, nota: it.nota, fecha: it.fecha, usuario: it.usuario } });
+        return llamada.then(function (j) {
+          enviados++;
+          var h = { id: it.id, tipo: it.tipo, fecha: it.fecha, obra: it.obraNombre || it.obra, numero: j.numero || '', pdf_url: j.pdf_url || '', firmado: !!it.firma, enviadoEn: new Date().toISOString(), resumen: it.tipo === 'mov' ? it.movTipo + ' ' + it.cantidad + ' ' + it.material : '' };
+          return DB.put('hist', h).then(function () { return DB.del('cola', it.id); });
+        }).catch(function (e) {
+          it.error = e.message; it.intentos = (it.intentos || 0) + 1; return DB.put('cola', it);
+        });
+      });
+    });
+    return p.then(function () { if (enviados) toast(enviados + ' elemento(s) enviados'); });
+  }).then(function () { sincronizando = false; return actualizarPend(); })
+    .then(function (n) { if (n === 0 && navigator.onLine) cargarDatos(true); })
+    .catch(function () { sincronizando = false; });
+}
+function pintarEnviados() {
+  DB.all('cola').then(function (c) {
+    $('colaLista').innerHTML = c.length ? c.map(function (it) {
+      return '<div class="item"><div><b>' + (it.tipo === 'parte' ? 'Parte · ' + esc(it.obraNombre) : 'Almacén · ' + esc(it.movTipo) + ' ' + it.cantidad + ' ' + esc(it.material)) + '</b><small>' + fechaES(it.fecha) + (it.error ? ' · <span style="color:var(--rojo)">' + esc(it.error) + '</span>' : '') + '</small></div><span class="chip ' + (it.error ? 'err' : 'pend') + '">' + (it.error ? 'reintentar' : 'pendiente') + '</span></div>';
+    }).join('') : '<div class="aviso ok">Todo enviado.</div>';
+  });
+  DB.all('hist').then(function (h) {
+    h.sort(function (a, b) { return a.enviadoEn < b.enviadoEn ? 1 : -1; }); h = h.slice(0, 50);
+    $('histLista').innerHTML = h.length ? h.map(function (it) {
+      if (it.tipo === 'mov') return '<div class="item"><div><b>Almacén · ' + esc(it.resumen) + '</b><small>' + fechaES(it.fecha) + '</small></div><span class="chip ok">ok</span></div>';
+      return '<div class="item"><div><b>Nº ' + esc(it.numero) + ' · ' + esc(it.obra) + '</b><small>' + fechaES(it.fecha) + (it.firmado ? ' · firmado' : ' · sin firma') + '</small></div>' + (it.pdf_url ? '<a class="chip ok" href="' + esc(it.pdf_url) + '" target="_blank">PDF</a>' : '<span class="chip ok">ok</span>') + '</div>';
+    }).join('') : '<div class="aviso">Aún no hay partes enviados desde este móvil.</div>';
+  });
+}
+
+// ---------------------------------------------------------------- arranque
+$('addTrab').onclick = function () { filaTrab(); };
+$('addMat').onclick = function () { filaMat(); };
+$('btnEntrar').onclick = entrar;
+$('btnSalir').onclick = salir;
+$('btnCargar').onclick = function () { cargarDatos(); };
+$('btnSync').onclick = function () { if (!navigator.onLine) return toast('Sin conexión'); sincronizar(); };
+document.querySelectorAll('nav button').forEach(function (b) { b.onclick = function () { cambiar(b.dataset.p); }; });
+window.addEventListener('online', function () { estadoRed(); sincronizar(); });
+window.addEventListener('offline', estadoRed);
+
+DB.abrir().then(function () {
+  return Promise.all([DB.get('kv', 'datos'), DB.get('kv', 'usuario')]);
+}).then(function (r) {
+  S.datos = r[0] || null; S.usuario = r[1] || null;
+  montarPinpad(); estadoRed(); pintarListas(); actualizarPend();
+  if (S.usuario && S.datos) mostrarApp(); else mostrarLogin();
+  if (navigator.onLine) cargarDatos(true).then(sincronizar);
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(function () {});
+  setInterval(function () { if (navigator.onLine) sincronizar(); }, 60000);
+});
+})();
+</script>
+</body>
+</html>
