@@ -84,6 +84,8 @@ textarea{min-height:80px;resize:vertical}
 .fecha-campo span{display:block;padding:11px;border:1px solid var(--borde);border-radius:8px;background:#fff;font-size:16px;min-height:44px}
 .fecha-campo input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer}
 .ayuda{font-size:12px;color:var(--gris);margin:3px 0 8px}
+a.ayuda{display:inline-block;color:var(--azul)}
+.dueno{font-family:'Prompt',sans-serif;font-size:20px;font-weight:600;color:var(--azul);margin:4px 0 0}
 .fila.mat>div:first-child{flex:3}
 .sugs{border:1px solid var(--borde);border-top:0;border-radius:0 0 8px 8px;background:#fff}
 .sugs div{padding:10px 11px;border-top:1px solid var(--borde);font-size:15px;cursor:pointer}
@@ -115,8 +117,15 @@ a{color:var(--azul)}
   <div class="tarjeta">
     <h2>Entrar</h2>
     <div id="loginAviso"></div>
-    <label>¿Quién eres?</label>
-    <select id="loginTrab"></select>
+    <div id="duenoBloque" style="display:none">
+      <div class="dueno" id="duenoNombre"></div>
+      <a href="#" id="cambiarPersona" class="ayuda">¿No eres tú? Cambiar de persona</a>
+    </div>
+    <div id="loginLista">
+      <label>¿Quién eres?</label>
+      <select id="loginTrab"></select>
+    </div>
+    <button class="btn verde" id="btnHuella" style="display:none">👆 Entrar con huella</button>
     <label>PIN</label>
     <div class="pin" id="pinVista"></div>
     <div class="pinpad" id="pinpad"></div>
@@ -336,8 +345,9 @@ function entrar() {
   if (pin.length < 4) return aviso('loginAviso', 'Escribe tu PIN de 4 cifras.', 'err');
   var btn = $('btnEntrar'); btn.disabled = true;
   var terminar = function (u) {
-    S.usuario = u; pin = ''; pintarPin();
-    DB.put('kv', u, 'usuario').then(function () { mostrarApp(); });
+    S.usuario = u; S.dueno = u; S.cambiandoPersona = false; pin = ''; pintarPin();
+    // el móvil queda asociado a quien entra; se ofrece la huella si el móvil la tiene y aún no está puesta
+    DB.put('kv', u, 'dueno').then(function () { return DB.put('kv', u, 'usuario'); }).then(function () { mostrarApp(); ofrecerHuella(u); });
   };
   var pinIntento = pin;
   api('login', { codigo: codigo, pin: pin }).then(function (j) { DB.put('kv', pinIntento, 'pin-' + codigo); terminar(j.trabajador); })
@@ -353,10 +363,55 @@ function entrar() {
 }
 function salir() { S.usuario = null; DB.del('kv', 'usuario'); mostrarLogin(); }
 
+// ---------------------------------------------------------------- dueño del móvil y huella
+// La huella (o cara/patrón) la comprueba el propio móvil (WebAuthn); aquí solo se guarda el id de esa llave.
+var huella = {
+  disponible: function () {
+    return window.PublicKeyCredential && PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable
+      ? PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable().catch(function () { return false; }) : Promise.resolve(false);
+  },
+  crear: function (u) {
+    return navigator.credentials.create({ publicKey: {
+      challenge: crypto.getRandomValues(new Uint8Array(32)), rp: { name: 'SOLERA' },
+      user: { id: crypto.getRandomValues(new Uint8Array(16)), name: String(u.codigo), displayName: u.nombre },
+      pubKeyCredParams: [{ type: 'public-key', alg: -7 }, { type: 'public-key', alg: -257 }],
+      authenticatorSelection: { authenticatorAttachment: 'platform', userVerification: 'required', residentKey: 'discouraged' },
+      timeout: 60000, attestation: 'none' } }).then(function (c) { return Array.prototype.slice.call(new Uint8Array(c.rawId)); });
+  },
+  comprobar: function (id) {
+    return navigator.credentials.get({ publicKey: { challenge: crypto.getRandomValues(new Uint8Array(32)),
+      allowCredentials: [{ type: 'public-key', id: new Uint8Array(id) }], userVerification: 'required', timeout: 60000 } });
+  }
+};
+function ofrecerHuella(u) {
+  DB.get('kv', 'huella').then(function (h) {
+    if (h && String(h.codigo) === String(u.codigo)) return;
+    return huella.disponible().then(function (si) {
+      if (!si || !confirm('¿Quieres entrar con la huella en este móvil a partir de ahora?')) return;
+      return huella.crear(u).then(function (id) { return DB.put('kv', { codigo: u.codigo, id: id }, 'huella'); })
+        .then(function () { toast('Huella activada'); });
+    });
+  }).catch(function () { toast('No se pudo activar la huella'); });
+}
 function mostrarLogin() {
   $('btnSalir').style.display = 'none'; $('nav').style.display = 'none'; $('quien').textContent = '';
+  aviso('loginAviso', '');
+  Promise.all([DB.get('kv', 'dueno'), DB.get('kv', 'huella')]).then(function (r) {
+    var d = S.cambiandoPersona ? null : r[0], h = r[1];
+    S.dueno = d || null;
+    $('duenoBloque').style.display = d ? '' : 'none'; $('loginLista').style.display = d ? 'none' : '';
+    if (d) { $('duenoNombre').textContent = d.nombre; $('loginTrab').value = String(d.codigo); }
+    $('btnHuella').style.display = d && h && String(h.codigo) === String(d.codigo) ? '' : 'none';
+  });
   cambiar('login');
 }
+$('cambiarPersona').onclick = function (e) { e.preventDefault(); S.cambiandoPersona = true; $('loginTrab').value = ''; mostrarLogin(); };
+$('btnHuella').onclick = function () {
+  DB.get('kv', 'huella').then(function (h) { return huella.comprobar(h.id); }).then(function () {
+    S.usuario = S.dueno; return DB.put('kv', S.usuario, 'usuario');
+  }).then(function () { mostrarApp(); })
+    .catch(function () { aviso('loginAviso', 'No se ha reconocido la huella. Entra con el PIN.', 'err'); });
+};
 function mostrarApp() {
   $('btnSalir').style.display = ''; $('nav').style.display = '';
   $('quien').textContent = S.usuario.nombre;
@@ -715,7 +770,10 @@ DB.abrir().then(function () {
 }).then(function (r) {
   S.datos = r[0] || null; S.usuario = r[1] || null;
   montarPinpad(); estadoRed(); pintarListas(); actualizarPend();
-  if (S.usuario && S.datos) mostrarApp(); else mostrarLogin();
+  // con la huella activada, cada vez que se abre la app se pide la huella (o el PIN)
+  DB.get('kv', 'huella').then(function (h) {
+    if (S.usuario && S.datos && !(h && String(h.codigo) === String(S.usuario.codigo))) mostrarApp(); else mostrarLogin();
+  });
   if (navigator.onLine) cargarDatos(true).then(sincronizar);
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(function () {});
   setInterval(function () { if (navigator.onLine) sincronizar(); }, 60000);

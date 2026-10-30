@@ -14,7 +14,7 @@
 <body>
 <!-- App "SOLERA Almacén": tiene su propia carpeta (y su propio ámbito) para poder instalarse aparte
      de la app de partes; dentro carga la misma app en modo almacén, sin duplicar código. -->
-<iframe src="../index.html?modo=almacen" title="SOLERA Almacén" allow="camera"></iframe>
+<iframe src="../index.html?modo=almacen" title="SOLERA Almacén" allow="camera; publickey-credentials-get; publickey-credentials-create"></iframe>
 <script>if ('serviceWorker' in navigator) navigator.serviceWorker.register('../sw.js').catch(function () {});</script>
 </body>
 </html>
