@@ -661,9 +661,10 @@ function pintarStock() {
   var q = $('buscarMat').value.trim().toLowerCase();
   var lista = stockLocal().filter(function (m) { return !q || (m.nombre + ' ' + m.codigo).toLowerCase().indexOf(q) >= 0; });
   $('stockLista').innerHTML = lista.length ? lista.map(function (m) {
-    var bajo = m.stock <= m.stock_min;
+    // "pedir" solo si el material tiene stock mínimo puesto; en rojo también si queda en negativo
+    var bajo = m.stock_min > 0 && m.stock <= m.stock_min;
     return '<div class="item toca" data-cod="' + esc(m.codigo) + '"><div><b>' + esc(m.nombre) + '</b><small>' + esc(m.codigo) + (bajo ? ' · <span style="color:var(--rojo)">pedir</span>' : '') + '</small></div>' +
-      '<div class="stock' + (bajo ? ' bajo' : '') + '">' + m.stock + ' <small style="display:inline">' + esc(m.unidad) + '</small></div></div>';
+      '<div class="stock' + (bajo || m.stock < 0 ? ' bajo' : '') + '">' + m.stock + ' <small style="display:inline">' + esc(m.unidad) + '</small></div></div>';
   }).join('') : '<div class="aviso">Sin materiales. Pulsa "Actualizar listas" en Enviados o da de alta materiales en la hoja.</div>';
 }
 $('buscarMat').oninput = pintarStock;
