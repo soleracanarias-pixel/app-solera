@@ -10,7 +10,7 @@
  *  4. Rellenar TRABAJADORES (código, nombre, categoría, PIN), OBRAS y MATERIALES.
  *     En CONFIG poner CARPETA_PARTES_ID = id de la carpeta de Drive donde irán los PDF
  *     (el id es lo que va después de /folders/ en la dirección de la carpeta).
- *     Opcional: CARPETA_CSV_ID = id de la carpeta CLIENTES\\PARTES (ahí se rehace "PARTES APP 2026.csv")
+ *     Opcional: CARPETA_CSV_ID = id de la carpeta CLIENTES\PARTES (ahí se rehace "PARTES APP 2026.csv")
  *     y AVISOS_EMAIL = correo que recibe los avisos de stock mínimo.
  *  5. Implementar > Nueva implementación > Aplicación web:
  *        Ejecutar como: Yo      ·      Quién tiene acceso: Cualquier usuario
@@ -32,7 +32,7 @@ var HOJAS = {
 };
 var ESQUEMA = '2';            // subir cuando cambien las columnas de HOJAS
 var EMAIL_COPIA = 'soleracanarias@gmail.com';
-var CSV_NOMBRE = 'PARTES APP 2026.csv';  // se crea en la carpeta CARPETA_CSV_ID de CONFIG (CLIENTES\\PARTES)
+var CSV_NOMBRE = 'PARTES APP 2026.csv';  // se crea en la carpeta CARPETA_CSV_ID de CONFIG (CLIENTES\PARTES)
 var CSV_COLUMNAS = ['N_PARTE','FECHA','DIA_SEMANA','CLIENTE','OBRA','COD_OBRA_APP','RESP_CLIENTE','RESP_CERT','RESP_SOLERA','MATRICULA',
   'CONDUCTOR','TIPO_DIA','FIRMADO','OPERARIO_PARTE','COD_OPERARIO_APP','CATEGORIA_PARTE','HORAS','HORAS_TEXTO_PARTE','TRABAJOS',
   'MATERIALES_Y_MEDIOS','PORTES','TRANSPORTES','EN_APP','NOTAS','LEIDO_EL'];
