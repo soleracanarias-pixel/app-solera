@@ -32,7 +32,7 @@ nav .punto{position:absolute;margin-left:28px;margin-top:-2px;background:var(--r
 .tarjeta{background:#fff;border:1px solid var(--borde);border-radius:12px;padding:14px;margin-bottom:12px}
 .tarjeta h2{font-size:14px;margin:0 0 10px;color:var(--azul);text-transform:uppercase;letter-spacing:.5px}
 label{display:block;font-size:13px;color:var(--gris);margin:8px 0 3px}
-input[type=text],input[type=number],input[type=date],input[type=password],select,textarea{width:100%;padding:11px;border:1px solid var(--borde);border-radius:8px;background:#fff;font-size:16px}
+input[type=text],input[type=number],input[type=date],input[type=email],input[type=password],select,textarea{width:100%;padding:11px;border:1px solid var(--borde);border-radius:8px;background:#fff;font-size:16px}
 textarea{min-height:80px;resize:vertical}
 .fila{display:flex;gap:8px;align-items:flex-end}
 .fila>*{flex:1;min-width:0}
@@ -68,6 +68,13 @@ textarea{min-height:80px;resize:vertical}
 .modal .pie .btn{margin:0}
 .lista .item{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--borde);gap:8px}
 .lista .item:last-child{border:0}
+.fecha-campo{position:relative}
+.fecha-campo span{display:block;padding:11px;border:1px solid var(--borde);border-radius:8px;background:#fff;font-size:16px;min-height:44px}
+.fecha-campo input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer}
+.ayuda{font-size:12px;color:var(--gris);margin:3px 0 8px}
+.sugs{border:1px solid var(--borde);border-top:0;border-radius:0 0 8px 8px;background:#fff}
+.sugs div{padding:10px 11px;border-top:1px solid var(--borde);font-size:15px;cursor:pointer}
+.sugs small{display:block;color:var(--gris);font-size:12px}
 .lista small{color:var(--gris);display:block}
 .chip{font-size:12px;padding:3px 8px;border-radius:10px;background:#eef1f7;color:var(--azul);white-space:nowrap}
 .chip.pend{background:#fff3d6;color:#9a6a00}.chip.ok{background:#e8f5e9;color:var(--verde)}.chip.err{background:#ffebee;color:var(--rojo)}
@@ -110,7 +117,7 @@ a{color:var(--azul)}
   <div class="tarjeta">
     <h2>Nuevo parte</h2>
     <div class="fila">
-      <div><label>Fecha</label><input type="date" id="fecha"></div>
+      <div><label>Fecha</label><div class="fecha-campo"><span id="fechaVer"></span><input type="date" id="fecha"></div></div>
     </div>
     <label>Obra</label>
     <select id="obra"></select>
@@ -148,7 +155,11 @@ a{color:var(--azul)}
   <div class="tarjeta">
     <h2>Conforme del cliente</h2>
     <label>Nombre de quien firma (opcional)</label>
-    <input type="text" id="firmante" placeholder="Encargado de la tienda…">
+    <input type="text" id="firmante" placeholder="Encargado de la tienda…" autocomplete="off">
+    <div class="sugs" id="firmanteSugs" style="display:none"></div>
+    <label>Correo para la copia</label>
+    <input type="email" id="firmanteEmail" inputmode="email" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="correo@ejemplo.com">
+    <div class="ayuda">Recibirá una copia del parte firmado</div>
     <div class="firma-prev" id="firmaPrev">Sin firma</div>
     <div class="fila">
       <button class="btn sec peq" id="btnFirmar">✍️ Firmar</button>
@@ -259,7 +270,9 @@ var S = { datos: null, usuario: null, firma: null, fotos: [], pantalla: 'parte',
 function toast(msg) { var t = $('toast'); t.textContent = msg; t.classList.add('ver'); clearTimeout(t._t); t._t = setTimeout(function () { t.classList.remove('ver'); }, 2600); }
 function aviso(id, msg, tipo) { $(id).innerHTML = msg ? '<div class="aviso ' + (tipo || '') + '">' + msg + '</div>' : ''; }
 function hoyISO() { var d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
-function fechaES(iso) { var p = String(iso).slice(0, 10).split('-'); return p[2] + '/' + p[1] + '/' + p[0]; }
+function fechaES(iso) { var m = String(iso || '').match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? m[3] + '/' + m[2] + '/' + m[1] : String(iso || ''); }
+function ahoraES() { var d = new Date(), z = function (n) { return String(n).padStart(2, '0'); }; return z(d.getDate()) + '/' + z(d.getMonth() + 1) + '/' + d.getFullYear() + ' ' + z(d.getHours()) + ':' + z(d.getMinutes()); }
+function normal(s) { return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').trim(); }
 function uid() { return Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8); }
 function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
 
@@ -410,15 +423,40 @@ function leerMats() {
 }
 
 function nuevoParte() {
-  $('fecha').value = hoyISO();
+  $('fecha').value = hoyISO(); pintarFecha();
   $('trabs').innerHTML = ''; $('mats').innerHTML = '';
-  ['trabajos', 'medios', 'observaciones', 'firmante'].forEach(function (i) { $(i).value = ''; });
-  S.fotos = []; S.firma = null; pintarFotos(); pintarFirma(); aviso('parteAviso', '');
+  ['trabajos', 'medios', 'observaciones', 'firmante', 'firmanteEmail'].forEach(function (i) { $(i).value = ''; });
+  $('firmanteSugs').style.display = 'none'; S.emailAuto = false;
+  S.fotos = []; S.firma = null; S.firmadoEn = null; pintarFotos(); pintarFirma(); aviso('parteAviso', '');
   // el que crea el parte va el primero
   if (S.usuario && S.datos) filaTrab({ codigo: S.usuario.codigo, horas: 8 });
   // última obra usada
   DB.get('kv', 'ultimaObra').then(function (o) { if (o) $('obra').value = o; });
 }
+
+// fecha: se enseña siempre como dd/mm/aaaa; el selector nativo queda invisible encima
+function pintarFecha() { $('fechaVer').textContent = fechaES($('fecha').value || hoyISO()); }
+$('fecha').onchange = $('fecha').oninput = pintarFecha;
+$('fecha').onclick = function () { try { this.showPicker(); } catch (_) {} };
+
+// ---------------------------------------------------------------- firmantes (libreta para la copia por correo)
+function firmantes() { return (S.datos && S.datos.firmantes) || []; }
+function elegirFirmante(f) {
+  $('firmante').value = f.nombre; $('firmanteEmail').value = f.email || ''; S.emailAuto = !!f.email;
+  $('firmanteSugs').style.display = 'none';
+}
+$('firmante').oninput = function () {
+  var q = normal(this.value), caja = $('firmanteSugs');
+  var exacto = firmantes().filter(function (f) { return normal(f.nombre) === q; })[0];
+  if (exacto && exacto.email) { $('firmanteEmail').value = exacto.email; S.emailAuto = true; }
+  else if (S.emailAuto) { $('firmanteEmail').value = ''; S.emailAuto = false; }
+  var lista = q ? firmantes().filter(function (f) { return normal(f.nombre).indexOf(q) >= 0 && normal(f.nombre) !== q; }).slice(0, 6) : [];
+  caja.innerHTML = lista.map(function (f, i) { return '<div data-i="' + i + '">' + esc(f.nombre) + (f.email ? '<small>' + esc(f.email) + '</small>' : '') + '</div>'; }).join('');
+  caja.querySelectorAll('div').forEach(function (d) { d.onmousedown = function (e) { e.preventDefault(); elegirFirmante(lista[+d.dataset.i]); }; });
+  caja.style.display = lista.length ? '' : 'none';
+};
+$('firmante').onblur = function () { $('firmanteSugs').style.display = 'none'; };
+$('firmanteEmail').oninput = function () { S.emailAuto = false; };
 
 // ---------------------------------------------------------------- fotos
 function pintarFotos() {
@@ -471,12 +509,12 @@ $('firmaOk').onclick = function () {
   var c = document.createElement('canvas'), m = 10; c.width = x1 - x0 + m * 2; c.height = y1 - y0 + m * 2;
   var cc = c.getContext('2d'); cc.fillStyle = '#fff'; cc.fillRect(0, 0, c.width, c.height);
   cc.drawImage(lienzo, x0 - m, y0 - m, c.width, c.height, 0, 0, c.width, c.height);
-  S.firma = c.toDataURL('image/png'); pintarFirma();
+  S.firma = c.toDataURL('image/png'); S.firmadoEn = ahoraES(); pintarFirma();
   $('modalFirma').classList.remove('activa');
 };
 function pintarFirma() { $('firmaPrev').innerHTML = S.firma ? '<img src="' + S.firma + '">' : 'Sin firma'; }
 $('btnFirmar').onclick = abrirFirma;
-$('btnBorrarFirma').onclick = function () { S.firma = null; pintarFirma(); };
+$('btnBorrarFirma').onclick = function () { S.firma = null; S.firmadoEn = null; pintarFirma(); };
 
 // ---------------------------------------------------------------- guardar parte (cola)
 $('btnGuardarParte').onclick = function () {
@@ -484,15 +522,23 @@ $('btnGuardarParte').onclick = function () {
   if (!obra) return aviso('parteAviso', 'Elige la obra.', 'err');
   if (!trabs.length) return aviso('parteAviso', 'Añade al menos un trabajador.', 'err');
   if (!$('trabajos').value.trim()) return aviso('parteAviso', 'Escribe los trabajos realizados.', 'err');
+  var email = $('firmanteEmail').value.trim();
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return aviso('parteAviso', 'El correo para la copia no es válido.', 'err');
   if (!S.firma && !confirm('El parte va SIN FIRMA del cliente. ¿Guardar igualmente?')) return;
   var obraTxt = $('obra').options[$('obra').selectedIndex].text;
   var parte = {
     id: uid(), tipo: 'parte', fecha: $('fecha').value || hoyISO(), obra: obra, obraNombre: obraTxt,
     trabajadores: trabs, trabajos: $('trabajos').value.trim(), materiales: leerMats(),
     medios: $('medios').value.trim(), observaciones: $('observaciones').value.trim(),
-    firma: S.firma, firmante: $('firmante').value.trim(), fotos: S.fotos.slice(),
+    firma: S.firma, firmante: $('firmante').value.trim(), firmanteEmail: email, firmadoEn: S.firma ? S.firmadoEn : '', fotos: S.fotos.slice(),
     creadoPor: S.usuario.nombre, creadoEn: new Date().toISOString()
   };
+  // la libreta local se actualiza ya, para tenerla aunque no haya cobertura
+  if (parte.firmante && S.datos) {
+    var lf = S.datos.firmantes = firmantes(), ya = lf.filter(function (f) { return normal(f.nombre) === normal(parte.firmante); })[0];
+    if (ya) { if (email) ya.email = email; } else lf.push({ nombre: parte.firmante, email: email });
+    DB.put('kv', S.datos, 'datos');
+  }
   DB.put('cola', parte).then(function () { return DB.put('kv', obra, 'ultimaObra'); }).then(function () {
     toast('Parte guardado. Enviando…'); nuevoParte(); actualizarPend(); sincronizar();
   });
@@ -552,7 +598,7 @@ function sincronizar() {
           : api('movimiento', { mov: { id: it.id, tipo: it.movTipo, material: it.material, cantidad: it.cantidad, obra: it.obra, nota: it.nota, fecha: it.fecha, usuario: it.usuario } });
         return llamada.then(function (j) {
           enviados++;
-          var h = { id: it.id, tipo: it.tipo, fecha: it.fecha, obra: it.obraNombre || it.obra, numero: j.numero || '', pdf_url: j.pdf_url || '', firmado: !!it.firma, enviadoEn: new Date().toISOString(), resumen: it.tipo === 'mov' ? it.movTipo + ' ' + it.cantidad + ' ' + it.material : '' };
+          var h = { id: it.id, tipo: it.tipo, fecha: it.fecha, obra: it.obraNombre || it.obra, numero: j.numero || '', pdf_url: j.pdf_url || '', firmado: !!it.firma, enviadoEn: new Date().toISOString(), copia: j.copia_enviada_a || '', copiaError: j.copia_error || '', resumen: it.tipo === 'mov' ? it.movTipo + ' ' + it.cantidad + ' ' + it.material : '' };
           return DB.put('hist', h).then(function () { return DB.del('cola', it.id); });
         }).catch(function (e) {
           it.error = e.message; it.intentos = (it.intentos || 0) + 1; return DB.put('cola', it);
@@ -574,7 +620,7 @@ function pintarEnviados() {
     h.sort(function (a, b) { return a.enviadoEn < b.enviadoEn ? 1 : -1; }); h = h.slice(0, 50);
     $('histLista').innerHTML = h.length ? h.map(function (it) {
       if (it.tipo === 'mov') return '<div class="item"><div><b>Almacén · ' + esc(it.resumen) + '</b><small>' + fechaES(it.fecha) + '</small></div><span class="chip ok">ok</span></div>';
-      return '<div class="item"><div><b>Nº ' + esc(it.numero) + ' · ' + esc(it.obra) + '</b><small>' + fechaES(it.fecha) + (it.firmado ? ' · firmado' : ' · sin firma') + '</small></div>' + (it.pdf_url ? '<a class="chip ok" href="' + esc(it.pdf_url) + '" target="_blank">PDF</a>' : '<span class="chip ok">ok</span>') + '</div>';
+      return '<div class="item"><div><b>Nº ' + esc(it.numero) + ' · ' + esc(it.obra) + '</b><small>' + fechaES(it.fecha) + (it.firmado ? ' · firmado' : ' · sin firma') + (it.copia ? ' · copia enviada a ' + esc(it.copia) : '') + (it.copiaError ? ' · <span style="color:var(--rojo)">copia no enviada</span>' : '') + '</small></div>' + (it.pdf_url ? '<a class="chip ok" href="' + esc(it.pdf_url) + '" target="_blank">PDF</a>' : '<span class="chip ok">ok</span>') + '</div>';
     }).join('') : '<div class="aviso">Aún no hay partes enviados desde este móvil.</div>';
   });
 }
