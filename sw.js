@@ -1,7 +1,7 @@
 // Service worker APP SOLERA — guarda la app en el móvil para que abra sin cobertura
-var CACHE = 'solera-v3';
+var CACHE = 'solera-v4';
 var FICHEROS = ['./', './index.html', './config.js', './manifest.json', './icon-192.png', './icon-512.png',
-  './almacen.html', './manifest-almacen.json', './icon-almacen-192.png', './icon-almacen-512.png'];
+  './almacen.html', './almacen/', './manifest-almacen.json', './icon-almacen-192.png', './icon-almacen-512.png'];
 
 self.addEventListener('install', function (e) {
   e.waitUntil(caches.open(CACHE).then(function (c) { return c.addAll(FICHEROS); }).then(function () { return self.skipWaiting(); }));
