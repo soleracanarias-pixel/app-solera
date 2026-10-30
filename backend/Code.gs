@@ -405,7 +405,8 @@ function movimiento_(m) {
   var ya = filas_(c.mov).filter(function (f) { return f.id === m.id; })[0];
   if (ya) return { ok: true, repetido: true, numero: ya.numero || '' };
   var her = c === CLASES.HER, mat;
-  if (her && m.tipo === 'ENTRADA') mat = altaHerramienta_(m.tipoHer, m.usuario);   // alta: número nuevo
+  // alta, o herramienta que aún no tenía número (se le da uno al llevarla/devolverla)
+  if (her && (m.tipo === 'ENTRADA' || (!m.material && m.tipoHer))) mat = altaHerramienta_(m.tipoHer, m.usuario);
   else if (her) {
     var u = filas_('HERRAMIENTAS').filter(function (f) { return String(f.codigo) === String(m.material); })[0];
     if (!u) throw new Error('Herramienta no encontrada: ' + (m.material || ''));
