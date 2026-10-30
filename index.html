@@ -226,7 +226,7 @@ a{color:var(--azul)}
     <h2 id="movTitulo">Movimiento</h2>
     <div class="ayuda" id="movCuando"></div>
     <label id="movMatLabel">Material</label><input type="text" id="movMatTxt" placeholder="Escribe el material…" autocomplete="off"><div class="sugs" id="movMatSugs" style="display:none"></div>
-    <label>Cantidad</label><input type="number" id="movCant" inputmode="decimal" step="any" min="0">
+    <div id="movCantBloque"><label>Cantidad</label><input type="number" id="movCant" inputmode="decimal" step="any" min="0"></div>
     <div id="movObraBloque"><label>Obra</label><input type="text" id="movObraTxt" placeholder="Escribe la obra…" autocomplete="off"><div class="sugs" id="movObraSugs" style="display:none"></div><select id="movObra" style="display:none"></select>
       <label id="movPersonaLabel">¿Quién se lo lleva?</label><input type="text" id="movPersonaTxt" autocomplete="off"><div class="sugs" id="movPersonaSugs" style="display:none"></div>
     </div>
@@ -526,7 +526,7 @@ function filaTrab(datos) {
 // elegir(item, alEscribir) recibe el elemento elegido, o null si lo escrito no coincide con ninguno
 function buscador(txt, caja, lista, elegir) {
   var mostrar = function () {
-    var palabras = normal(txt.value).split(' ').filter(Boolean);
+    var palabras = normal(txt.value).split(/[^a-z0-9,]+/).filter(Boolean);   // "bat-02", "bat 02" o "02"
     var res = lista().filter(function (x) {
       var ws = normal(x.nombre).split(/[^a-z0-9,]+/);
       return palabras.every(function (p) { return ws.some(function (w) { return w.indexOf(p) === 0; }); });
@@ -547,7 +547,18 @@ function verObra(sel, txt) { var s = $(sel); if (s.value && s.selectedIndex >= 0
 function obras() { return (S.datos && S.datos.obras) || []; }
 buscador($('obraTxt'), $('obraSugs'), obras, function (o) { $('obra').value = o ? String(o.codigo) : ''; });
 buscador($('movObraTxt'), $('movObraSugs'), obras, function (o) { $('movObra').value = o ? String(o.codigo) : ''; });
-buscador($('movMatTxt'), $('movMatSugs'), function () { return (S.datos && (S.movClase === 'HER' ? S.datos.herramientas : S.datos.materiales)) || []; }, function (m) { S.movMat = m; });
+buscador($('movMatTxt'), $('movMatSugs'), function () {
+  if (!S.datos) return [];
+  if (S.movClase !== 'HER') return S.datos.materiales || [];
+  return (S.movTipo === 'ENTRADA' ? S.datos.herrTipos : S.datos.herramientas) || [];
+}, function (m) {
+  S.movMat = m;
+  // al devolver una herramienta, la obra donde estaba sale ya puesta
+  if (m && S.movClase === 'HER' && S.movTipo === 'DEVOLUCION' && m.donde && m.donde !== 'ALMACÉN') {
+    var o = obras().filter(function (x) { return x.nombre === m.donde; })[0];
+    if (o) { $('movObra').value = String(o.codigo); $('movObraTxt').value = o.nombre; }
+  }
+});
 buscador($('movPersonaTxt'), $('movPersonaSugs'), function () { return (S.datos && S.datos.trabajadores) || []; }, function () {});
 
 function filaMat() {
@@ -731,16 +742,16 @@ function pintarStock() {
 $('buscarMat').oninput = pintarStock;
 $('verStock').onclick = function () { var b = $('stockBloque'), ver = b.style.display === 'none'; b.style.display = ver ? '' : 'none'; if (ver) pintarStock(); };
 $('verHerr').onclick = function () { var b = $('herrBloque'), ver = b.style.display === 'none'; b.style.display = ver ? '' : 'none'; if (ver) pintarHerr(); };
-// herramientas: cuántas hay en el almacén y cuántas en obras (al tocar una, sus últimos movimientos)
-function herrLocal() { return (S.datos && S.datos.herrStock) || []; }
+// herramientas una a una (BAT-01…): dónde está cada una y quién la tiene (al tocarla, sus últimos movimientos)
+function herrLocal() { return (S.datos && S.datos.herramientas) || []; }
 function pintarHerr() {
   var q = normal($('buscarHerr').value);
-  var lista = herrLocal().filter(function (h) { return !q || normal(h.nombre).indexOf(q) >= 0; });
+  var lista = herrLocal().filter(function (h) { return !q || normal(h.nombre + ' ' + h.donde + ' ' + h.quien).indexOf(q) >= 0; });
   $('herrLista').innerHTML = lista.length ? lista.map(function (h) {
-    // aún no hay inventario fiable: lo principal es cuántas hay en obras; el almacén solo si sale positivo
+    var enObra = h.donde && h.donde !== 'ALMACÉN';
     return '<div class="item toca" data-cod="' + esc(h.codigo) + '" data-clase="HER"><div><b>' + esc(h.nombre) + '</b><small>' +
-      (h.stock > 0 ? h.stock + ' en almacén · ' : '') + 'toca para ver dónde</small></div><div class="stock">' + (h.fuera > 0 ? h.fuera : 0) + ' <small style="display:inline">en obras</small></div></div>';
-  }).join('') : '<div class="aviso">Sin herramientas. Pulsa "Actualizar listas" en Enviados.</div>';
+      (enObra ? '📍 ' + esc(h.donde) : 'En almacén') + (h.quien ? ' · ' + esc(h.quien) : '') + (h.desde ? ' · ' + esc(h.desde) : '') + '</small></div></div>';
+  }).join('') : '<div class="aviso">Aún no hay herramientas numeradas. Dalas de alta con "⬇ Alta en el almacén".</div>';
 }
 $('buscarHerr').oninput = pintarHerr;
 // al tocar un material: sus últimos 10 movimientos (se piden al servidor)
@@ -771,6 +782,10 @@ function abrirMov(tipo, clase) {
   $('movMatTxt').placeholder = her ? 'Escribe la herramienta…' : 'Escribe el material…';
   $('movPersonaLabel').textContent = tipo === 'DEVOLUCION' ? '¿Quién lo devuelve?' : '¿Quién se lo lleva?';
   $('movPersonaTxt').value = S.usuario ? S.usuario.nombre : '';
+  // herramientas: siempre de una en una y con foto; en el alta se elige el tipo y el número lo pone el sistema
+  $('movCantBloque').style.display = her ? 'none' : '';
+  if (her && tipo === 'ENTRADA') { $('movMatLabel').textContent = 'Tipo de herramienta'; $('movMatTxt').placeholder = 'Escribe el tipo (batidora, rubí…)'; }
+  $('movBtnFoto').textContent = her ? '📷 Foto de la herramienta (obligatoria)' : '📷 Foto (albarán, material…)';
   S.movTipo = tipo; $('movForm').style.display = '';
   $('movTitulo').textContent = (her ? { ENTRADA: 'Alta de herramienta en el almacén', SALIDA: 'Llevar herramienta a obra', DEVOLUCION: 'Devolver herramienta al almacén' }
     : { ENTRADA: 'Entrada al almacén', SALIDA: 'Salida a obra', DEVOLUCION: 'Devolución de obra (vuelve al almacén)' })[tipo];
@@ -787,21 +802,22 @@ $('btnHDevolucion').onclick = function () { abrirMov('DEVOLUCION', 'HER'); };
 $('btnHEntrada').onclick = function () { abrirMov('ENTRADA', 'HER'); };
 $('movCancelar').onclick = function () { $('movForm').style.display = 'none'; };
 $('movGuardar').onclick = function () {
-  var nombreMat = $('movMatTxt').value.trim(), cant = +$('movCant').value;
+  var her = S.movClase === 'HER', nombreMat = $('movMatTxt').value.trim(), cant = her ? 1 : +$('movCant').value;
+  if (her && !S.movMat) return toast(S.movTipo === 'ENTRADA' ? 'Elige el tipo de la lista' : 'Elige la herramienta de la lista (por su número)');
+  if (her && !S.movFotos.length) return toast('Haz una foto de la herramienta');
   if (!nombreMat || !cant) return toast('Escribe material y cantidad');
   // si no se eligió de la lista, va como texto libre (código OTRO, no cuenta en el stock)
-  var mat = S.movMat ? String(S.movMat.codigo) : 'OTRO', matNombre = S.movMat ? S.movMat.nombre : nombreMat.toUpperCase();
+  var mat = S.movMat ? String(S.movMat.codigo || '') : 'OTRO', matNombre = S.movMat ? S.movMat.nombre : nombreMat.toUpperCase();
   var conObra = S.movTipo !== 'ENTRADA';   // salida y devolución van siempre ligadas a una obra
   if (conObra && !$('movObra').value) return toast('Elige la obra');
   var obraSel = $('movObra'), obraTxt = conObra ? obraSel.options[obraSel.selectedIndex].text : '';
   var persona = conObra ? ($('movPersonaTxt').value.trim() || S.usuario.nombre) : '';
-  var mov = { id: uid(), tipo: 'mov', clase: S.movClase, persona: persona, movTipo: S.movTipo, material: mat, materialNombre: matNombre, hora: S.movCuando.slice(11), cantidad: cant, obra: obraTxt, nota: $('movNota').value.trim(), fotos: S.movFotos.slice(), fecha: hoyISO(), usuario: S.usuario.nombre, creadoEn: new Date().toISOString() };
+  var mov = { id: uid(), tipo: 'mov', clase: S.movClase, persona: persona, movTipo: S.movTipo, material: mat, materialNombre: matNombre, tipoHer: her && S.movTipo === 'ENTRADA' ? S.movMat.prefijo : '', hora: S.movCuando.slice(11), cantidad: cant, obra: obraTxt, nota: $('movNota').value.trim(), fotos: S.movFotos.slice(), fecha: hoyISO(), usuario: S.usuario.nombre, creadoEn: new Date().toISOString() };
   // ajuste optimista del stock local
-  (S.movClase === 'HER' ? herrLocal() : stockLocal()).forEach(function (m) {
-    if (m.codigo !== mat) return;
-    m.stock += (S.movTipo === 'SALIDA' ? -cant : cant);
-    if (S.movClase === 'HER' && S.movTipo !== 'ENTRADA') m.fuera += (S.movTipo === 'SALIDA' ? cant : -cant);
+  if (her) herrLocal().forEach(function (h) {
+    if (h.codigo === mat) { h.donde = S.movTipo === 'SALIDA' ? obraTxt : 'ALMACÉN'; h.quien = persona || S.usuario.nombre; h.desde = S.movCuando; }
   });
+  else stockLocal().forEach(function (m) { if (m.codigo === mat) m.stock += (S.movTipo === 'SALIDA' ? -cant : cant); });
   DB.put('kv', S.datos, 'datos');
   DB.put('cola', mov).then(function () { $('movForm').style.display = 'none'; pintarStock(); pintarHerr(); toast('Movimiento guardado'); actualizarPend(); sincronizar(); });
 };
@@ -825,10 +841,12 @@ function sincronizar() {
       p = p.then(function () {
         var llamada = it.tipo === 'parte'
           ? api('crearParte', { parte: it })
-          : api('movimiento', { mov: { id: it.id, tipo: it.movTipo, material: it.material, cantidad: it.cantidad, obra: it.obra, nota: it.nota, fotos: it.fotos || [], fecha: it.fecha, usuario: it.usuario, materialNombre: it.materialNombre, hora: it.hora, clase: it.clase || 'MAT', persona: it.persona || '' } });
+          : api('movimiento', { mov: { id: it.id, tipo: it.movTipo, material: it.material, cantidad: it.cantidad, obra: it.obra, nota: it.nota, fotos: it.fotos || [], fecha: it.fecha, usuario: it.usuario, materialNombre: it.materialNombre, hora: it.hora, clase: it.clase || 'MAT', persona: it.persona || '', tipoHer: it.tipoHer || '' } });
         return llamada.then(function (j) {
           enviados++;
-          var h = { id: it.id, tipo: it.tipo, fecha: it.fecha, obra: it.obraNombre || it.obra, numero: j.numero || '', pdf_url: j.pdf_url || '', firmado: !!it.firma, enviadoEn: new Date().toISOString(), copia: j.copia_enviada_a || '', copiaError: j.copia_error || '', resumen: it.tipo === 'mov' ? (it.clase === 'HER' ? '🔧 ' : '') + it.movTipo + ' ' + it.cantidad + ' ' + (it.materialNombre || it.material) + (it.persona ? ' · ' + it.persona : '') : '', hora: it.hora || '' };
+          var h = { id: it.id, tipo: it.tipo, fecha: it.fecha, obra: it.obraNombre || it.obra, numero: j.numero || '', pdf_url: j.pdf_url || '', firmado: !!it.firma, enviadoEn: new Date().toISOString(), copia: j.copia_enviada_a || '', copiaError: j.copia_error || '', resumen: it.tipo === 'mov' ? (it.clase === 'HER'
+            ? '🔧 ' + (it.movTipo === 'ENTRADA' ? 'ALTA ' + it.materialNombre + ' → número ' + (j.herramienta || '?') + ' (márcalo en la máquina)' : it.movTipo + ' ' + it.materialNombre)
+            : it.movTipo + ' ' + it.cantidad + ' ' + (it.materialNombre || it.material)) + (it.persona ? ' · ' + it.persona : '') : '', hora: it.hora || '' };
           return DB.put('hist', h).then(function () { return DB.del('cola', it.id); });
         }).catch(function (e) {
           it.error = e.message; it.intentos = (it.intentos || 0) + 1; return DB.put('cola', it);

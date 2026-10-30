@@ -31,21 +31,23 @@ var HOJAS = {
   STOCK: ['codigo','nombre','unidad','entradas','salidas','stock','stock_min','aviso'],
   FIRMANTES: ['nombre','email','obra_ultima','veces','actualizado_en'],
   POR_OBRA: ['obra','material_codigo','material','unidad','salido','devuelto','gastado'],
-  HERRAMIENTAS: ['codigo','nombre','unidad','activo','orden'],
+  // herramientas una a una: cada máquina con su número (BAT-01…), que se marca en la propia máquina
+  HERR_TIPOS: ['prefijo','tipo','orden'],
+  HERRAMIENTAS: ['codigo','tipo','activo','alta_fecha','alta_por'],
   HERR_MOV: ['id','fecha','tipo','herramienta_codigo','herramienta','cantidad','unidad','obra','usuario','nota','creado_en','fotos','numero','hora','persona'],
-  HERR_POR_OBRA: ['obra','herramienta_codigo','herramienta','unidad','llevado','devuelto','en_obra']
+  HERR_DONDE: ['codigo','herramienta','donde','quien','desde','ultimo_mov','foto']
 };
 // almacén de materiales (MAT) y de herramientas (HER): mismo funcionamiento, hojas y numeración separadas
 var CLASES = {
   MAT: { catalogo: 'MATERIALES', mov: 'MOVIMIENTOS', prefijo: 'A', contador: 'SIGUIENTE_MOV', carpeta: 'ALMACEN', resumen: 'POR_OBRA', cod: 'material_codigo', nom: 'material' },
-  HER: { catalogo: 'HERRAMIENTAS', mov: 'HERR_MOV', prefijo: 'H', contador: 'SIGUIENTE_HERR', carpeta: 'HERRAMIENTAS', resumen: 'HERR_POR_OBRA', cod: 'herramienta_codigo', nom: 'herramienta' }
+  HER: { catalogo: 'HERRAMIENTAS', mov: 'HERR_MOV', prefijo: 'H', contador: 'SIGUIENTE_HERR', carpeta: 'HERRAMIENTAS', resumen: '', cod: 'herramienta_codigo', nom: 'herramienta' }
 };
 function clase_(c) { return CLASES[c === 'HER' ? 'HER' : 'MAT']; }
 // filas de movimientos con el código y nombre siempre en material_codigo / material
 function movFilas_(c) {
   return filas_(c.mov).map(function (f) { f.material_codigo = f[c.cod]; f.material = f[c.nom]; return f; });
 }
-var ESQUEMA = '7';            // subir cuando cambien las columnas de HOJAS
+var ESQUEMA = '8';            // subir cuando cambien las columnas de HOJAS
 var EMAIL_COPIA = 'soleracanarias@gmail.com';
 var CSV_NOMBRE = 'PARTES APP 2026.csv';  // se crea en la carpeta CARPETA_CSV_ID de CONFIG (CLIENTES\PARTES\APP)
 var CSV_COLUMNAS = ['N_PARTE','FECHA','DIA_SEMANA','CLIENTE','OBRA','COD_OBRA_APP','RESP_CLIENTE','RESP_CERT','RESP_SOLERA','MATRICULA',
@@ -199,10 +201,10 @@ function bootstrap_() {
       .sort(function (a, b) { return (Number(a.orden) || 9999) - (Number(b.orden) || 9999); })   // lo más usado primero
       .map(function (f) { return { codigo: String(f.codigo), nombre: f.nombre, unidad: f.unidad, stock_min: Number(f.stock_min) || 0 }; }),
     stock: stock_(),
-    herramientas: filas_('HERRAMIENTAS').filter(function (f) { return si_(f.activo); })
+    herramientas: herrDonde_(false),
+    herrTipos: filas_('HERR_TIPOS').filter(function (f) { return f.prefijo; })
       .sort(function (a, b) { return (Number(a.orden) || 9999) - (Number(b.orden) || 9999); })
-      .map(function (f) { return { codigo: String(f.codigo), nombre: f.nombre, unidad: f.unidad || 'ud' }; }),
-    herrStock: herrStock_(),
+      .map(function (f) { return { prefijo: String(f.prefijo), nombre: String(f.tipo) }; }),
     firmantes: filas_('FIRMANTES').filter(function (f) { return f.nombre; })
       .sort(function (a, b) { return (Number(b.veces) || 0) - (Number(a.veces) || 0); })
       .map(function (f) { return { nombre: String(f.nombre), email: String(f.email || '') }; }),
@@ -223,19 +225,45 @@ function stock_() {
   });
 }
 
-// herramientas: cuántas hay en el almacén y cuántas están en obras
-function herrStock_() {
-  var acc = {};
+// dónde está cada herramienta: según su último movimiento (alta/devolución = ALMACÉN, salida = la obra)
+// escribir = true rehace la hoja HERR_DONDE (con la última foto, para ver el estado y comprobar que es esa máquina)
+function herrDonde_(escribir) {
+  var ult = {};
   movFilas_(CLASES.HER).forEach(function (m) {
-    var k = String(m.material_codigo), q = Number(m.cantidad) || 0; acc[k] = acc[k] || { alm: 0, fuera: 0 };
-    if (m.tipo === 'ENTRADA') acc[k].alm += q;
-    else if (m.tipo === 'SALIDA') { acc[k].alm -= q; acc[k].fuera += q; }
-    else if (m.tipo === 'DEVOLUCION') { acc[k].alm += q; acc[k].fuera -= q; }
+    var k = String(m.material_codigo), u = ult[k] = ult[k] || {};
+    u.m = m; if (m.fotos) u.foto = String(m.fotos).split(' ')[0];
   });
-  return filas_('HERRAMIENTAS').filter(function (f) { return si_(f.activo); }).map(function (f) {
-    var a = acc[String(f.codigo)] || { alm: 0, fuera: 0 };
-    return { codigo: String(f.codigo), nombre: f.nombre, unidad: f.unidad || 'ud', stock: a.alm, fuera: a.fuera };
+  var orden = {}; filas_('HERR_TIPOS').forEach(function (t) { orden[t.prefijo] = Number(t.orden) || 999; });
+  var lista = filas_('HERRAMIENTAS').filter(function (f) { return si_(f.activo); }).map(function (f) {
+    var u = ult[String(f.codigo)] || {}, m = u.m;
+    var fuera = m && m.tipo === 'SALIDA';
+    return { codigo: String(f.codigo), tipo: f.tipo, nombre: f.codigo + ' · ' + f.tipo,
+      donde: fuera ? m.obra : 'ALMACÉN', quien: m ? (m.persona || m.usuario || '') : (f.alta_por || ''),
+      desde: m ? txtFecha_(m.fecha, 'dd/MM/yyyy') + (m.hora ? ' ' + m.hora : '') : '', ultimo_mov: m ? m.numero : '', foto: u.foto || '' };
+  }).sort(function (a, b) {
+    var pa = a.codigo.split('-')[0], pb = b.codigo.split('-')[0];
+    return (orden[pa] || 999) - (orden[pb] || 999) || (a.codigo < b.codigo ? -1 : 1);
   });
+  if (escribir) {
+    var h = hoja_('HERR_DONDE'), ancho = HOJAS.HERR_DONDE.length;
+    if (h.getLastRow() > 1) h.getRange(2, 1, h.getLastRow() - 1, ancho).clearContent();
+    if (lista.length) h.getRange(2, 1, lista.length, ancho).setValues(lista.map(function (x) {
+      return [x.codigo, x.tipo, x.donde, x.quien, x.desde, x.ultimo_mov, x.foto]; }));
+  }
+  return lista;
+}
+
+// alta de una máquina nueva: le da el número siguiente de su tipo (BAT-01, BAT-02…)
+function altaHerramienta_(prefijo, usuario) {
+  var t = filas_('HERR_TIPOS').filter(function (f) { return String(f.prefijo) === String(prefijo); })[0];
+  if (!t) throw new Error('Tipo de herramienta no encontrado');
+  var max = 0;
+  filas_('HERRAMIENTAS').forEach(function (f) {
+    var p = String(f.codigo).split('-'); if (p[0] === t.prefijo) max = Math.max(max, Number(p[1]) || 0);
+  });
+  var codigo = t.prefijo + '-' + ('0' + (max + 1)).slice(-2);
+  anadirFila_('HERRAMIENTAS', { codigo: codigo, tipo: t.tipo, activo: 'SI', alta_fecha: ahora_(), alta_por: usuario || '' });
+  return { codigo: codigo, nombre: codigo + ' · ' + t.tipo, unidad: 'ud' };
 }
 
 function ultimosPartes_(n) {
@@ -376,9 +404,17 @@ function movimiento_(m) {
   var c = clase_(m.clase);
   var ya = filas_(c.mov).filter(function (f) { return f.id === m.id; })[0];
   if (ya) return { ok: true, repetido: true, numero: ya.numero || '' };
-  var mat = filas_(c.catalogo).filter(function (f) { return String(f.codigo) === String(m.material); })[0];
-  // cosas que no están en la lista de materiales: se guardan con su nombre y código OTRO (no cuentan en el stock)
-  if (!mat && m.materialNombre) mat = { codigo: 'OTRO', nombre: String(m.materialNombre).trim().toUpperCase(), unidad: m.unidad || '' };
+  var her = c === CLASES.HER, mat;
+  if (her && m.tipo === 'ENTRADA') mat = altaHerramienta_(m.tipoHer, m.usuario);   // alta: número nuevo
+  else if (her) {
+    var u = filas_('HERRAMIENTAS').filter(function (f) { return String(f.codigo) === String(m.material); })[0];
+    if (!u) throw new Error('Herramienta no encontrada: ' + (m.material || ''));
+    mat = { codigo: String(u.codigo), nombre: u.codigo + ' · ' + u.tipo, unidad: 'ud' };
+  } else {
+    mat = filas_(c.catalogo).filter(function (f) { return String(f.codigo) === String(m.material); })[0];
+    // cosas que no están en la lista de materiales: se guardan con su nombre y código OTRO (no cuentan en el stock)
+    if (!mat && m.materialNombre) mat = { codigo: 'OTRO', nombre: String(m.materialNombre).trim().toUpperCase(), unidad: m.unidad || '' };
+  }
   if (!mat) throw new Error('Material no encontrado');
   // número propio de cada movimiento de almacén: A0001, A0002…
   var n = Number(config_(c.contador)) || 1;
@@ -396,20 +432,22 @@ function movimiento_(m) {
       if (b) fotosUrls.push(carp.createFile(b).getUrl());
     });
   }
-  var fila = { id: m.id, fecha: fechaES_(fecha), tipo: tipo, cantidad: Number(m.cantidad) || 0, unidad: mat.unidad || '', obra: m.obra || '',
+  var fila = { id: m.id, fecha: fechaES_(fecha), tipo: tipo, cantidad: her ? 1 : Number(m.cantidad) || 0, unidad: mat.unidad || '', obra: m.obra || '',
     parte_numero: '', usuario: m.usuario || '', nota: m.nota || '', creado_en: ahora_(), fotos: fotosUrls.join(' '), numero: numero,
     hora: m.hora ? "'" + m.hora : '',     // con ' para que la hoja no lo convierta en fecha
     persona: tipo === 'ENTRADA' ? '' : (m.persona || m.usuario || '') };   // quién se lo lleva / lo devuelve (usuario = quién lo anota)
   fila[c.cod] = String(mat.codigo); fila[c.nom] = mat.nombre;
   anadirFila_(c.mov, fila);
-  if (c === CLASES.MAT) avisarStock_([String(mat.codigo)]);   // una ENTRADA que repone rearma el aviso
-  if (tipo !== 'ENTRADA') try { porObra_(c); } catch (err) { console.error(c.resumen + ': ' + err); }
-  return { ok: true, numero: numero, fotos: fotosUrls };
+  if (her) { try { herrDonde_(true); } catch (err) { console.error('HERR_DONDE: ' + err); } }
+  else {
+    avisarStock_([String(mat.codigo)]);   // una ENTRADA que repone rearma el aviso
+    if (tipo !== 'ENTRADA') try { porObra_(c); } catch (err) { console.error('POR_OBRA: ' + err); }
+  }
+  return { ok: true, numero: numero, fotos: fotosUrls, herramienta: her ? mat.codigo : '' };
 }
 
 // POR_OBRA: por obra y material, lo que salió del almacén, lo que volvió y lo gastado (salido - devuelto).
 // Es control interno; lo que se cobra al cliente es lo que pone el parte.
-// (HERR_POR_OBRA: lo mismo con las herramientas; "en_obra" = las que siguen allí)
 function porObra_(c) {
   c = c || CLASES.MAT;
   var acc = {}, orden = [];
