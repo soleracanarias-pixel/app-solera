@@ -76,6 +76,7 @@ textarea{min-height:80px;resize:vertical}
 .modal .pie .btn{margin:0}
 .lista .item{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--borde);gap:8px}
 .lista .item:last-child{border:0}
+#nuevaVersion{position:sticky;top:0;z-index:30;background:var(--ambar);color:#343434;text-align:center;padding:10px;font-size:14px;cursor:pointer}
 .modo-almacen nav button[data-p="parte"]{display:none}
 .modo-almacen header h1{letter-spacing:1px;white-space:nowrap}
 .lista .item.toca{cursor:pointer}
@@ -106,6 +107,7 @@ a{color:var(--azul)}
 </style>
 </head>
 <body>
+<div id="nuevaVersion" style="display:none">Hay una versión nueva de la app · <b>toca aquí para actualizar</b></div>
 <header>
   <div><h1>SOLERA</h1><div class="quien" id="quien"></div></div>
   <div style="display:flex;gap:8px;align-items:center">
@@ -883,6 +885,26 @@ $('btnSync').onclick = function () { if (!navigator.onLine) return toast('Sin co
 document.querySelectorAll('nav button').forEach(function (b) { b.onclick = function () { cambiar(b.dataset.p); }; });
 window.addEventListener('online', function () { estadoRed(); sincronizar(); });
 window.addEventListener('offline', estadoRed);
+
+// aviso de versión nueva: compara la página publicada con la que se cargó (no recarga sola para no perder lo que se rellena)
+var paginaCargada = null;
+function huellaPagina() {
+  return fetch(location.pathname, { cache: 'no-store' }).then(function (r) { return r.ok ? r.text() : null; })
+    .then(function (t) { if (!t) return null; var h = 0; for (var i = 0; i < t.length; i++) h = (h * 31 + t.charCodeAt(i)) | 0; return t.length + ':' + h; })
+    .catch(function () { return null; });
+}
+function mirarVersion() {
+  if (!navigator.onLine) return;
+  huellaPagina().then(function (h) {
+    if (!h) return;
+    if (!paginaCargada) paginaCargada = h;
+    else if (h !== paginaCargada) $('nuevaVersion').style.display = '';
+  });
+}
+$('nuevaVersion').onclick = function () { location.reload(); };
+document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') mirarVersion(); });
+setInterval(mirarVersion, 10 * 60000);
+mirarVersion();
 
 if (MODO_ALMACEN) { document.body.classList.add('modo-almacen'); document.querySelector('header h1').textContent = 'SOLERA · ALMACÉN'; }
 
