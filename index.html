@@ -72,6 +72,7 @@ textarea{min-height:80px;resize:vertical}
 .fecha-campo span{display:block;padding:11px;border:1px solid var(--borde);border-radius:8px;background:#fff;font-size:16px;min-height:44px}
 .fecha-campo input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer}
 .ayuda{font-size:12px;color:var(--gris);margin:3px 0 8px}
+.fila.mat>div:first-child{flex:3}
 .sugs{border:1px solid var(--borde);border-top:0;border-radius:0 0 8px 8px;background:#fff}
 .sugs div{padding:10px 11px;border-top:1px solid var(--borde);font-size:15px;cursor:pointer}
 .sugs small{display:block;color:var(--gris);font-size:12px}
@@ -372,7 +373,6 @@ function pintarListas() {
   repintar($('movObra'), d.obras, '— obra —');
   repintar($('movMat'), d.materiales, '— material —');
   document.querySelectorAll('#trabs .t-cod').forEach(function (s) { repintar(s, d.trabajadores, '— trabajador —'); });
-  document.querySelectorAll('#mats .m-cod').forEach(function (s) { repintar(s, d.materiales, '— material —'); });
 }
 
 // ---------------------------------------------------------------- parte: trabajadores y materiales
@@ -390,9 +390,27 @@ function filaTrab(datos) {
   $('trabs').appendChild(div); totalHoras();
 }
 function filaMat() {
-  var d = S.datos, div = document.createElement('div'); div.className = 'fila mat';
-  div.innerHTML = '<div><select class="m-cod"></select></div><div class="corto"><input type="number" class="m-c" inputmode="decimal" step="any" min="0" placeholder="Cant."></div><button class="x">×</button>';
-  opciones(div.querySelector('.m-cod'), d.materiales, 'codigo', 'nombre', '— material —');
+  var div = document.createElement('div'); div.className = 'fila mat'; div.dataset.cod = '';
+  div.innerHTML = '<div><input type="text" class="m-txt" placeholder="Escribe el material…" autocomplete="off"><div class="sugs" style="display:none"></div></div>' +
+    '<div class="corto"><input type="number" class="m-c" inputmode="decimal" step="any" min="0" placeholder="Cant."></div><button class="x">×</button>';
+  var txt = div.querySelector('.m-txt'), caja = div.querySelector('.sugs');
+  // sugerencias según se escribe, primero lo más usado (la lista ya viene ordenada así desde la hoja)
+  var sugerir = function () {
+    var palabras = normal(txt.value).split(' ').filter(Boolean);
+    var lista = ((S.datos && S.datos.materiales) || []).filter(function (m) {
+      var ws = normal(m.nombre).split(/[^a-z0-9ñ,]+/);
+      return palabras.every(function (p) { return ws.some(function (w) { return w.indexOf(p) === 0; }); });
+    }).slice(0, 8);
+    var exacto = lista.filter(function (m) { return normal(m.nombre) === normal(txt.value); })[0];
+    div.dataset.cod = exacto ? exacto.codigo : '';
+    caja.innerHTML = lista.map(function (m, i) { return '<div data-i="' + i + '">' + esc(m.nombre) + '</div>'; }).join('');
+    caja.querySelectorAll('div').forEach(function (o) {
+      o.onmousedown = function (e) { e.preventDefault(); var m = lista[+o.dataset.i]; txt.value = m.nombre; div.dataset.cod = m.codigo; caja.style.display = 'none'; div.querySelector('.m-c').focus(); };
+    });
+    caja.style.display = lista.length && !exacto ? '' : 'none';
+  };
+  txt.oninput = txt.onfocus = sugerir;
+  txt.onblur = function () { caja.style.display = 'none'; };
   div.querySelector('.x').onclick = function () { div.remove(); };
   $('mats').appendChild(div);
 }
@@ -415,9 +433,10 @@ function leerMats() {
   var mapa = {}; (S.datos.materiales || []).forEach(function (m) { mapa[String(m.codigo)] = m; });
   var out = [];
   document.querySelectorAll('#mats .mat').forEach(function (f) {
-    var c = f.querySelector('.m-cod').value, q = +f.querySelector('.m-c').value || 0; if (!c || !q) return;
-    var m = mapa[c] || {};
-    out.push({ codigo: c, nombre: m.nombre || c, unidad: m.unidad || '', cantidad: q });
+    var nombre = f.querySelector('.m-txt').value.trim(), q = +f.querySelector('.m-c').value || 0; if (!nombre || !q) return;
+    var m = mapa[f.dataset.cod] || {};
+    // si no se eligió de la lista, se guarda como texto libre
+    out.push({ codigo: m.codigo ? String(m.codigo) : 'OTRO', nombre: m.nombre || nombre.toUpperCase(), unidad: m.unidad || '', cantidad: q });
   });
   return out;
 }

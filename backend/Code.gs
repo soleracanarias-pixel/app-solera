@@ -24,14 +24,14 @@ var HOJAS = {
   CONFIG: ['clave','valor'],
   TRABAJADORES: ['codigo','nombre','categoria','pin','activo','encargado'],
   OBRAS: ['codigo','nombre','cliente','activa'],
-  MATERIALES: ['codigo','nombre','unidad','stock_min','activo'],
+  MATERIALES: ['codigo','nombre','unidad','stock_min','activo','orden','categoria'],
   PARTES: ['id','numero','fecha','obra_codigo','obra','cliente','creado_por','trabajadores','total_horas','trabajos','materiales','medios','observaciones','firmado','firmante','pdf_url','fotos','creado_en','origen','firmado_en','copia_enviada_a','copia_enviada_en','copia_error'],
   PARTES_LINEAS: ['id','numero','fecha','obra','trabajador_codigo','trabajador','categoria','horas','horas_extra','firmado'],
   MOVIMIENTOS: ['id','fecha','tipo','material_codigo','material','cantidad','unidad','obra','parte_numero','usuario','nota','creado_en'],
   STOCK: ['codigo','nombre','unidad','entradas','salidas','stock','stock_min','aviso'],
   FIRMANTES: ['nombre','email','obra_ultima','veces','actualizado_en']
 };
-var ESQUEMA = '2';            // subir cuando cambien las columnas de HOJAS
+var ESQUEMA = '3';            // subir cuando cambien las columnas de HOJAS
 var EMAIL_COPIA = 'soleracanarias@gmail.com';
 var CSV_NOMBRE = 'PARTES APP 2026.csv';  // se crea en la carpeta CARPETA_CSV_ID de CONFIG (CLIENTES\PARTES\APP)
 var CSV_COLUMNAS = ['N_PARTE','FECHA','DIA_SEMANA','CLIENTE','OBRA','COD_OBRA_APP','RESP_CLIENTE','RESP_CERT','RESP_SOLERA','MATRICULA',
@@ -181,6 +181,7 @@ function bootstrap_() {
     obras: filas_('OBRAS').filter(function (f) { return si_(f.activa); })
       .map(function (f) { return { codigo: String(f.codigo), nombre: f.nombre, cliente: f.cliente }; }),
     materiales: filas_('MATERIALES').filter(function (f) { return si_(f.activo); })
+      .sort(function (a, b) { return (Number(a.orden) || 9999) - (Number(b.orden) || 9999); })   // lo más usado primero
       .map(function (f) { return { codigo: String(f.codigo), nombre: f.nombre, unidad: f.unidad, stock_min: Number(f.stock_min) || 0 }; }),
     stock: stock_(),
     firmantes: filas_('FIRMANTES').filter(function (f) { return f.nombre; })
