@@ -86,7 +86,8 @@ textarea{min-height:80px;resize:vertical}
 .ayuda{font-size:12px;color:var(--gris);margin:3px 0 8px}
 a.ayuda{display:inline-block;color:var(--azul)}
 .dueno{font-family:'Prompt',sans-serif;font-size:20px;font-weight:600;color:var(--azul);margin:4px 0 0}
-.fila.mat>div:first-child{flex:3}
+.fila.mat>div:first-child{flex:3;position:relative}
+.fila.mat .sugs{position:absolute;left:0;right:0;top:100%;z-index:6;box-shadow:0 6px 14px rgba(0,0,0,.15)}
 .sugs{border:1px solid var(--borde);border-top:0;border-radius:0 0 8px 8px;background:#fff}
 .sugs div{padding:10px 11px;border-top:1px solid var(--borde);font-size:15px;cursor:pointer}
 .sugs small{display:block;color:var(--gris);font-size:12px}
