@@ -1,5 +1,5 @@
 // Service worker APP SOLERA — guarda la app en el móvil para que abra sin cobertura
-var CACHE = 'solera-v10';
+var CACHE = 'solera-v11';
 var FICHEROS = ['./', './index.html', './config.js', './manifest.json', './icon-192.png', './icon-512.png',
   './almacen.html', './almacen/', './manifest-almacen.json', './icon-almacen-192.png', './icon-almacen-512.png',
   './lib/zxing-0.21.3.min.js'];   // lector de códigos de barras: dentro de la app para que funcione sin conexión

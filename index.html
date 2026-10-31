@@ -96,6 +96,12 @@ body.ancho main{max-width:1100px}
 /* inventario (solo quien tenga inventario = SI) */
 body:not(.puede-inv) .solo-inv{display:none!important}
 body.es-trabajador .no-trabajador{display:none!important}
+body:not(.es-mateo) .solo-mateo{display:none!important}
+table.rev{width:100%;border-collapse:collapse;margin-top:10px;font-size:14px}
+table.rev th{text-align:left;font-size:12px;color:var(--gris);border-bottom:2px solid var(--borde)}
+table.rev td{border-top:1px solid var(--borde);padding:6px 4px;vertical-align:top}
+table.rev .rev-c{width:80px;padding:6px;font-size:15px}
+table.rev td.dif{color:var(--rojo);font-weight:600}
 .resumen{font-size:14px;color:var(--gris);background:var(--fondo);border-radius:8px;padding:8px 10px;margin:4px 0 6px}
 #movForm.simple:not(.cambiando) #almBloque,#movForm.simple:not(.cambiando) #personaBloque{display:none}
 #movForm.simple .v-marca{display:none}
@@ -275,6 +281,7 @@ a{color:var(--azul)}
     <button class="btn grande sec solo-admin" id="btnEntrada">🧾 COMPRA (admin)</button>
     <button class="btn grande sec solo-admin" id="btnTraspaso">🔁 TRASPASO (admin)</button>
   </div>
+  <div class="tarjeta" id="eanPendientes" style="display:none"></div>
   <div id="movSitioMAT"></div>
   <div class="tarjeta no-trabajador">
     <button class="btn peq sec" id="verStock" style="width:100%">📦 Ver stock</button>
@@ -289,6 +296,7 @@ a{color:var(--azul)}
     <h2 id="movTitulo">Movimiento</h2>
     <div class="ayuda" id="movCuando"></div>
     <!-- vale sencillo (ME LLEVO, DEVUELVO, ENCONTRÉ): almacén y persona ya puestos, en una línea discreta -->
+    <div class="aviso err" id="invEnCurso" style="display:none">⚠️ Inventario en curso en este almacén: este vale quedará marcado para revisarlo al cerrar el inventario.</div>
     <div class="resumen" id="valeResumen" style="display:none"><span id="valeResumenTxt"></span> · <a href="#" id="valeCambiar">cambiar</a></div>
     <div id="almBloque"><label id="almLabel">Almacén</label><select id="valeAlmacen"></select>
       <div id="destinoBloque" style="display:none"><label>Llevar al almacén</label><select id="valeAlmDestino"></select></div>
@@ -344,43 +352,59 @@ a{color:var(--azul)}
   </div>
 </section>
 
-<!-- INVENTARIO (solo inventario = SI): se puede hacer entero sin cobertura -->
+<!-- INVENTARIO: evento que abre y cierra Mateo; cada participante cuenta solo sus categorías (también sin cobertura) -->
 <section class="pantalla" id="p-inventario">
-  <div class="tarjeta">
-    <h2>Inventario</h2>
-    <div class="aviso">⚠️ No borres los datos del navegador ni desinstales la app hasta que el inventario esté enviado.</div>
-    <div class="ayuda listasFecha"></div>
-    <button class="btn peq sec preparar">📥 Preparar para ir sin cobertura</button>
-    <label>Almacén</label><select id="invAlmacen"></select>
-    <div class="ayuda" id="invInfo"></div>
-  </div>
-  <div class="tarjeta" id="invPendientes" style="display:none"></div>
-  <div class="tarjeta">
-    <div class="fila">
-      <button class="btn peq" id="invEscanear">📷 Escanear</button>
-      <button class="btn peq sec" id="invOtro">+ material que no está en la lista</button>
+  <div class="tarjeta solo-mateo" id="invGestion">
+    <h2>Inventarios</h2>
+    <div id="invAbiertos"></div>
+    <button class="btn" id="invNuevoBtn">+ Nuevo inventario</button>
+    <div id="invNuevo" style="display:none">
+      <label>Almacén</label><select id="nvAlmacen"></select>
+      <label>Fecha</label><input type="date" id="nvFecha">
+      <label>Nombre</label><input type="text" id="nvNombre">
+      <label>Quién cuenta cada categoría (cada una, una sola persona)</label>
+      <div id="nvAsig"></div>
+      <button class="btn verde" id="nvGuardar">Abrir inventario</button>
+      <button class="btn peq sec" id="nvCancelar" style="width:100%">Cancelar</button>
     </div>
-    <div class="pestanas"><button id="invTabMat" class="activa">MATERIALES</button><button id="invTabMaq">MÁQUINAS</button></div>
-    <div id="invBloqueMat">
-      <input type="text" id="invBuscar" placeholder="Buscar material (nombre o palabra de obra)…" autocomplete="off">
-      <div id="invOtros"></div>
-      <div id="invLista"></div>
-    </div>
-    <div id="invBloqueMaq" style="display:none">
-      <div class="ayuda">Cuenta las máquinas de cada tipo y su estado. Al cerrar, las que falten se dan de alta con su número.</div>
-      <div class="maq maq-cab"><span></span><span>Bien</span><span>Regular</span><span>Averiada</span></div>
-      <div id="invMaqLista"></div>
-    </div>
-    <input type="file" id="invFotoInput" accept="image/*" style="display:none">
   </div>
-  <div class="tarjeta">
-    <label>Fotos generales (estanterías…)</label>
-    <button class="btn sec peq" id="invFotoGen">📷 Añadir foto</button>
-    <div class="fotos" id="invFotosGen"></div>
-    <label>Comentario</label><input type="text" id="invNota">
-    <button class="btn verde" id="invCerrar">Cerrar inventario</button>
+  <div class="tarjeta" id="invRevision" style="display:none"></div>
+  <div id="invContar" style="display:none">
+    <div class="tarjeta">
+      <h2 id="invTitulo">Inventario</h2>
+      <div class="aviso">⚠️ No borres los datos del navegador ni desinstales la app hasta que el inventario esté enviado.</div>
+      <div class="ayuda listasFecha"></div>
+      <button class="btn peq sec preparar">📥 Preparar para ir sin cobertura</button>
+      <select id="invEvento" style="display:none;margin-top:8px"></select>
+      <div class="ayuda" id="invInfo"></div>
+    </div>
+    <div class="tarjeta">
+      <div class="fila">
+        <button class="btn peq" id="invEscanear">📷 Escanear</button>
+        <button class="btn peq sec" id="invOtro">+ material que no está en la lista</button>
+      </div>
+      <div class="pestanas" id="invPestanas"><button id="invTabMat" class="activa">MATERIALES</button><button id="invTabMaq">MÁQUINAS</button></div>
+      <div id="invBloqueMat">
+        <input type="text" id="invBuscar" placeholder="Buscar material (nombre o palabra de obra)…" autocomplete="off">
+        <div id="invOtros"></div>
+        <div id="invLista"></div>
+      </div>
+      <div id="invBloqueMaq" style="display:none">
+        <div class="ayuda">Cuenta las máquinas de cada tipo y su estado.</div>
+        <div class="maq maq-cab"><span></span><span>Bien</span><span>Regular</span><span>Averiada</span></div>
+        <div id="invMaqLista"></div>
+      </div>
+      <input type="file" id="invFotoInput" accept="image/*" style="display:none">
+    </div>
+    <div class="tarjeta">
+      <label>Fotos generales (estanterías…)</label>
+      <button class="btn sec peq" id="invFotoGen">📷 Añadir foto</button>
+      <div class="fotos" id="invFotosGen"></div>
+      <div id="invEstado"></div>
+      <button class="btn verde" id="invTerminar">He terminado</button>
+    </div>
   </div>
-  <div class="tarjeta" id="invResultado" style="display:none"></div>
+  <div class="tarjeta" id="invNada" style="display:none"><div class="aviso">Ahora no hay ningún inventario abierto en el que participes.</div></div>
 </section>
 
 <!-- VALES (solo admin) -->
@@ -446,8 +470,8 @@ a{color:var(--azul)}
     <div class="aviso" id="eanTxt"></div>
     <label>¿Qué material es?</label>
     <div style="position:relative"><input type="text" id="eanMatTxt" placeholder="Escribe el material…" autocomplete="off"><div class="sugs" id="eanMatSugs" style="display:none"></div></div>
-    <label>¿Qué marca?</label><input type="text" id="eanMarca" placeholder="PANDA, WEBER, SIKA…" autocomplete="off">
-    <label>Nombre del envase (opcional)</label><input type="text" id="eanEnvase" placeholder="Lo que pone en el saco o la caja">
+    <div id="eanMarcaBloque"><label>¿Qué marca?</label><input type="text" id="eanMarca" placeholder="PANDA, WEBER, SIKA…" autocomplete="off">
+    <label>Nombre del envase (opcional)</label><input type="text" id="eanEnvase" placeholder="Lo que pone en el saco o la caja"></div>
   </div>
   <div class="pie"><button class="btn sec" id="eanCancelar">Cancelar</button><button class="btn verde" id="eanGuardar">Guardar</button></div>
 </div>
@@ -683,10 +707,12 @@ function rolActual() {
 function pintarRol() {
   var admin = rolActual() === 'admin';
   document.body.classList.toggle('es-admin', admin);
-  document.body.classList.toggle('puede-inv', puedeInventario());
+  document.body.classList.toggle('puede-inv', verPestanaInventario());   // pestaña Inventario: Mateo, o quien participe en uno abierto
+  document.body.classList.toggle('es-mateo', esMateo());
   document.body.classList.toggle('es-trabajador', rolActual() === 'trabajador');
+  pintarPendientesEan();
   if (!admin && S.pantalla === 'vales') cambiar(MODO_ALMACEN ? 'almacen' : 'parte');
-  if (!puedeInventario() && S.pantalla === 'inventario') cambiar('almacen');
+  if (!verPestanaInventario() && S.pantalla === 'inventario') cambiar('almacen');
 }
 function mostrarApp() {
   pintarRol();
@@ -1115,6 +1141,7 @@ function abrirMov(tipo, clase) {
   // ME LLEVO, DEVUELVO y ENCONTRÉ: material, cantidad, obra y GUARDAR; almacén y persona puestos y discretos; lo demás en "Más"
   var simple = vale && ['SALIDA', 'DEVOLUCION', 'RECUPERADO'].indexOf(tipo) >= 0;
   $('movForm').classList.toggle('simple', simple); $('movForm').classList.remove('cambiando');
+  $('invEnCurso').style.display = 'none';
   $('valeResumen').style.display = simple ? '' : 'none';
   $('movMas').open = her || tipo === 'RECUPERADO' || !simple;   // la foto de la herramienta y el comentario de ENCONTRÉ son obligatorios
   $('movMasTxt').textContent = 'Más: comentario y fotos';
@@ -1143,7 +1170,14 @@ function matsAlmacen() {
 }
 function compraAObra() { return S.movTipo === 'ENTRADA' && $('valeDestino').value === 'OBRA'; }
 // compra: destino ALMACÉN (selector de almacén) u OBRA (buscador de obra)
+function pintarInvEnCurso() {
+  var tipos = ['SALIDA', 'DEVOLUCION', 'RECUPERADO', 'ENTRADA', 'TRASPASO'];
+  var alm = $('valeAlmacen').value, dest = S.movTipo === 'TRASPASO' ? $('valeAlmDestino').value : '';
+  var ver = S.movClase !== 'HER' && tipos.indexOf(S.movTipo) >= 0 && !compraAObra() && (!!inventarioEn(alm) || (dest && !!inventarioEn(dest)));
+  $('invEnCurso').style.display = ver ? '' : 'none';
+}
 function pintarResumen() {
+  pintarInvEnCurso();
   var quien = { SALIDA: 'se lo lleva', DEVOLUCION: 'lo devuelve', RECUPERADO: 'lo encontró' }[S.movTipo] || '';
   $('valeResumenTxt').textContent = nombreAlmacen($('valeAlmacen').value).split(' · ')[0] + (quien ? ' · ' + quien + ' ' + ($('movPersonaTxt').value.trim() || (S.usuario && S.usuario.nombre) || '') : '');
 }
@@ -1157,7 +1191,8 @@ function pintarDestino() {
   $('personaBloque').style.display = 'none';
   $('movTitulo').textContent = d === 'OBRA' ? 'COMPRA A OBRA (no entra en el almacén)' : 'COMPRA (entrada con albarán o ticket)';
 }
-$('valeDestino').onchange = pintarDestino;
+$('valeDestino').onchange = function () { pintarDestino(); pintarInvEnCurso(); };
+$('valeAlmDestino').onchange = pintarInvEnCurso;
 function filaVale() {
   var div = document.createElement('div'); div.className = 'fila vlin'; div.dataset.cod = '';
   div.innerHTML = '<div><div style="position:relative"><input type="text" class="v-txt" placeholder="Material…" autocomplete="off"><div class="sugs" style="display:none"></div></div>' +
@@ -1426,62 +1461,108 @@ document.querySelectorAll('.preparar').forEach(function (b) {
   };
 });
 
-// ---------------------------------------------------------------- inventario (inventario = SI; entero sin cobertura)
-// Borrador en el móvil por usuario y almacén; se guarda cada vez que se toca algo:
-// { almacen, inicio, listas, mats: { COD: [ { marca, contado, foto } ] }, maq: { BAT: { bien, regular, averiada } },
-//   otros: [ { id, nombre, unidad, cantidad, marca, foto } ], fotos: [], nota }
-S.inv = null; S.invTab = 'MAT';
-function claveInv(alm) { return 'inv-' + (S.usuario ? S.usuario.codigo : '') + '-' + (alm || $('invAlmacen').value); }
-function nuevoInv(alm) { return { almacen: alm, inicio: '', listas: S.datos && S.datos.cargadoEn || '', mats: {}, maq: {}, otros: [], fotos: [], nota: '' }; }
-// códigos escaneados por los compañeros que nadie conocía: se asocian aquí
+// ---------------------------------------------------------------- inventario como evento
+// Mateo (999) lo abre con un almacén, fecha, nombre y quién cuenta cada categoría (y las máquinas); solo mientras
+// está abierto, cada participante ve la pestaña Inventario con SUS categorías, sin el stock de la app.
+// Lo contado se guarda en el móvil (borrador) y se entrega con "He terminado" (también sin cobertura: se envía solo).
+// Al cerrar, Mateo revisa, corrige si hace falta y "Cerrar y ajustar" crea el vale AJUSTE en el servidor.
+function esMateo() { return !!S.usuario && String(S.usuario.codigo) === '999'; }
+function inventariosAbiertos() { return (S.datos && S.datos.inventarios) || []; }
+function misInventarios() {
+  var yo = S.usuario ? String(S.usuario.codigo) : '';
+  return inventariosAbiertos().filter(function (i) { return Object.keys(i.asignacion).some(function (c) { return String(i.asignacion[c]) === yo; }); });
+}
+function misCategorias(ev) { var yo = String(S.usuario.codigo); return Object.keys(ev.asignacion).filter(function (c) { return String(ev.asignacion[c]) === yo; }); }
+function inventarioEn(alm) { return inventariosAbiertos().filter(function (i) { return i.almacen === alm; })[0] || null; }
+function verPestanaInventario() { return esMateo() || misInventarios().length > 0; }
+// códigos pendientes de asociar (en Almacén, para Mateo y Gregorio)
 function pintarPendientesEan() {
   var l = ((S.datos && S.datos.eansPendientes) || []).filter(function (p) { return !eanConocido(p.ean); });
   var nombre = function (c) { var m = materialesActivos().filter(function (x) { return x.codigo === c; })[0]; return m ? m.nombre : (c || ''); };
-  $('invPendientes').style.display = l.length ? '' : 'none';
-  $('invPendientes').innerHTML = '<h2>Códigos pendientes de asociar (' + l.length + ')</h2><div class="lista">' + l.map(function (p) {
-    return '<div class="item"><div><b>' + esc(p.ean) + '</b><small>' + (p.sugerido ? 'eligieron ' + esc(nombre(p.sugerido)) : '') + (p.visto_en ? ' · vale ' + esc(p.visto_en) : '') + '</small></div>' +
+  var ver = puedeInventario() && l.length > 0;
+  $('eanPendientes').style.display = ver ? '' : 'none';
+  if (!ver) return;
+  $('eanPendientes').innerHTML = '<h2>Códigos pendientes de asociar (' + l.length + ')</h2><div class="lista">' + l.map(function (p) {
+    return '<div class="item"><div><b>' + esc(p.ean) + '</b><small>' + (p.sugerido ? 'eligieron ' + esc(nombre(p.sugerido)) : '') + (p.visto_en ? ' · ' + esc(p.visto_en) : '') + '</small></div>' +
       '<button class="btn peq" data-ean="' + esc(p.ean) + '" data-sug="' + esc(p.sugerido) + '">Asociar</button></div>';
   }).join('') + '</div>';
 }
-$('invPendientes').onclick = function (e) {
+$('eanPendientes').onclick = function (e) {
   var b = e.target.closest('[data-ean]'); if (!b) return;
   asociarEan(b.dataset.ean, b.dataset.sug).then(function (r) { if (r) pintarPendientesEan(); });
 };
 function abrirInventario() {
-  if (!puedeInventario()) return cambiar('almacen');
-  pintarListasFecha(); pintarPendientesEan(); $('invResultado').style.display = 'none';
-  return almacenGuardado().then(function (c) { opcionesAlmacen('invAlmacen', c); return cargarInv(); });
+  if (!verPestanaInventario()) return cambiar('almacen');
+  pintarListasFecha();
+  if (esMateo()) pintarGestion();
+  var mis = misInventarios();
+  $('invNada').style.display = !mis.length && !esMateo() ? '' : 'none';
+  $('invContar').style.display = mis.length ? '' : 'none';
+  if (!mis.length) return Promise.resolve();
+  $('invEvento').style.display = mis.length > 1 ? '' : 'none';
+  $('invEvento').innerHTML = mis.map(function (i) { return '<option value="' + esc(i.id) + '">' + esc(i.nombre) + '</option>'; }).join('');
+  if (S.inv && mis.some(function (i) { return i.id === S.inv.evento; })) $('invEvento').value = S.inv.evento;
+  return cargarInv();
 }
+$('invEvento').onchange = function () { guardarInv().then(cargarInv); };
+// ---- contar (participante)
+S.inv = null;
+function eventoActual() { var id = $('invEvento').value; return misInventarios().filter(function (i) { return i.id === id; })[0] || misInventarios()[0]; }
+function claveInv(ev) { return 'inv-ev-' + ev + '-' + (S.usuario ? S.usuario.codigo : ''); }
 function cargarInv() {
-  var alm = $('invAlmacen').value;
-  return DB.get('kv', claveInv(alm)).then(function (b) {
-    S.inv = b && b.mats ? b : nuevoInv(alm);
-    $('invNota').value = S.inv.nota || ''; $('invBuscar').value = '';
+  var ev = eventoActual();
+  return DB.get('kv', claveInv(ev.id)).then(function (b) {
+    S.inv = b && b.mats ? b : { evento: ev.id, inicio: '', mats: {}, maq: {}, otros: [], fotos: [], fotosEnviadas: [], terminado: '' };
+    S.invEv = ev; S.invCats = misCategorias(ev);
+    $('invTitulo').textContent = ev.nombre;
+    var mat = S.invCats.some(function (c) { return c !== 'MAQUINAS'; }), maq = S.invCats.indexOf('MAQUINAS') >= 0;
+    $('invPestanas').style.display = mat && maq ? '' : 'none';
+    $('invOtro').style.display = mat ? '' : 'none';
+    if (mat) $('invTabMat').onclick(); else $('invTabMaq').onclick();
+    $('invBuscar').value = '';
     pintarInv(); pintarMaq(); pintarOtros(); pintarFotosEn('invFotosGen', S.inv.fotos); infoInv();
   });
 }
 function tocarInv() {
   if (!S.inv.inicio) { S.inv.inicio = ahoraES(); toast('Inventario empezado. No borres los datos del navegador hasta enviarlo.'); }
+  S.inv.terminado = '';   // si se cambia algo después de terminar, hay que volver a pulsar "He terminado"
   infoInv();
   clearTimeout(S.invT); S.invT = setTimeout(guardarInv, 300);
+  // con cobertura, lo contado va llegando al servidor (sin fotos) para que Mateo vea cómo va
+  clearTimeout(S.invEnvioT); S.invEnvioT = setTimeout(envioParcial, 20000);
 }
-function guardarInv() { return S.inv ? DB.put('kv', S.inv, claveInv(S.inv.almacen)) : Promise.resolve(); }
+function guardarInv() { return S.inv ? DB.put('kv', S.inv, claveInv(S.inv.evento)) : Promise.resolve(); }
+function entregaInv(terminado) {
+  var i = S.inv, lineas = [];
+  Object.keys(i.mats).forEach(function (cod) {
+    i.mats[cod].forEach(function (e) { if (e.contado !== '' && e.contado != null && +e.contado >= 0) lineas.push({ id: e.id, material: cod, marca: String(e.marca || '').trim().toUpperCase(), contado: +e.contado, contadoEn: e.contadoEn || '', ean: e.ean || '' }); });
+  });
+  return { inventario: i.evento, terminado: !!terminado, lineas: lineas,
+    otros: i.otros.map(function (o) { return { id: o.id, nombre: o.nombre, unidad: o.unidad, contado: o.cantidad, marca: o.marca, contadoEn: o.contadoEn || '' }; }),
+    maquinas: Object.keys(i.maq).map(function (p) { var m = i.maq[p]; return { id: m.id, prefijo: p, bien: +m.bien || 0, regular: +m.regular || 0, averiada: +m.averiada || 0, contadoEn: m.contadoEn || '' }; }) };
+}
+function envioParcial() {
+  if (!S.inv || S.inv.terminado || !navigator.onLine) return;
+  DB.get('kv', 'pin-' + S.usuario.codigo).then(function (pin) {
+    if (pin) api('invEntrega', { entrega: entregaInv(false), auth: { codigo: S.usuario.codigo, pin: pin } }).catch(function () {});
+  });
+}
 function contadosInv() {
   var n = 0; Object.keys(S.inv.mats).forEach(function (c) { if (S.inv.mats[c].some(function (e) { return e.contado !== '' && e.contado != null; })) n++; });
   return n;
 }
 function infoInv() {
   var i = S.inv, maq = Object.keys(i.maq).filter(function (p) { var m = i.maq[p]; return (+m.bien || 0) + (+m.regular || 0) + (+m.averiada || 0) > 0; }).length;
-  $('invInfo').textContent = i.inicio
-    ? 'Empezado el ' + i.inicio + ' · ' + contadosInv() + ' material(es), ' + maq + ' tipo(s) de máquina, ' + i.otros.length + ' a mano · borrador guardado en el móvil'
-    : 'Elige el almacén y empieza a contar. Lo que dejes en blanco no se toca.';
+  $('invInfo').textContent = 'Te toca: ' + S.invCats.map(function (c) { return c === 'MAQUINAS' ? 'MÁQUINAS' : c; }).join(', ') + ' · ' + nombreAlmacen(S.invEv.almacen).split(' · ')[0] +
+    (i.inicio ? ' · empezado el ' + i.inicio + ' · ' + contadosInv() + ' material(es), ' + maq + ' tipo(s) de máquina, ' + i.otros.length + ' a mano · borrador guardado en el móvil' : '');
+  $('invEstado').innerHTML = i.terminado ? '<div class="aviso ok">✅ Entregado (' + esc(i.terminado) + '). Si cambias algo, vuelve a pulsar "He terminado".</div>' : '';
 }
-function stockApp(cod) { var m = stockLocal().filter(function (x) { return x.codigo === cod; })[0]; return m ? stockEn(m, S.inv.almacen) : 0; }
-function matsInv() { return materialesActivos().filter(function (m) { return m.en_almacen !== 'NO'; }); }
-function entradas(cod) { return S.inv.mats[cod] && S.inv.mats[cod].length ? S.inv.mats[cod] : [{ marca: '', contado: '' }]; }
+function matsInv() { return materialesActivos().filter(function (m) { return m.en_almacen !== 'NO' && S.invCats.indexOf(m.categoria || '') >= 0; }); }
+function entradas(cod) { return S.inv.mats[cod] && S.inv.mats[cod].length ? S.inv.mats[cod] : [{ id: uid(), marca: '', contado: '' }]; }
 function htmlMat(m) {
   var en = entradas(m.codigo), lleno = en.some(function (e) { return e.contado !== '' && e.contado != null; });
-  return '<div class="inv-mat' + (lleno ? ' inv-lleno' : '') + '" data-cod="' + esc(m.codigo) + '"><div class="inv-cab"><b>' + esc(m.nombre) + '</b><small>app: ' + stockApp(m.codigo) + ' ' + esc(m.unidad) + '</small></div>' +
+  // sin el stock de la app, para no condicionar el recuento
+  return '<div class="inv-mat' + (lleno ? ' inv-lleno' : '') + '" data-cod="' + esc(m.codigo) + '"><div class="inv-cab"><b>' + esc(m.nombre) + '</b><small>' + esc(m.unidad) + '</small></div>' +
     en.map(function (e, i) {
       return '<div class="inv-ent" data-i="' + i + '"><input type="text" class="inv-marca" placeholder="Marca (opcional)" value="' + esc(e.marca || '') + '" autocomplete="off">' +
         '<input type="number" class="inv-c" inputmode="decimal" step="any" min="0" placeholder="Contado" value="' + esc(e.contado == null ? '' : e.contado) + '">' +
@@ -1491,12 +1572,12 @@ function htmlMat(m) {
 function pintarInv() {
   var q = normal($('invBuscar').value).split(/[^a-z0-9,]+/).filter(Boolean), cat = null, h = '';
   matsInv().filter(function (m) {
-    return !q.length || encaja(q, m.nombre) || String(m.alias || '').split(',').some(function (a) { return a.trim() && encaja(q, a); });
+    return !q.length || encaja(q, m.nombre) || String(m.alias || '').split(',').concat(String(m.refs || '').split(',')).some(function (a) { return a.trim() && encaja(q, a); });
   }).slice().sort(function (a, b) { return (a.categoria || 'ZZ').localeCompare(b.categoria || 'ZZ') || a.nombre.localeCompare(b.nombre); }).forEach(function (m) {
     if ((m.categoria || 'OTROS') !== cat) { cat = m.categoria || 'OTROS'; h += '<div class="inv-cat">' + esc(cat) + '</div>'; }
     h += htmlMat(m);
   });
-  $('invLista').innerHTML = h || '<div class="aviso">Ningún material con ese nombre. Si no está en la lista, usa "+ material que no está en la lista".</div>';
+  $('invLista').innerHTML = h || '<div class="aviso">Ningún material con ese nombre en tus categorías. Si no está en la lista, usa "+ material que no está en la lista".</div>';
 }
 function repintarMat(cod) {
   var d = $('invLista').querySelector('.inv-mat[data-cod="' + cod + '"]'), m = matsInv().filter(function (x) { return x.codigo === cod; })[0];
@@ -1506,7 +1587,7 @@ $('invBuscar').oninput = pintarInv;
 $('invLista').oninput = function (e) {
   var d = e.target.closest('.inv-mat'), ent = e.target.closest('.inv-ent'); if (!d || !ent) return;
   var cod = d.dataset.cod, i = +ent.dataset.i;
-  S.inv.mats[cod] = entradas(cod).slice(); S.inv.mats[cod][i] = Object.assign({}, S.inv.mats[cod][i]);
+  S.inv.mats[cod] = entradas(cod).slice(); S.inv.mats[cod][i] = Object.assign({}, S.inv.mats[cod][i], { contadoEn: ahoraES() });   // quién y cuándo: este móvil, ahora
   if (e.target.classList.contains('inv-c')) S.inv.mats[cod][i].contado = e.target.value;
   if (e.target.classList.contains('inv-marca')) S.inv.mats[cod][i].marca = e.target.value;
   d.classList.toggle('inv-lleno', S.inv.mats[cod].some(function (x) { return x.contado !== '' && x.contado != null; }));
@@ -1515,10 +1596,10 @@ $('invLista').oninput = function (e) {
 $('invLista').onclick = function (e) {
   var d = e.target.closest('.inv-mat'); if (!d) return;
   var cod = d.dataset.cod, ent = e.target.closest('.inv-ent');
-  if (e.target.classList.contains('inv-mas')) { S.inv.mats[cod] = entradas(cod).concat([{ marca: '', contado: '' }]); repintarMat(cod); tocarInv(); return; }
+  if (e.target.classList.contains('inv-mas')) { S.inv.mats[cod] = entradas(cod).concat([{ id: uid(), marca: '', contado: '' }]); repintarMat(cod); tocarInv(); return; }
   if (e.target.classList.contains('inv-foto')) { S.invFotoPara = { cod: cod, i: +ent.dataset.i }; $('invFotoInput').click(); return; }
   if (e.target.dataset.quitar) preguntar('¿Quitar esta foto?', 'Quitar', 'Dejarla').then(function (ok) {
-    if (!ok) return; S.inv.mats[cod] = entradas(cod).slice(); S.inv.mats[cod][+ent.dataset.i].foto = null; repintarMat(cod); tocarInv();
+    if (!ok) return; S.inv.mats[cod] = entradas(cod).slice(); S.inv.mats[cod][+ent.dataset.i] = Object.assign({}, S.inv.mats[cod][+ent.dataset.i], { foto: null, fotoId: null }); repintarMat(cod); tocarInv();
   });
 };
 // fotos: una por línea y generales, comprimidas a ~1600 px
@@ -1526,31 +1607,36 @@ $('invFotoInput').onchange = function () {
   var f = this.files && this.files[0], para = S.invFotoPara; this.value = ''; if (!f || !para) return;
   comprimir(f, 1600).then(function (d) {
     if (!d) return toast('No se pudo leer la foto');
-    if (para.otro) { S.inv.otros.forEach(function (o) { if (o.id === para.otro) o.foto = d; }); pintarOtros(); }
+    if (para.otro) { S.inv.otros.forEach(function (o) { if (o.id === para.otro) { o.foto = d; o.fotoId = uid(); } }); pintarOtros(); }
     else if (para.general) { S.inv.fotos.push(d); pintarFotosEn('invFotosGen', S.inv.fotos); }
-    else { S.inv.mats[para.cod] = entradas(para.cod).slice(); S.inv.mats[para.cod][para.i] = Object.assign({}, S.inv.mats[para.cod][para.i], { foto: d }); repintarMat(para.cod); }
+    else { S.inv.mats[para.cod] = entradas(para.cod).slice(); S.inv.mats[para.cod][para.i] = Object.assign({}, S.inv.mats[para.cod][para.i], { foto: d, fotoId: uid() }); repintarMat(para.cod); }
     tocarInv();
   });
 };
 $('invFotoGen').onclick = function () { S.invFotoPara = { general: true }; $('invFotoInput').click(); };
-$('invFotosGen').onclick = function () { setTimeout(tocarInv, 0); };   // al quitar una foto general
-$('invNota').oninput = function () { S.inv.nota = this.value; tocarInv(); };
-$('invAlmacen').onchange = function () { guardarInv().then(function () { recordarAlmacen($('invAlmacen').value); cargarInv(); }); };
-$('invTabMat').onclick = function () { S.invTab = 'MAT'; this.classList.add('activa'); $('invTabMaq').classList.remove('activa'); $('invBloqueMat').style.display = ''; $('invBloqueMaq').style.display = 'none'; };
-$('invTabMaq').onclick = function () { S.invTab = 'MAQ'; this.classList.add('activa'); $('invTabMat').classList.remove('activa'); $('invBloqueMat').style.display = 'none'; $('invBloqueMaq').style.display = ''; };
-// escanear en el inventario: va al material, a la línea de esa marca, y salta al contado
+$('invFotosGen').onclick = function () { setTimeout(tocarInv, 0); };
+$('invTabMat').onclick = function () { this.classList.add('activa'); $('invTabMaq').classList.remove('activa'); $('invBloqueMat').style.display = ''; $('invBloqueMaq').style.display = 'none'; };
+$('invTabMaq').onclick = function () { this.classList.add('activa'); $('invTabMat').classList.remove('activa'); $('invBloqueMat').style.display = 'none'; $('invBloqueMaq').style.display = ''; };
+// escanear: va al material, a la línea de esa marca, y salta al contado. Código desconocido: se elige el material
+// (Mateo y Gregorio pueden asociarlo en ese momento; si no, queda pendiente de asociar)
 $('invEscanear').onclick = function () {
-  leerCodigo().then(function (e) {
+  escanear().then(function (c) {
+    if (!c) return null;
+    var e = eanConocido(c);
+    if (e) return e;
+    return puedeInventario() ? asociarEan(c) : elegirMaterialEan(c, matsInv);
+  }).then(function (e) {
     if (!e) return;
     var m = matsInv().filter(function (x) { return x.codigo === e.material; })[0];
-    if (!m) return toast('Ese material no se cuenta en el almacén (va directo a obra o está dado de baja)');
+    if (!m) return toast('Ese material no está en tus categorías de este inventario');
     var en = entradas(m.codigo).slice(), mc = (e.marca || '').toUpperCase(), i = -1;
     en.forEach(function (x, j) { if (i < 0 && String(x.marca || '').trim().toUpperCase() === mc) i = j; });
-    if (i < 0) { var vacia = en.length === 1 && !en[0].marca && (en[0].contado === '' || en[0].contado == null); if (vacia) { en[0] = { marca: mc, contado: '' }; i = 0; } else { en.push({ marca: mc, contado: '' }); i = en.length - 1; } }
+    if (i < 0) { var vacia = en.length === 1 && !en[0].marca && (en[0].contado === '' || en[0].contado == null); if (vacia) { en[0] = Object.assign({}, en[0], { marca: mc }); i = 0; } else { en.push({ id: uid(), marca: mc, contado: '' }); i = en.length - 1; } }
+    if (e.pendiente) en[i] = Object.assign({}, en[i], { ean: e.ean });
     S.inv.mats[m.codigo] = en; tocarInv();
     $('invTabMat').onclick(); $('invBuscar').value = m.nombre; pintarInv();
     var inp = $('invLista').querySelector('.inv-mat[data-cod="' + m.codigo + '"] .inv-ent[data-i="' + i + '"] .inv-c');
-    if (inp) { inp.focus(); inp.select && inp.select(); }
+    if (inp) { inp.focus(); if (inp.select) inp.select(); }
   });
 };
 // máquinas: por tipo, cuántas bien / regular / averiadas
@@ -1560,12 +1646,12 @@ function pintarMaq() {
   $('invMaqLista').innerHTML = tipos.map(function (t) {
     var m = S.inv.maq[t.prefijo] || {};
     var c = function (k) { return '<input type="number" inputmode="numeric" min="0" step="1" data-p="' + esc(t.prefijo) + '" data-k="' + k + '" value="' + esc(m[k] == null ? '' : m[k]) + '">'; };
-    return '<div class="maq"><div><b>' + esc(t.nombre) + '</b><small>' + esc(t.prefijo) + ' · en la app: ' + enAlmacenTipo(t.prefijo) + ' en almacén</small></div>' + c('bien') + c('regular') + c('averiada') + '</div>';
+    return '<div class="maq"><div><b>' + esc(t.nombre) + '</b><small>' + esc(t.prefijo) + '</small></div>' + c('bien') + c('regular') + c('averiada') + '</div>';
   }).join('') || '<div class="aviso">No hay tipos de máquina en HERR_TIPOS.</div>';
 }
 $('invMaqLista').oninput = function (e) {
   var p = e.target.dataset.p; if (!p) return;
-  S.inv.maq[p] = Object.assign({}, S.inv.maq[p]); S.inv.maq[p][e.target.dataset.k] = e.target.value; tocarInv();
+  S.inv.maq[p] = Object.assign({ id: uid() }, S.inv.maq[p], { contadoEn: ahoraES() }); S.inv.maq[p][e.target.dataset.k] = e.target.value; tocarInv();
 };
 // a mano: material que no está en la lista (queda como OTRO)
 function pintarOtros() {
@@ -1589,73 +1675,157 @@ $('otroCancelar').onclick = function () { $('modalOtro').classList.remove('activ
 $('otroGuardar').onclick = function () {
   var n = $('otroNombre').value.trim(), q = $('otroCant').value;
   if (!n) return toast('Escribe el nombre'); if (q === '' || !(+q >= 0)) return toast('Escribe la cantidad');
-  S.inv.otros.push({ id: uid(), nombre: n.toUpperCase(), unidad: $('otroUnidad').value, cantidad: +q, marca: $('otroMarca').value.trim().toUpperCase(), foto: null });
+  S.inv.otros.push({ id: uid(), nombre: n.toUpperCase(), unidad: $('otroUnidad').value, cantidad: +q, marca: $('otroMarca').value.trim().toUpperCase(), foto: null, contadoEn: ahoraES() });
   $('modalOtro').classList.remove('activa'); pintarOtros(); tocarInv();
 };
-// cerrar: vale AJUSTE (diferencias con el stock del SERVIDOR al recibirlo) + fotos aparte, una a una
-$('invCerrar').onclick = function () {
-  var i = S.inv, alm = i.almacen, lineas = [], fotos = [];
-  var mats = {}; matsInv().forEach(function (m) { mats[m.codigo] = m; });
-  Object.keys(i.mats).forEach(function (cod) {
-    if (!mats[cod]) return;
-    i.mats[cod].forEach(function (e) {
-      if (e.contado === '' || e.contado == null || !(+e.contado >= 0)) return;
-      var mc = String(e.marca || '').trim().toUpperCase(), clave = 'M|' + cod + '|' + mc;
-      lineas.push({ material: cod, materialNombre: mats[cod].nombre, unidad: mats[cod].unidad, marca: mc, contado: +e.contado, stockMovil: stockApp(cod), clave: clave });
-      if (e.foto) fotos.push({ clave: clave, dato: e.foto });
-    });
-  });
-  i.otros.forEach(function (o) {
-    lineas.push({ material: 'OTRO', materialNombre: o.nombre, unidad: o.unidad, marca: o.marca, contado: o.cantidad, clave: 'O|' + o.id });
-    if (o.foto) fotos.push({ clave: 'O|' + o.id, dato: o.foto });
-  });
-  i.fotos.forEach(function (d) { fotos.push({ clave: '', dato: d }); });
-  // máquinas: las que falten (contadas − las que la app tiene en el almacén) se dan de alta con número nuevo
-  S.numerosPendientes = S.numerosPendientes || [];
-  var tipos = {}; ((S.datos && S.datos.herrTipos) || []).forEach(function (t) { tipos[t.prefijo] = t.nombre; });
-  var maquinas = Object.keys(i.maq).map(function (p) {
-    var m = i.maq[p], bien = +m.bien || 0, regular = +m.regular || 0, averiada = +m.averiada || 0, total = bien + regular + averiada;
-    if (!total) return null;
-    var en = enAlmacenTipo(p), altas = [];
-    for (var k = 0; k < total - en; k++) { var c = siguienteNumero(p); S.numerosPendientes.push(c); altas.push(c); }
-    return { prefijo: p, tipo: tipos[p] || p, bien: bien, regular: regular, averiada: averiada, enAlmacen: en, altas: altas };
-  }).filter(Boolean);
-  if (!lineas.length && !maquinas.length) return toast('No has contado nada todavía');
-  var nAltas = maquinas.reduce(function (s, m) { return s + m.altas.length; }, 0);
-  preguntar('¿Cerrar el inventario de ' + nombreAlmacen(alm).split(' · ')[0] + '?\n' + contadosInv() + ' material(es) contado(s), ' + i.otros.length + ' a mano, ' +
-    maquinas.length + ' tipo(s) de máquina (' + nAltas + ' alta(s) nueva(s)) y ' + fotos.length + ' foto(s).\nSe enviará solo cuando haya cobertura.', 'Cerrar inventario', 'Seguir contando').then(function (ok) {
+// "He terminado": la entrega y las fotos van a la cola (se envían solas al volver la cobertura, primero lo contado y luego las fotos)
+$('invTerminar').onclick = function () {
+  var ent = entregaInv(true), i = S.inv;
+  if (!ent.lineas.length && !ent.otros.length && !ent.maquinas.some(function (m) { return m.bien + m.regular + m.averiada > 0; })) return toast('No has contado nada todavía');
+  var fotos = [];
+  Object.keys(i.mats).forEach(function (cod) { i.mats[cod].forEach(function (e) { if (e.foto && e.contado !== '' && e.contado != null) fotos.push({ lineaId: e.id, fotoId: e.fotoId || e.id, dato: e.foto }); }); });
+  i.otros.forEach(function (o) { if (o.foto) fotos.push({ lineaId: o.id, fotoId: o.fotoId || o.id, dato: o.foto }); });
+  i.fotos.forEach(function (d, n) { fotos.push({ lineaId: '', fotoId: i.evento + '-g' + n + '-' + d.length, dato: d }); });
+  fotos = fotos.filter(function (f) { return i.fotosEnviadas.indexOf(f.fotoId) < 0; });
+  preguntar('¿Has terminado tu parte?\n' + ent.lineas.length + ' línea(s) de material, ' + ent.otros.length + ' a mano, ' + ent.maquinas.length + ' tipo(s) de máquina y ' + fotos.length + ' foto(s) nueva(s).\nSe enviará solo cuando haya cobertura.', 'He terminado', 'Seguir contando').then(function (ok) {
     if (!ok) return;
     return DB.get('kv', 'pin-' + S.usuario.codigo).then(function (pin) {
-      if (!pin) return toast('Para cerrar el inventario, sal y vuelve a entrar con tu PIN (con cobertura)');
-      var ahora = new Date().toISOString(), vale = { id: uid(), tipo: 'vale', valeTipo: 'AJUSTE', obra: '', persona: '', nota: i.nota || 'Inventario', fotos: [],
-        lineas: lineas, maquinas: maquinas, inicio: i.inicio || ahoraES(), cierre: ahoraES(), fecha: hoyISO(), hora: ahoraES().slice(11),
-        usuario: S.usuario.nombre, creadoEn: ahora, almacen: alm, almacenDestino: '', nFotos: fotos.length, auth: { codigo: S.usuario.codigo, pin: pin } };
-      var items = [vale].concat(fotos.map(function (f, n) {
-        return { id: uid(), tipo: 'foto', valeId: vale.id, clave: f.clave, dato: f.dato, fotoId: uid(), n: n + 1, total: fotos.length, fecha: vale.fecha, creadoEn: ahora };
-      }));
-      // el stock del móvil pasa a ser lo contado (el servidor lo recalcula al recibirlo)
-      var suma = {}; lineas.forEach(function (l) { if (l.material !== 'OTRO') suma[l.material] = (suma[l.material] || 0) + l.contado; });
-      stockLocal().forEach(function (m) {
-        if (!(m.codigo in suma)) return;
-        m.porAlmacen = m.porAlmacen || {}; m.stock += suma[m.codigo] - (m.porAlmacen[alm] || 0); m.porAlmacen[alm] = suma[m.codigo];
-        m.marcas = m.marcas || {}; m.marcas[alm] = {}; lineas.forEach(function (l) { if (l.material === m.codigo) m.marcas[alm][l.marca] = (m.marcas[alm][l.marca] || 0) + l.contado; });
+      if (!pin) return toast('Para entregar el inventario, sal y vuelve a entrar con tu PIN (con cobertura)');
+      var ahora = new Date().toISOString(), auth = { codigo: S.usuario.codigo, pin: pin };
+      var items = [{ id: uid(), tipo: 'invEntrega', inventario: i.evento, nombre: S.invEv.nombre, entrega: ent, auth: auth, fecha: hoyISO(), hora: ahoraES().slice(11), creadoEn: ahora, nFotos: fotos.length }]
+        .concat(fotos.map(function (f, n) { return { id: uid(), tipo: 'fotoInv', inventario: i.evento, nombre: S.invEv.nombre, lineaId: f.lineaId, fotoId: f.fotoId, dato: f.dato, n: n + 1, total: fotos.length, fecha: hoyISO(), creadoEn: ahora }; }));
+      return items.reduce(function (p, it) { return p.then(function () { return DB.put('cola', it); }); }, Promise.resolve()).then(function () {
+        i.fotosEnviadas = i.fotosEnviadas.concat(fotos.map(function (f) { return f.fotoId; }));
+        i.terminado = ahoraES(); return guardarInv();
+      }).then(function () {
+        infoInv(); actualizarPend();
+        toast(navigator.onLine ? 'Entregando…' : 'Guardado en el móvil: se enviará solo cuando haya cobertura', 'ok');
+        if (navigator.onLine) sincronizar();
       });
-      return items.reduce(function (p, it) { return p.then(function () { return DB.put('cola', it); }); }, Promise.resolve())
-        .then(function () { return DB.put('kv', S.datos, 'datos'); })
-        .then(function () { return DB.del('kv', claveInv(alm)); })
-        .then(function () {
-          var r = $('invResultado');
-          r.innerHTML = '<h2>Inventario cerrado</h2><div class="aviso ok">Guardado en el móvil. Se envía solo cuando haya cobertura: primero los códigos nuevos, luego el inventario y después las fotos, una a una. El progreso se ve en Enviados.</div>' +
-            (nAltas ? '<label>Números para rotular en las máquinas nuevas</label>' + maquinas.filter(function (m) { return m.altas.length; }).map(function (m) {
-              return '<div><b>' + esc(m.tipo) + ':</b> <span class="numeros">' + m.altas.map(esc).join(', ') + '</span></div>';
-            }).join('') + '<div class="ayuda">✍️ Escríbelos con el rotulador. Si al enviarse alguno cambia (otro móvil usó ese número), se avisa en Enviados.</div>' : '');
-          r.style.display = ''; r.scrollIntoView();
-          S.inv = nuevoInv(alm); pintarInv(); pintarMaq(); pintarOtros(); pintarFotosEn('invFotosGen', S.inv.fotos); $('invNota').value = ''; infoInv();
-          actualizarPend(); if (navigator.onLine) sincronizar();
-        });
     });
   });
 };
+// código desconocido (quien no asocia): solo se elige el material; el código queda pendiente de asociar
+function elegirMaterialEan(c, lista) {
+  return new Promise(function (res) {
+    var elegido = null;
+    $('eanTxt').textContent = 'Código no conocido. Elige el material (el código quedará pendiente de asociar).';
+    $('eanMatTxt').value = ''; $('eanMarcaBloque').style.display = 'none';
+    buscador($('eanMatTxt'), $('eanMatSugs'), lista, function (m) { elegido = m; });
+    $('modalEan').classList.add('activa');
+    var fin = function (r) { $('modalEan').classList.remove('activa'); $('eanMarcaBloque').style.display = ''; res(r); };
+    $('eanCancelar').onclick = function () { fin(null); };
+    $('eanGuardar').onclick = function () { if (!elegido) return toast('Elige el material de la lista'); fin({ ean: c, material: elegido.codigo, marca: '', pendiente: true }); };
+  });
+}
+// ---- Mateo: abrir, repartir, revisar y cerrar
+function pintarGestion() {
+  var l = inventariosAbiertos();
+  $('invAbiertos').innerHTML = l.length ? l.map(function (i) {
+    return '<div class="aviso"><b>' + esc(i.nombre) + '</b> · ' + esc(nombreAlmacen(i.almacen).split(' · ')[0]) + '<br>' +
+      i.participantes.map(function (p) { return (i.terminados[p.codigo] ? '✅ ' : '⏳ ') + esc(p.nombre); }).join(' · ') +
+      '<div class="fila"><button class="btn peq" data-rev="' + esc(i.id) + '">Revisar y cerrar</button><button class="btn peq sec" data-edit="' + esc(i.id) + '">Cambiar reparto</button></div></div>';
+  }).join('') : '<div class="ayuda">No hay ningún inventario abierto.</div>';
+}
+$('invAbiertos').onclick = function (e) {
+  var r = e.target.closest('[data-rev]'), ed = e.target.closest('[data-edit]');
+  if (r) revisarInv(r.dataset.rev);
+  if (ed) formInventario(inventariosAbiertos().filter(function (i) { return i.id === ed.dataset.edit; })[0]);
+};
+function categoriasInventario() {
+  var c = {}; materialesActivos().forEach(function (m) { if (m.en_almacen !== 'NO') c[m.categoria || 'OTROS'] = true; });
+  return Object.keys(c).sort().concat(['MAQUINAS']);
+}
+function formInventario(ev) {
+  S.invEditando = ev || null;
+  $('invNuevo').style.display = ''; $('invNuevoBtn').style.display = 'none'; $('invRevision').style.display = 'none';
+  opcionesAlmacen('nvAlmacen', ev ? ev.almacen : (almacenes().filter(function (a) { return a.por_defecto; })[0] || almacenes()[0]).codigo);
+  $('nvAlmacen').disabled = !!ev; $('nvFecha').disabled = !!ev;
+  $('nvFecha').value = hoyISO(); $('nvNombre').value = ev ? ev.nombre : ''; S.nvNombreAuto = !ev; if (!ev) nombreAuto();
+  var trabs = ((S.datos && S.datos.trabajadores) || []);
+  $('nvAsig').innerHTML = categoriasInventario().map(function (c) {
+    var actual = ev ? String(ev.asignacion[c] || '') : '';
+    return '<div class="fila" style="align-items:center;margin-top:6px"><div><b>' + (c === 'MAQUINAS' ? 'MÁQUINAS' : esc(c)) + '</b></div><div><select data-cat="' + esc(c) + '"><option value="">— nadie —</option>' +
+      trabs.map(function (t) { return '<option value="' + esc(t.codigo) + '"' + (String(t.codigo) === actual ? ' selected' : '') + '>' + esc(t.nombre) + '</option>'; }).join('') + '</select></div></div>';
+  }).join('');
+  $('nvGuardar').textContent = ev ? 'Guardar reparto' : 'Abrir inventario';
+}
+function nombreAuto() {
+  if (!S.nvNombreAuto) return;
+  var a = nombreAlmacen($('nvAlmacen').value).split(' · ')[0].replace(/^ALMACÉN /, '').toLowerCase().replace(/(^|\s)\S/g, function (x) { return x.toUpperCase(); });
+  $('nvNombre').value = 'Inventario ' + a + ' ' + fechaES($('nvFecha').value);
+}
+$('nvAlmacen').onchange = nombreAuto; $('nvFecha').onchange = nombreAuto; $('nvNombre').oninput = function () { S.nvNombreAuto = false; };
+$('invNuevoBtn').onclick = function () { formInventario(null); };
+$('nvCancelar').onclick = function () { $('invNuevo').style.display = 'none'; $('invNuevoBtn').style.display = ''; };
+$('nvGuardar').onclick = function () {
+  var asig = {}; $('nvAsig').querySelectorAll('select').forEach(function (s) { if (s.value) asig[s.dataset.cat] = s.value; });
+  if (!Object.keys(asig).length) return toast('Asigna al menos una categoría a alguien');
+  if (!navigator.onLine) return toast('Para abrir el inventario hace falta cobertura');
+  authAdmin().then(function (auth) {
+    return api('invGuardar', { auth: auth, inventario: { id: S.invEditando ? S.invEditando.id : '', almacen: $('nvAlmacen').value, fecha: $('nvFecha').value, nombre: $('nvNombre').value.trim(), asignacion: asig } });
+  }).then(function () {
+    toast(S.invEditando ? 'Reparto guardado' : 'Inventario abierto: a cada participante le sale la pestaña Inventario al actualizar las listas', 'ok');
+    $('invNuevo').style.display = 'none'; $('invNuevoBtn').style.display = '';
+    return cargarDatos(true).then(abrirInventario);
+  }).catch(function (e) { toast(e.message, 'err'); });
+};
+function revisarInv(id) {
+  if (!navigator.onLine) return toast('Para revisar y cerrar hace falta cobertura');
+  var r = $('invRevision'); r.style.display = ''; r.innerHTML = 'Cargando…'; S.revId = id;
+  authAdmin().then(function (auth) { return api('invRevision', { auth: auth, id: id }); }).then(pintarRevision)
+    .catch(function (e) { r.innerHTML = '<div class="aviso err">' + esc(e.message) + '</div>'; });
+}
+function pintarRevision(j) {
+  var inv = j.inventario, h = '<h2>Revisar: ' + esc(inv.nombre) + '</h2>';
+  if (j.pendientes.length) h += '<div class="aviso err">⏳ Sin terminar: ' + j.pendientes.map(function (p) { return 'pendiente: ' + esc(p); }).join(' · ') + '</div>';
+  h += '<div class="lista">' + j.categorias.map(function (c) {
+    return '<div class="item"><div><b>' + (c.categoria === 'MAQUINAS' ? 'MÁQUINAS' : esc(c.categoria)) + '</b><small>' + esc(c.quien) + (c.terminado ? ' · ✅ terminado ' + esc(c.terminado) : ' · ⚠️ sin terminar' + (c.ultimo_envio ? ' (último envío ' + esc(c.ultimo_envio) + ')' : ' (aún no ha enviado nada)')) +
+      (c.categoria !== 'MAQUINAS' ? ' · ' + c.contados + ' de ' + c.materiales + ' materiales contados' : '') + '</small></div></div>';
+  }).join('') + '</div>';
+  var cat = null;
+  h += '<table class="rev"><tr><th>Material</th><th>Contado (quién)</th><th>App</th><th>Dif.</th></tr>' + j.materiales.map(function (m) {
+    var cab = m.categoria !== cat ? (cat = m.categoria, '<tr><td colspan="4" class="inv-cat">' + esc(cat) + '</td></tr>') : '';
+    return cab + '<tr><td><b>' + esc(m.material) + '</b></td><td>' + m.lineas.map(function (l) {
+      return '<div>' + (l.marca ? esc(l.marca) + ': ' : '') + '<input type="number" class="rev-c" data-l="' + esc(l.id) + '" value="' + esc(l.valor) + '" step="any" min="0"> <small>' + esc(l.quien) + (l.contado_en ? ' ' + esc(l.contado_en) : '') +
+        (l.corregido !== '' ? ' · corregido por ' + esc(l.corregido_por) + ' (contó ' + esc(l.contado) + ')' : '') + '</small>' + l.fotos.map(function (u) { return ' <a href="' + esc(u) + '" target="_blank">📷</a>'; }).join('') + '</div>';
+    }).join('') + '</td><td>' + esc(m.stock) + ' ' + esc(m.unidad) + '</td><td class="' + (m.diferencia ? 'dif' : '') + '">' + (m.diferencia > 0 ? '+' : '') + esc(m.diferencia) + '</td></tr>';
+  }).join('') + '</table>';
+  if (j.otros.length) h += '<label>OTRO nuevos (a mano)</label>' + j.otros.map(function (o) { return '<div>⚠️ ' + esc(o.material) + ' · ' + esc(o.valor) + ' ' + esc(o.unidad) + (o.marca ? ' · ' + esc(o.marca) : '') + ' · ' + esc(o.quien) + '</div>'; }).join('');
+  if (j.maquinas.length) h += '<label>Máquinas</label>' + j.maquinas.map(function (q) {
+    var faltan = Math.max(0, q.contado - q.en_almacen);
+    return '<div>' + esc(q.material) + ': ' + q.contado + ' (bien ' + q.bien + ', regular ' + q.regular + ', averiada ' + q.averiada + ') · en la app ' + q.en_almacen + (faltan ? ' · <b>' + faltan + ' alta(s) nueva(s)</b>' : '') + ' · ' + esc(q.quien) + '</div>';
+  }).join('');
+  if (j.vales.length) h += '<label>Vales hechos durante el inventario (revisar)</label>' + j.vales.map(function (v) { return '<div' + (v.anulado ? ' class="anulado"' : '') + '>⚠️ Nº ' + esc(v.numero) + ' · ' + esc(TIPO_VALE[v.tipo] || v.tipo) + ' · ' + esc(v.fecha) + ' ' + esc(v.hora) + ' · ' + esc(v.obra || '') + ' · ' + esc(v.usuario) + '</div>'; }).join('');
+  h += '<button class="btn verde" id="revCerrar">Cerrar y ajustar</button><button class="btn peq sec" id="revAnular" style="width:100%">Anular este inventario (sin ajustar)</button>';
+  $('invRevision').innerHTML = h;
+  $('revCerrar').onclick = function () {
+    preguntar('¿Cerrar "' + inv.nombre + '" y ajustar el stock?' + (j.pendientes.length ? '\n⚠️ Aún hay gente sin terminar: lo que no hayan enviado no contará.' : '') + '\nEl ajuste se calcula con el stock de ahora.', 'Cerrar y ajustar', 'Todavía no').then(function (ok) {
+      if (!ok) return;
+      authAdmin().then(function (auth) { return api('invCerrar', { auth: auth, id: inv.id }); }).then(function (r) {
+        var altas = r.altas || [];
+        $('invRevision').innerHTML = '<h2>Inventario cerrado</h2><div class="aviso ok">Vale AJUSTE ' + esc(r.numero) + ' con ' + r.n_lineas + ' línea(s). Se puede anular desde Vales.</div>' +
+          (altas.length ? '<label>Números para rotular en las máquinas nuevas</label><div class="numeros">' + altas.map(function (a) { return esc(a.codigo); }).join(', ') + '</div><div class="ayuda">✍️ Escríbelos con el rotulador.</div>' : '');
+        cargarDatos(true).then(function () { pintarGestion(); });
+      }).catch(function (e) { toast(e.message, 'err'); });
+    });
+  };
+  $('revAnular').onclick = function () {
+    preguntar('¿Anular "' + inv.nombre + '"? No se ajusta nada y a los participantes les desaparece la pestaña.', 'Anular', 'No').then(function (ok) {
+      if (!ok) return;
+      authAdmin().then(function (auth) { return api('invAnular', { auth: auth, id: inv.id }); }).then(function () {
+        $('invRevision').style.display = 'none'; toast('Inventario anulado'); cargarDatos(true).then(pintarGestion);
+      }).catch(function (e) { toast(e.message, 'err'); });
+    });
+  };
+}
+// corregir una cantidad antes de cerrar (queda anotado quién la cambió)
+$('invRevision').addEventListener('change', function (e) {
+  if (!e.target.classList.contains('rev-c')) return;
+  authAdmin().then(function (auth) { return api('invCorregir', { auth: auth, id: S.revId, lineaId: e.target.dataset.l, contado: e.target.value }); })
+    .then(function () { toast('Corregido', 'ok'); revisarInv(S.revId); }).catch(function (er) { toast(er.message, 'err'); });
+});
+
 $('btnEntrada').onclick = function () { abrirMov('ENTRADA'); };
 $('btnTraspaso').onclick = function () { abrirMov('TRASPASO'); };
 $('btnSalida').onclick = function () { abrirMov('SALIDA'); };
@@ -1694,7 +1864,7 @@ $('movGuardar').onclick = function () {
 // ---------------------------------------------------------------- vales (solo admin; el servidor comprueba el rol)
 function authAdmin() {
   return DB.get('kv', 'pin-' + S.usuario.codigo).then(function (pin) {
-    if (!pin) throw new Error('Sal y vuelve a entrar con tu PIN para ver los vales');
+    if (!pin) throw new Error('Sal y vuelve a entrar con tu PIN (con cobertura)');
     return { codigo: S.usuario.codigo, pin: pin };
   });
 }
@@ -1768,13 +1938,25 @@ function sincronizar() {
   sincronizando = true;
   return DB.all('cola').then(function (cola) {
     // orden: EAN nuevos, luego partes y vales (el inventario), y al final las fotos, una a una
-    var prio = function (it) { return it.tipo === 'eans' ? 0 : it.tipo === 'foto' ? 2 : 1; };
+    var prio = function (it) { return it.tipo === 'eans' ? 0 : it.tipo === 'foto' || it.tipo === 'fotoInv' ? 2 : 1; };
     cola.sort(function (a, b) { return prio(a) - prio(b) || (a.creadoEn < b.creadoEn ? -1 : a.creadoEn > b.creadoEn ? 1 : (a.n || 0) - (b.n || 0)); });
     var p = Promise.resolve(), enviados = 0, pendientes = {};
-    cola.forEach(function (it) { if (it.tipo === 'vale') pendientes[it.id] = true; });
+    cola.forEach(function (it) { if (it.tipo === 'vale') pendientes[it.id] = true; if (it.tipo === 'invEntrega') pendientes['inv:' + it.inventario] = true; });
     cola.forEach(function (it) {
       p = p.then(function () {
         if (it.tipo === 'foto' && pendientes[it.valeId]) return;   // la foto espera a que llegue su inventario
+        if (it.tipo === 'fotoInv' && pendientes['inv:' + it.inventario]) return;
+        if (it.tipo === 'invEntrega') return api('invEntrega', { entrega: it.entrega, auth: it.auth }).then(function () {
+          delete pendientes['inv:' + it.inventario]; toast('Inventario entregado: ' + it.nombre, 'ok');
+          return DB.put('hist', { id: it.id, tipo: 'vale', fecha: it.fecha, numero: '', resumen: 'Inventario entregado · ' + it.nombre + ' · ' + it.entrega.lineas.length + ' línea(s)', hora: it.hora, enviadoEn: new Date().toISOString() })
+            .then(function () { return DB.del('cola', it.id); });
+        }).catch(function (e) {
+          if (navigator.onLine && !/fetch|network|Failed/i.test(e.message)) toast('El inventario no se ha entregado: ' + e.message, 'err');
+          it.error = e.message; it.intentos = (it.intentos || 0) + 1; return DB.put('cola', it);
+        });
+        if (it.tipo === 'fotoInv') return api('fotoInv', { foto: { inventario: it.inventario, lineaId: it.lineaId, fotoId: it.fotoId, dato: it.dato } })
+          .then(function () { return DB.del('cola', it.id).then(function () { if (S.pantalla === 'enviados') pintarEnviados(); }); })
+          .catch(function (e) { it.error = e.message; it.intentos = (it.intentos || 0) + 1; return DB.put('cola', it); });
         if (it.tipo === 'eans') return api('eans', { eans: it.eans, auth: it.auth }).then(function (j) {
           var subidos = it.eans.map(function (e) { return e.ean; });
           S.eansLocal = (S.eansLocal || []).filter(function (e) { return subidos.indexOf(e.ean) < 0; });
@@ -1833,15 +2015,16 @@ function pintarEnviados() {
   Promise.all([DB.all('cola'), DB.all('hist')]).then(function (r) {
     var c = r[0], hist = {}; r[1].forEach(function (h) { hist[h.id] = h; });
     // las fotos van agrupadas por inventario: "Inventario A0012: 12 de 30 fotos subidas"
-    var grupos = {}, fotos = c.filter(function (it) { return it.tipo === 'foto'; });
-    fotos.forEach(function (f) { (grupos[f.valeId] = grupos[f.valeId] || []).push(f); });
+    var grupos = {}, fotos = c.filter(function (it) { return it.tipo === 'foto' || it.tipo === 'fotoInv'; });
+    fotos.forEach(function (f) { var k = f.tipo === 'fotoInv' ? 'inv:' + f.inventario : f.valeId; (grupos[k] = grupos[k] || []).push(f); });
     var htmlFotos = Object.keys(grupos).map(function (id) {
       var g = grupos[id], total = g[0].total, h = hist[id], err = g.filter(function (f) { return f.error; })[0];
-      return '<div class="item"><div><b>Inventario ' + (h && h.numero ? esc(h.numero) : '(aún sin enviar)') + ': ' + (total - g.length) + ' de ' + total + ' fotos subidas</b><small>' +
+      return '<div class="item"><div><b>' + (g[0].tipo === 'fotoInv' ? esc(g[0].nombre) : 'Inventario ' + (h && h.numero ? esc(h.numero) : '(aún sin enviar)')) + ': ' + (total - g.length) + ' de ' + total + ' fotos subidas</b><small>' +
         (err ? '<span style="color:var(--rojo)">' + esc(err.error) + ' · se reintenta sola</span>' : 'se suben una a una cuando hay cobertura') + '</small></div><span class="chip pend">fotos</span></div>';
     }).join('');
-    c = c.filter(function (it) { return it.tipo !== 'foto'; });
+    c = c.filter(function (it) { return it.tipo !== 'foto' && it.tipo !== 'fotoInv'; });
     $('colaLista').innerHTML = (c.length || htmlFotos) ? htmlFotos + c.map(function (it) {
+      if (it.tipo === 'invEntrega') return '<div class="item"><div><b>Inventario · ' + esc(it.nombre) + ' · He terminado · ' + it.entrega.lineas.length + ' línea(s)</b><small>' + fechaES(it.fecha) + ' ' + esc(it.hora || '') + (it.error ? ' · <span style="color:var(--rojo)">' + esc(it.error) + '</span>' : '') + '</small></div><span class="chip pend">pendiente</span></div>';
       if (it.tipo === 'eans') return '<div class="item"><div><b>Código de barras nuevo · ' + esc(it.eans.map(function (e) { return e.ean + (e.marca ? ' (' + e.marca + ')' : ''); }).join(', ')) + '</b><small>' + fechaES(it.fecha) + (it.error ? ' · <span style="color:var(--rojo)">' + esc(it.error) + '</span>' : '') + '</small></div><span class="chip pend">pendiente</span></div>';
       return '<div class="item"><div><b>' + (it.tipo === 'parte' ? 'Parte · ' + esc(it.obraNombre) : it.tipo === 'vale' ? (it.valeTipo === 'AJUSTE' ? 'Inventario · ' + esc(nombreAlmacen(it.almacen).split(' · ')[0]) + ' · ' + (it.nFotos || 0) + ' foto(s)' : 'Vale · ' + TIPO_VALE[it.valeTipo]) + ' · ' + it.lineas.length + ' línea(s)' + (it.obra ? ' · ' + esc(it.obra) : '') : (it.clase === 'HER' ? 'Herramientas · ' : 'Almacén · ') + esc(it.movTipo) + ' ' + it.cantidad + ' ' + esc(it.materialNombre || it.material)) + '</b><small>' + fechaES(it.fecha) + (it.hora ? ' ' + esc(it.hora) : '') + (it.error ? ' · <span style="color:var(--rojo)">' + esc(it.error) + '</span>' : '') + '</small></div>' + (it.error ? '<button class="chip err descartar" data-id="' + esc(it.id) + '">quitar</button>' : '<span class="chip pend">pendiente</span>') + '</div>';
     }).join('') : '<div class="aviso ok">Todo enviado.</div>';
