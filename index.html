@@ -134,6 +134,18 @@ body.ancho main{max-width:1100px}
 body:not(.puede-inv) .solo-inv{display:none!important}
 body.es-trabajador .no-trabajador{display:none!important}
 body:not(.ver-stock) .solo-stock{display:none!important}
+body:not(.ver-resumen) .solo-resumen{display:none!important}
+.res-tarjetas{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px;margin-top:10px}
+.res-t{display:block;text-align:left;border:1px solid var(--borde);border-radius:10px;background:#fff;padding:12px;min-height:96px;cursor:pointer}
+.res-t b{display:block;font-size:30px;font-family:'Prompt',sans-serif;line-height:1.1}
+.res-t span{display:block;font-weight:600;margin-top:2px}
+.res-t small{display:block;color:var(--gris);font-size:12px;margin-top:4px;overflow-wrap:anywhere}
+.res-t.hay{border-color:var(--ambar);background:#fff8e1}.res-t.mal{border-color:#ef9a9a;background:#ffebee}.res-t.mal b{color:var(--rojo)}
+table.res-movs{width:100%;border-collapse:collapse;font-size:14px}
+table.res-movs td,table.res-movs th{text-align:left;padding:6px 4px;border-bottom:1px solid var(--borde);vertical-align:top}
+table.res-movs tr.anulado td{text-decoration:line-through;color:var(--gris)}
+@media (max-width:600px){table.res-movs thead{display:none}table.res-movs td{display:inline;border:0;padding:2px 4px 2px 0}table.res-movs tr{display:block;border-bottom:1px solid var(--borde);padding:6px 0}}
+.vale-l1{font-size:14px;margin-top:2px}
 body:not(.es-mateo) .solo-mateo{display:none!important}
 html,body{overflow-x:hidden}
 .lista .item>div:first-child{min-width:0;flex:1}
@@ -545,10 +557,23 @@ a{color:var(--azul)}
   <div class="tarjeta" id="invNada" style="display:none"><div class="aviso">Ahora no hay ningún inventario abierto en el que participes.</div></div>
 </section>
 
+<!-- RESUMEN (admin, herramientas = SI o inventario = SI): la primera en el ordenador -->
+<section class="pantalla" id="p-resumen">
+  <div class="tarjeta">
+    <div class="fila" style="align-items:center"><h2 style="margin:0">Resumen</h2><button class="btn peq sec" id="resumenActualizar" style="flex:0 0 auto">↻ Actualizar</button></div>
+    <div class="res-tarjetas" id="resTarjetas"><div class="aviso">Cargando…</div></div>
+  </div>
+  <div class="tarjeta">
+    <h2>Últimos 20 movimientos</h2>
+    <div id="resMovs"></div>
+  </div>
+</section>
+
 <!-- VALES (solo admin) -->
 <section class="pantalla" id="p-vales">
   <div class="tarjeta">
     <h2>Vales de almacén</h2>
+    <label>Buscar</label><input type="text" id="fBuscar" placeholder="Nº de vale, material, marca, comentario o proveedor…">
     <div class="filtros">
       <div><label>Desde</label><input type="date" id="fDesde"></div>
       <div><label>Hasta</label><input type="date" id="fHasta"></div>
@@ -574,6 +599,7 @@ a{color:var(--azul)}
     <button class="btn peq sec preparar">📥 Preparar para ir sin cobertura</button>
   </div>
   <div class="tarjeta">
+    <div class="ayuda" id="duenoMovil"></div>
     <label class="interruptor"><input type="checkbox" id="letraGrande"> Letra grande (todo un 15 % más grande)</label>
   </div>
   <div class="tarjeta">
@@ -585,6 +611,7 @@ a{color:var(--azul)}
 </main>
 
 <nav id="nav">
+  <button data-p="resumen" class="solo-resumen"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Resumen</button>
   <button data-p="parte" class="activa"><svg viewBox="0 0 24 24"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h5"/></svg>Parte</button>
   <button data-p="almacen"><svg viewBox="0 0 24 24"><path d="M3 9l9-6 9 6v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/><path d="M8 21v-8h8v8"/></svg>Almacén</button>
   <button data-p="herramientas"><svg viewBox="0 0 24 24"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.4-.6-.6-2.4z"/></svg>Herramientas</button>
@@ -661,7 +688,7 @@ a{color:var(--azul)}
 'use strict';
 var CFG = window.SOLERA_CONFIG || {};
 // número de esta versión de la app (el mismo que VERSION_SERVIDOR de Code.gs: se sube a la vez en cada publicación)
-var VERSION_WEB = 21;
+var VERSION_WEB = 22;
 var $ = function (id) { return document.getElementById(id); };
 
 // ---------------------------------------------------------------- almacenamiento local (IndexedDB)
@@ -711,6 +738,13 @@ function preguntar(texto, si, no) {
   });
 }
 // la huella solo en móviles, no en el ordenador
+// código del dueño del móvil (kv 'dueno'), que va con cada vale, movimiento y andamios como movil_de
+function movilDe() { return S.duenoMovil ? String(S.duenoMovil.codigo) : ''; }
+function pintarDueno() {
+  var d = S.duenoMovil, u = S.usuario;
+  $('duenoMovil').innerHTML = d ? 'Este móvil es de <b>' + esc(d.nombre) + '</b>' + (u && String(u.codigo) !== String(d.codigo) ? ' <button class="btn peq sec" id="esMio">Este móvil es mío</button>' : '') : '';
+  var b = document.getElementById('esMio'); if (b) b.onclick = function () { S.duenoMovil = S.usuario; DB.put('kv', S.usuario, 'dueno').then(function () { pintarDueno(); toast('Ahora este móvil es de ' + S.usuario.nombre, 'ok'); }); };
+}
 function huellaActiva() { return !!(S.datos && S.datos.huella); }   // CONFIG HUELLA = SI
 function esMovil() { return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && /Macintosh/.test(navigator.userAgent)); }
 // errores de validación junto al campo: en rojo, aviso debajo y scroll hasta él (el toast queda para avisos del servidor)
@@ -772,6 +806,8 @@ function pintarNoLista(caja, sugs, elegir, extra) {
   var a = caja.querySelector('.nl-extra'); if (a) a.onclick = function (e) { e.preventDefault(); caja.innerHTML = ''; extra.fn(); };
 }
 function aviso(id, msg, tipo) { $(id).innerHTML = msg ? '<div class="aviso ' + (tipo || '') + '">' + msg + '</div>' : ''; }
+// "dd/mm/aaaa hh:mm" (S.movCuando, S.dqCuando, S.andCuando) → "aaaa-mm-dd": la fecha es la de cuando se abrió el formulario
+function isoDe(cuando) { var m = String(cuando || '').match(/^(\d{2})\/(\d{2})\/(\d{4})/); return m ? m[3] + '-' + m[2] + '-' + m[1] : hoyISO(); }
 function hoyISO() { var d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
 function fechaES(iso) { var m = String(iso || '').match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? m[3] + '/' + m[2] + '/' + m[1] : String(iso || ''); }
 function ahoraES() { var d = new Date(), z = function (n) { return String(n).padStart(2, '0'); }; return z(d.getDate()) + '/' + z(d.getMonth() + 1) + '/' + d.getFullYear() + ' ' + z(d.getHours()) + ':' + z(d.getMinutes()); }
@@ -824,9 +860,10 @@ function entrar() {
   if (pin.length < 4) return aviso('loginAviso', 'Escribe tu PIN de 4 cifras.', 'err');
   var btn = $('btnEntrar'); btn.disabled = true;
   var terminar = function (u) {
-    S.usuario = u; S.dueno = u; S.cambiandoPersona = false; pin = ''; pintarPin();
-    // el móvil queda asociado a quien entra; se ofrece la huella si el móvil la tiene y aún no está puesta
-    DB.put('kv', u, 'dueno').then(function () { return DB.put('kv', u, 'usuario'); }).then(function () { mostrarApp(); ofrecerHuella(u); if (navigator.onLine) cargarDatos(true); });
+    S.usuario = u; S.cambiandoPersona = false; pin = ''; pintarPin();
+    // el móvil queda asociado a quien entra la primera vez (su dueño); si entra otro, el dueño no cambia
+    // (se cambia en Enviados: "Este móvil es mío"). Se ofrece la huella si el móvil la tiene y aún no está puesta
+    DB.get('kv', 'dueno').then(function (d) { if (!d) { S.duenoMovil = u; return DB.put('kv', u, 'dueno'); } }).then(function () { S.dueno = S.duenoMovil || u; return DB.put('kv', u, 'usuario'); }).then(function () { mostrarApp(); ofrecerHuella(u); if (navigator.onLine) cargarDatos(true); });
   };
   var pinIntento = pin;
   api('login', { codigo: codigo, pin: pin }).then(function (j) { DB.put('kv', pinIntento, 'pin-' + codigo); terminar(j.trabajador); })
@@ -928,12 +965,18 @@ function rolActual() {
 }
 // pestaña Parte: si CONFIG PARTES_ACTIVOS = NO, solo el admin (y nunca con ?modo=almacen)
 function verPartes() { return !MODO_ALMACEN && (!!(S.datos && S.datos.partes_activos) || rolActual() === 'admin'); }
-function pantallaInicio() { return verPartes() ? 'parte' : 'almacen'; }
+function pantallaInicio() { return !esMovil() && puedeResumen() ? 'resumen' : verPartes() ? 'parte' : 'almacen'; }   // en el ordenador, el Resumen primero
 // "Ver stock": admin y quien tenga ver_stock = SI
 function puedeVerStock() {
   if (!S.usuario) return false;
   var t = ((S.datos && S.datos.trabajadores) || []).filter(function (x) { return String(x.codigo) === String(S.usuario.codigo); })[0];
   return rolActual() === 'admin' || !!(t && t.ver_stock);
+}
+// Resumen: admin, herramientas = SI o inventario = SI
+function puedeResumen() {
+  if (!S.usuario) return false;
+  var t = ((S.datos && S.datos.trabajadores) || []).filter(function (x) { return String(x.codigo) === String(S.usuario.codigo); })[0];
+  return rolActual() === 'admin' || !!(t && (t.herramientas || t.inventario));
 }
 function pintarModo() {
   document.body.classList.toggle('sin-partes', !verPartes());
@@ -943,6 +986,8 @@ function pintarRol() {
   var admin = rolActual() === 'admin';
   pintarModo();
   document.body.classList.toggle('ver-stock', puedeVerStock());
+  document.body.classList.toggle('ver-resumen', puedeResumen());
+  if (!puedeResumen() && S.pantalla === 'resumen') cambiar(pantallaInicio());
   if (!verPartes() && S.pantalla === 'parte') cambiar('almacen');
   document.body.classList.toggle('es-admin', admin);
   document.body.classList.toggle('puede-inv', verPestanaInventario());   // pestaña Inventario: Mateo, o quien participe en uno abierto
@@ -965,8 +1010,10 @@ function cambiar(p) {
   document.querySelectorAll('.pantalla').forEach(function (s) { s.classList.toggle('activa', s.id === 'p-' + p); });
   document.querySelectorAll('nav button').forEach(function (b) { b.classList.toggle('activa', b.dataset.p === p); });
   if (p === 'almacen') pintarStock();
+  if (p === 'resumen') cargarResumen();
+  if (p === 'enviados') pintarDueno();
   if (p === 'herramientas') { pintarHerr(); pintarHerrGestion(); }
-  document.body.classList.toggle('ancho', p === 'vales' || p === 'inventario');
+  document.body.classList.toggle('ancho', p === 'vales' || p === 'inventario' || p === 'resumen');
   if (p === 'inventario') abrirInventario();   // la pantalla de vales, más ancha en el ordenador
   if (p === 'vales' && !S.vales) {   // al abrirla, los últimos 30 días sin pulsar Buscar
     var d = new Date(); d.setDate(d.getDate() - 30);
@@ -1407,7 +1454,7 @@ $('herrLista').onclick = function (e) {
     .then(function (j) {
       h.innerHTML = j.historial.length ? j.historial.map(function (m) {
         return '<div' + (m.anulado ? ' class="anulado"' : '') + '><b>' + esc(m.fecha) + (m.hora ? ' ' + esc(m.hora) : '') + ' · ' + esc(nombres[m.tipo] || m.tipo) + (m.cantidad !== '' ? ' ' + esc(m.cantidad) : '') + '</b>' +
-          (m.quien ? ' · ' + esc(m.quien) : '') + ' · ' + esc(m.de || '—') + ' → ' + esc(m.a || '—') + (m.numero ? ' · Nº ' + esc(m.numero) : '') + (m.nota ? ' · ' + esc(m.nota) : '') + (m.anulado ? ' · ANULADO' : '') + '</div>';
+          (m.quien ? ' · ' + esc(m.quien) : '') + (m.movil_de ? ' · <i>anotado desde el móvil de ' + esc(m.movil_de) + '</i>' : '') + ' · ' + esc(m.de || '—') + ' → ' + esc(m.a || '—') + (m.numero ? ' · Nº ' + esc(m.numero) : '') + (m.nota ? ' · ' + esc(m.nota) : '') + (m.anulado ? ' · ANULADO' : '') + '</div>';
       }).join('') : 'Sin movimientos.';
     }).catch(function (er) { h.textContent = er.message; });
 };
@@ -1559,7 +1606,7 @@ function guardarVale() {
   var obraSel = $('movObra'), obraTxt = conObra ? obraSel.options[obraSel.selectedIndex].text : '';
   var vale = { id: uid(), tipo: 'vale', valeTipo: tipo, obra: obraTxt, persona: conObra && !compra ? ($('movPersonaTxt').value.trim() || S.usuario.nombre) : '',
     nota: nota, fotos: S.movFotos.slice(), albaranArchivo: compra ? S.albaranArchivo : null, proveedor: compra ? proveedor : '',
-    albaran: compra ? albaran : '', tipoDoc: compra ? $('valeTipoDoc').value : '', lineas: lineas, fecha: hoyISO(), hora: S.movCuando.slice(11), usuario: S.usuario.nombre, creadoEn: new Date().toISOString(),
+    albaran: compra ? albaran : '', tipoDoc: compra ? $('valeTipoDoc').value : '', lineas: lineas, fecha: isoDe(S.movCuando), hora: S.movCuando.slice(11), usuario: S.usuario.nombre, creadoEn: new Date().toISOString(), movilDe: movilDe(),
     almacen: almacen, almacenDestino: destino };
   if (almacen) recordarAlmacen(almacen);
   if (conObra && tipo !== 'COMPRA_OBRA') DB.put('kv', $('movObra').value, 'ultimaObraVale-' + S.usuario.codigo);
@@ -2287,7 +2334,7 @@ $('andGuardar').onclick = function () {
   if (!S.andFotos.length) return errorEn($('andFoto'), 'Haz la foto general del conjunto');
   var obra = modo === 'ENTRADA' ? '' : $('andObra').options[$('andObra').selectedIndex].text, alm = $('andAlmacen').value;
   var mov = { id: uid(), tipo: modo, obra: obra, almacen: alm, persona: modo === 'ENTRADA' ? '' : ($('andPersona').value.trim() || S.usuario.nombre), usuario: S.usuario.nombre,
-    lineas: lineas, foto: S.andFotos[0], fecha: hoyISO(), hora: S.andCuando.slice(11) };
+    lineas: lineas, foto: S.andFotos[0], fecha: isoDe(S.andCuando), hora: S.andCuando.slice(11), movilDe: movilDe() };
   recordarAlmacen(alm);
   // cantidades del móvil hasta que llegue lo del servidor
   lineas.forEach(function (l) {
@@ -2457,7 +2504,7 @@ $('dqGuardar').onclick = function () {
   var nombre = alta ? S.dqCodigoNuevo + ' · ' + S.dqAlta.nombre : h.nombre;
   var mov = { id: uid(), tipo: 'mov', clase: 'HER', persona: tipo === 'ENTRADA' ? '' : persona, movTipo: tipo, material: alta ? '' : String(h.codigo), materialNombre: alta ? S.dqAlta.nombre : h.nombre,
     tipoHer: alta ? S.dqAlta.prefijo : '', codigoNuevo: alta ? S.dqCodigoNuevo : '', almacen: almacen, fotoPlaca: alta && S.dqPlaca[0] || '', hora: S.dqCuando.slice(11), cantidad: 1,
-    obra: tipo === 'SALIDA' || tipo === 'DEVOLUCION' ? obra : '', nota: nota, fotos: S.dqFotos.slice(), fecha: hoyISO(), usuario: yo, creadoEn: new Date().toISOString() };
+    obra: tipo === 'SALIDA' || tipo === 'DEVOLUCION' ? obra : '', nota: nota, fotos: S.dqFotos.slice(), fecha: isoDe(S.dqCuando), usuario: yo, creadoEn: new Date().toISOString(), movilDe: movilDe() };
   // el móvil ya la enseña donde queda, hasta que llegue lo del servidor
   var estado = { ASIGNAR: 'CON PERSONA', SALIDA: 'EN OBRA', AVERIA: 'AVERIADA' }[tipo] || 'DISPONIBLE';
   var pon = function (x) {
@@ -2515,7 +2562,7 @@ function buscarVales() {
   if (!navigator.onLine) return toast('Los vales se ven con conexión');
   $('valesLista').innerHTML = '<div class="aviso">Buscando…</div>';
   authAdmin().then(function (auth) {
-    return api('vales', { auth: auth, filtros: { desde: $('fDesde').value, hasta: $('fHasta').value, trabajador: $('fTrab').value.trim(), tipo: $('fTipo').value, almacen: $('fAlm').value, obra: $('fObra').value.trim() } });
+    return api('vales', { auth: auth, filtros: { desde: $('fDesde').value, hasta: $('fHasta').value, trabajador: $('fTrab').value.trim(), tipo: $('fTipo').value, almacen: $('fAlm').value, obra: $('fObra').value.trim(), buscar: $('fBuscar').value.trim() } });
   }).then(function (j) { S.vales = j.vales; pintarVales(); })
     .catch(function (e) { $('valesLista').innerHTML = '<div class="aviso err">' + esc(e.message) + '</div>'; });
 }
@@ -2531,11 +2578,13 @@ function pintarVales() {
   var v = S.vales || [];
   $('valesLista').innerHTML = v.length ? v.map(function (x, i) {
     return '<div class="item toca vale-item' + (x.anulado ? ' anulado' : '') + '" data-i="' + i + '"><div><b>Nº ' + esc(x.numero) + ' · ' + esc(TIPO_VALE[x.tipo] || x.tipo) + ' · ' + esc(x.fecha) + ' ' + esc(x.hora) + '</b><small>' +
-      lugarVale(x) + (x.proveedor ? ' · ' + esc(x.proveedor) : '') + (x.persona ? ' · ' + esc(x.persona) : '') + ' · anotado por ' + esc(x.usuario) + ' · ' + x.n_lineas + ' línea(s)' + (x.fotos.length ? ' · 📷 ' + x.fotos.length : '') + '</small></div>' +
+      lugarVale(x) + (x.proveedor ? ' · ' + esc(x.proveedor) : '') + (x.persona ? ' · ' + esc(x.persona) : '') + ' · anotado por ' + esc(x.usuario) + (x.movil_de ? ' <i>desde el móvil de ' + esc(x.movil_de) + '</i>' : '') + ' · ' + x.n_lineas + ' línea(s)' + (x.fotos.length ? ' · 📷 ' + x.fotos.length : '') + '</small>' +
+      (x.lineas.length ? '<div class="vale-l1">' + esc(x.lineas[0].material) + (x.lineas[0].marca ? ' · ' + esc(x.lineas[0].marca) : '') + ' · ' + esc(x.lineas[0].cantidad) + ' ' + esc(x.lineas[0].unidad || '') + (x.lineas.length > 1 ? ' <small>(+' + (x.lineas.length - 1) + ' más)</small>' : '') + '</div>' : '') + '</div>' +
       (x.anulado ? '<span class="chip anul">ANULADO</span>' : '') + '</div>';
   }).join('') : '<div class="aviso">No hay vales con esos filtros.</div>';
 }
 $('btnBuscarVales').onclick = buscarVales;
+$('fBuscar').onkeydown = function (e) { if (e.key === 'Enter') buscarVales(); };
 $('valesLista').onclick = function (e) {
   if (e.target.closest('.det')) return;
   var it = e.target.closest('.vale-item'); if (!it) return;
@@ -2550,6 +2599,7 @@ $('valesLista').onclick = function (e) {
     ((x.maquinas || []).length ? '<div>Máquinas: ' + x.maquinas.map(function (m) { return esc(m.tipo) + ' ' + m.total + ' (bien ' + m.bien + ', regular ' + m.regular + ', averiada ' + m.averiada + ')' + (m.altas ? ' · altas ' + esc(m.altas) : ''); }).join(' · ') + '</div>' : '') +
     (x.proveedor ? '<div>Proveedor: <b>' + esc(x.proveedor) + '</b> · ' + (x.tipo_doc === 'TICKET' ? 'Ticket' : 'Albarán') + ': <b>' + esc(x.albaran) + '</b>' + (x.estado ? ' · ' + esc(x.estado) : '') + '</div>' : '') +
     (x.nota ? '<div>Comentario: ' + esc(x.nota) + '</div>' : '') +
+    (x.movil_de ? '<div>Anotado por ' + esc(x.usuario) + ' desde el móvil de <b>' + esc(x.movil_de) + '</b></div>' : '') +
     (x.fotos.length ? '<div>' + x.fotos.map(function (u, i) { return '<a href="' + esc(u) + '" target="_blank">📎 adjunto ' + (i + 1) + '</a>'; }).join(' · ') + '</div>' : '') +
     (x.anulado ? '<div style="color:var(--rojo)">ANULADO por ' + esc(x.anulado_por) + ' el ' + esc(x.anulado_en) + ': ' + esc(x.motivo_anulacion) + '</div>'
       : '<div class="fila" style="margin-top:6px"><div><input type="text" class="motivo" placeholder="Motivo de la anulación (obligatorio)"></div><button class="btn peq rojo anular" style="flex:0 0 auto">ANULAR</button></div>');
@@ -2624,8 +2674,8 @@ function sincronizar() {
           : it.tipo === 'vale'
           ? api('vale', { vale: { id: it.id, tipo: it.valeTipo, obra: it.obra, persona: it.persona, nota: it.nota, fotos: it.fotos || [], albaranArchivo: it.albaranArchivo || null,
               proveedor: it.proveedor, albaran: it.albaran, tipoDoc: it.tipoDoc || '', lineas: it.lineas, fecha: it.fecha, hora: it.hora, usuario: it.usuario, auth: it.auth || null, almacen: it.almacen || '', almacenDestino: it.almacenDestino || '',
-              maquinas: it.maquinas || [], inicio: it.inicio || '', cierre: it.cierre || '' } })
-          : api('movimiento', { mov: { id: it.id, tipo: it.movTipo, material: it.material, cantidad: it.cantidad, obra: it.obra, nota: it.nota, fotos: it.fotos || [], fecha: it.fecha, usuario: it.usuario, materialNombre: it.materialNombre, hora: it.hora, clase: it.clase || 'MAT', persona: it.persona || '', tipoHer: it.tipoHer || '', codigoNuevo: it.codigoNuevo || '', almacen: it.almacen || '', fotoPlaca: it.fotoPlaca || '' } });
+              maquinas: it.maquinas || [], inicio: it.inicio || '', cierre: it.cierre || '', movilDe: it.movilDe || '' } })
+          : api('movimiento', { mov: { id: it.id, tipo: it.movTipo, material: it.material, cantidad: it.cantidad, obra: it.obra, nota: it.nota, fotos: it.fotos || [], fecha: it.fecha, usuario: it.usuario, materialNombre: it.materialNombre, hora: it.hora, clase: it.clase || 'MAT', persona: it.persona || '', tipoHer: it.tipoHer || '', codigoNuevo: it.codigoNuevo || '', almacen: it.almacen || '', fotoPlaca: it.fotoPlaca || '', movilDe: it.movilDe || '' } });
         return llamada.then(function (j) {
           enviados++;
           // confirmación clara con el número
@@ -2734,6 +2784,7 @@ DB.abrir().then(function () {
   return Promise.all([DB.get('kv', 'datos'), DB.get('kv', 'usuario'), DB.get('kv', 'eansLocal')]);
 }).then(function (r) {
   S.datos = r[0] || null; S.usuario = r[1] || null; S.eansLocal = r[2] || [];
+  DB.get('kv', 'dueno').then(function (d) { S.duenoMovil = d || null; });
   pintarListasFecha();
   montarPinpad(); estadoRed(); pintarListas(); actualizarPend(); pintarModo();
   DB.get('kv', 'letraGrande').then(function (v) { $('letraGrande').checked = !!v; document.body.classList.toggle('letra-grande', !!v); });
@@ -2754,6 +2805,48 @@ document.addEventListener('click', function (e) {
   v = b.classList.contains('mas') ? Math.floor(v) + 1 : Math.max(0, Math.ceil(v) - 1);
   i.value = v || (b.classList.contains('mas') ? 1 : ''); i.dispatchEvent(new Event('input', { bubbles: true })); i.dispatchEvent(new Event('change', { bubbles: true }));
 });
+// ---------------------------------------------------------------- Resumen
+function cargarResumen() {
+  if (!navigator.onLine) { $('resTarjetas').innerHTML = '<div class="aviso">El resumen se ve con conexión.</div>'; return; }
+  authAdmin().then(function (auth) { return api('resumen', { auth: auth }); }).then(function (j) { S.resumen = j; pintarResumenAdmin(); })
+    .catch(function (e) { $('resTarjetas').innerHTML = '<div class="aviso err">' + esc(e.message) + '</div>'; });
+}
+var TIPO_RES = { SALIDA: 'Salida', DEVOLUCION: 'Devolución', RECUPERADO: 'Encontrado', ENTRADA: 'Entrada', COMPRA_OBRA: 'Compra a obra', AJUSTE: 'Ajuste', TRASPASO_SALE: 'Traspaso', ASIGNAR: 'Con persona', AVERIA: 'Avería', REPARACION: 'Al reparador', VUELTA: 'Reparada', BAJA: 'Baja' };
+function pintarResumenAdmin() {
+  var j = S.resumen, lista = function (xs, f) { return xs.slice(0, 3).map(f).join(' · ') + (xs.length > 3 ? ' …' : ''); };
+  var T = [
+    { k: 'negativos', t: 'Stock en negativo', n: j.negativos.length, mal: true, d: lista(j.negativos, function (m) { return m.nombre + ' ' + m.stock; }) },
+    { k: 'bajos', t: 'Bajo mínimo', n: j.bajos.length, d: lista(j.bajos, function (m) { return m.nombre + ' ' + m.stock + '/' + m.stock_min; }) },
+    { k: 'otros', t: 'OTRO sin dar de alta', n: j.otros.length, d: lista(j.otros, function (o) { return o.nombre || o.material || ''; }) },
+    { k: 'eans', t: 'Códigos pendientes', n: j.eans.length, d: lista(j.eans, function (e) { return e.ean; }) },
+    { k: 'ok', t: 'Máquinas pendientes de OK', n: j.pendientesOk.length, d: lista(j.pendientesOk, function (h) { return h.codigo; }) },
+    { k: 'averiadas', t: 'Averiadas', n: j.averiadas.length, mal: true, d: lista(j.averiadas, function (h) { return h.codigo + (h.averia ? ': ' + h.averia : ''); }) },
+    { k: 'reparacion', t: 'En reparación', n: j.reparacion.length, d: lista(j.reparacion, function (h) { return h.codigo + ' · ' + (h.dias === '' ? '?' : h.dias) + ' día' + (h.dias === 1 ? '' : 's'); }) },
+    { k: 'inventarios', t: 'Inventarios abiertos', n: j.inventarios.length, d: lista(j.inventarios, function (i) { return i.nombre; }) }
+  ];
+  $('resTarjetas').innerHTML = T.map(function (x) {
+    return '<button type="button" class="res-t' + (x.n ? (x.mal ? ' mal' : ' hay') : '') + '" data-k="' + x.k + '"><b>' + x.n + '</b><span>' + esc(x.t) + '</span>' + (x.d ? '<small>' + esc(x.d) + '</small>' : '') + '</button>';
+  }).join('');
+  $('resMovs').innerHTML = j.movimientos.length ? '<table class="res-movs"><thead><tr><th>Hora</th><th>Tipo</th><th>Material o máquina</th><th>Cant.</th><th>Obra o almacén</th><th>Persona</th><th>Anotado por</th></tr></thead><tbody>' +
+    j.movimientos.map(function (m) {
+      return '<tr' + (m.anulado ? ' class="anulado"' : '') + '><td>' + esc(m.fecha.slice(0, 5)) + ' ' + esc(m.hora) + '</td><td>' + (m.clase === 'HER' ? '🔧 ' : '') + esc(TIPO_RES[m.tipo] || m.tipo) + (m.numero ? ' <small>' + esc(m.numero) + '</small>' : '') + '</td><td>' + esc(m.material) + '</td><td>' + esc(m.cantidad) + ' ' + esc(m.unidad) +
+        '</td><td>' + esc(m.donde) + '</td><td>' + esc(m.persona) + '</td><td>' + esc(m.usuario) + (m.movil_de ? ' <i>(móvil de ' + esc(m.movil_de) + ')</i>' : '') + '</td></tr>';
+    }).join('') + '</tbody></table>' : '<div class="ayuda">Sin movimientos todavía.</div>';
+}
+$('resumenActualizar').onclick = cargarResumen;
+// cada tarjeta lleva a su pantalla
+$('resTarjetas').onclick = function (e) {
+  var b = e.target.closest('[data-k]'); if (!b) return;
+  var k = b.dataset.k, abrirStock = function () { cambiar('almacen'); if ($('stockBloque').style.display === 'none') $('verStock').onclick(); $('stockAlmacen').value = ''; pintarStock(); $('stockBloque').scrollIntoView({ block: 'start' }); };
+  if (k === 'negativos' || k === 'bajos' || k === 'otros') return abrirStock();
+  if (k === 'eans') { cambiar('almacen'); return $('eanPendientes').scrollIntoView({ block: 'start' }); }
+  if (k === 'inventarios') { if (verPestanaInventario()) cambiar('inventario'); else toast('Los inventarios los lleva Mateo'); return; }
+  cambiar('herramientas');
+  if (k === 'ok') return $('herrGestion').scrollIntoView({ block: 'start' });
+  if ($('herrBloque').style.display === 'none') $('verHerr').onclick();
+  $('buscarHerr').value = k === 'averiadas' ? 'averiada' : 'reparacion'; pintarHerr();
+  $('herrBloque').scrollIntoView({ block: 'start' });
+};
 // acceso para las pruebas automáticas (no cambia nada de la app)
 window.SOLERA_TEST = { S: S, DB: DB, salir: salir, lectorZXing: lectorZXing };
 })();
