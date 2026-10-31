@@ -1,4 +1,4 @@
-# APP SOLERA — estado actual (31/10/2026, tras el PASO 6: vales, roles y admin)
+# APP SOLERA — estado actual (31/10/2026, tras el PASO 6 y 6b: vales, roles, admin y retoques)
 
 Radiografía sacada del código del repositorio (`main`, PASO 6) y de una lectura de la hoja
 "APP SOLERA" hecha el 31/10/2026. La app está **EN PRUEBAS**: no toca ningún fichero activo de SOLERA.
@@ -28,7 +28,7 @@ Radiografía sacada del código del repositorio (`main`, PASO 6) y de una lectur
 
 ## 2) PESTAÑAS DE LA HOJA "APP SOLERA"
 
-`asegurarHojas_()` crea las pestañas que falten y añade al final las columnas que falten (versión de esquema `ESQUEMA = '9'`, guardada en las propiedades del script). Se ejecuta en cada llamada a la API (si el esquema cambió) y, forzada, en `instalar()`.
+`asegurarHojas_()` crea las pestañas que falten y añade al final las columnas que falten (versión de esquema `ESQUEMA = '10'`, guardada en las propiedades del script). Se ejecuta en cada llamada a la API (si el esquema cambió) y, forzada, en `instalar()`.
 
 | Pestaña | Columnas exactas | Quién la escribe |
 |---|---|---|
@@ -39,7 +39,7 @@ Radiografía sacada del código del repositorio (`main`, PASO 6) y de una lectur
 | **PARTES** | `id, numero, fecha, obra_codigo, obra, cliente, creado_por, trabajadores, total_horas, trabajos, materiales, medios, observaciones, firmado, firmante, pdf_url, fotos, creado_en, origen, firmado_en, copia_enviada_a, copia_enviada_en, copia_error` | `crearParte_`. |
 | **PARTES_LINEAS** | `id, numero, fecha, obra, trabajador_codigo, trabajador, categoria, horas, horas_extra, firmado` | `crearParte_`, una fila por trabajador. |
 | **MOVIMIENTOS** (líneas del almacén de materiales) | `id, fecha, tipo, material_codigo, material, cantidad, unidad, obra, parte_numero, usuario, nota, creado_en, fotos, numero, hora, persona, linea, anulado` | `vale_`: una fila por línea, con el nº del vale y `linea` 1, 2, 3…; `anularVale_` pone `anulado = SI`. Las filas antiguas (sin `linea`) se quedan como estaban. |
-| **VALES** | `numero, fecha, hora, tipo, obra, usuario, persona, nota, fotos, proveedor, albaran, n_lineas, anulado, anulado_por, anulado_en, motivo_anulacion, creado_en, id` | `vale_` (una fila por vale) y `anularVale_`. `id` = id del móvil, para no duplicar al reenviar. |
+| **VALES** | `numero, fecha, hora, tipo, obra, usuario, persona, nota, fotos, proveedor, albaran, n_lineas, anulado, anulado_por, anulado_en, motivo_anulacion, creado_en, id, tipo_doc, estado` | `vale_` (una fila por vale) y `anularVale_`. En compras: `tipo_doc` = ALBARAN / TICKET y `estado` = CONFIRMADA (PENDIENTE_LEER queda para más adelante). `id` = id del móvil, para no duplicar al reenviar. |
 | **STOCK** | `codigo, nombre, unidad, entradas, salidas, stock, stock_min, aviso` | Fórmulas `ARRAYFORMULA` (las pone `instalar()` si está vacía). Entradas = ENTRADA + DEVOLUCION + RECUPERADO; salidas = SALIDA; sin las líneas anuladas (`instalar()` las rehace siempre); `aviso` = "PEDIR" si `stock_min > 0` y `stock <= stock_min`. |
 | **FIRMANTES** | `nombre, email, obra_ultima, veces, actualizado_en` | `guardarFirmante_` (libreta de firmantes para la copia por correo). |
 | **POR_OBRA** | `obra, material_codigo, material, unidad, salido, devuelto, gastado, recuperado` | `porObra_` (se rehace tras cada vale con obra y tras anular; se escribe por nombre de columna). `gastado = salido − devuelto − recuperado`, sin anulados. |
@@ -80,7 +80,7 @@ Radiografía sacada del código del repositorio (`main`, PASO 6) y de una lectur
 | `login` | `codigo, pin` | `{ ok, trabajador:{codigo, nombre, categoria, encargado, rol} }` o error "Trabajador no encontrado" / "PIN incorrecto". El PIN se compara rellenando con ceros a 4 cifras. | Sí |
 | `bootstrap` | — | `{ ok, trabajadores[{codigo,nombre,categoria,rol}], obras[{codigo,nombre,cliente}], materiales[{codigo,nombre,unidad,stock_min}]` (ordenados por `orden`), `stock[{codigo,nombre,unidad,stock,stock_min}], otros[{nombre,veces,ultimo}]` (líneas OTRO sin anular), ` herramientas[{codigo,tipo,nombre,donde,quien,desde,ultimo_mov,foto}], herrTipos[{prefijo,nombre}], firmantes[{nombre,email}]` (por nº de veces), `hora }`. Solo activos. | Sí ("Actualizar listas" y al arrancar) |
 | `crearParte` | `parte:{id, fecha, obra, obraNombre, trabajadores[{codigo,nombre,categoria,horas,extra}], trabajos, materiales[{codigo,nombre,unidad,cantidad}], medios, observaciones, firma (dataURL), firmante, firmanteEmail, firmadoEn, fotos[dataURL], creadoPor, creadoEn}` | `{ ok, numero, pdf_url, copia_enviada_a, copia_error }`. Si el `id` ya existe: `{ ok, repetido:true, … }` con lo guardado. | Sí |
-| `vale` | `vale:{id, tipo:'SALIDA'|'DEVOLUCION'|'RECUPERADO'|'ENTRADA', obra, persona, nota, fotos[dataURL], albaranArchivo (foto o PDF), proveedor, albaran, lineas[{material, materialNombre, unidad, cantidad}], fecha, hora, usuario, auth:{codigo,pin}}` | `{ ok, numero, fotos[urls], n_lineas }`. Si el `id` ya existe: `{ ok, repetido:true, numero }`. ENTRADA (compra) exige `auth` de un admin, proveedor y albarán; SALIDA/DEVOLUCION/RECUPERADO exigen obra; RECUPERADO exige comentario. | Sí (almacén de materiales) |
+| `vale` | `vale:{id, tipo:'SALIDA'|'DEVOLUCION'|'RECUPERADO'|'ENTRADA', obra, persona, nota, fotos[dataURL], albaranArchivo (foto o PDF), proveedor, albaran, lineas[{material, materialNombre, unidad, cantidad}], fecha, hora, usuario, auth:{codigo,pin}}` | `{ ok, numero, fotos[urls], n_lineas }`. Si el `id` ya existe: `{ ok, repetido:true, numero }`. ENTRADA (compra) exige `auth` de un admin, proveedor y nº de albarán/ticket, y rechaza un proveedor + nº ya registrado ("Albarán ya registrado: vale A000n"); SALIDA/DEVOLUCION/RECUPERADO exigen obra; RECUPERADO exige comentario. | Sí (almacén de materiales) |
 | `vales` | `auth:{codigo,pin}` (admin), `filtros:{desde, hasta (aaaa-mm-dd), trabajador, tipo, obra}` | `{ ok, vales[{numero, fecha, hora, tipo, obra, usuario, persona, nota, proveedor, albaran, n_lineas, fotos[], anulado, anulado_por, anulado_en, motivo_anulacion, lineas[{linea, material_codigo, material, cantidad, unidad, anulado}]}] }`, el más nuevo primero (máx. 300). | Sí (pantalla Vales) |
 | `anularVale` | `auth` (admin), `numero`, `motivo` (obligatorio) | `{ ok, numero }`. Marca el vale y sus líneas como anulados; nunca borra. | Sí (pantalla Vales) |
 | `movimiento` | `mov:{id, clase:'MAT'|'HER', tipo:'ENTRADA'|'SALIDA'|'DEVOLUCION', material, materialNombre, cantidad, obra, nota, fotos[dataURL], fecha, hora, usuario, persona, tipoHer, codigoNuevo}` | `{ ok, numero, fotos[urls], herramienta, cambiado }`. Si el `id` ya existe: `{ ok, repetido:true, numero }`. | Sí para herramientas; para materiales solo lo que quedara pendiente en los móviles (los vales usan `vale`). |
@@ -127,7 +127,7 @@ Radiografía sacada del código del repositorio (`main`, PASO 6) y de una lectur
 - Botón "Actualizar listas".
 - **Sin conexión:** deja entrar si ese usuario ya entró antes en ese móvil con el mismo PIN.
 - **Dueño del móvil:** tras entrar, el móvil recuerda a su dueño y la pantalla sale con su nombre, con el enlace "¿No eres tú? Cambiar de persona".
-- **Huella:** se ofrece activar la entrada con "huella, cara o PIN del móvil" (WebAuthn, solo en el móvil).
+- **Huella:** solo en móviles (en el ordenador no se ofrece). Se ofrece activar la entrada con "huella, cara o PIN del móvil" (WebAuthn).
   - Con la huella activada, al abrir la app se pide sola; el PIN de la app queda como plan B.
   - Se puede quitar con "Quitar la huella en este móvil".
 - **Sin huella:** mientras no se pulse Salir, la app abre directamente.
@@ -153,7 +153,8 @@ Radiografía sacada del código del repositorio (`main`, PASO 6) y de una lectur
   - Persona: "¿Quién se lo lleva / lo devuelve / lo encontró?".
   - Comentario: obligatorio en ENCONTRÉ.
   - Fotos opcionales.
-  - En COMPRA: proveedor y nº de albarán o factura (obligatorios) y el albarán como foto o fichero (jpg, png o pdf).
+  - En COMPRA: proveedor, documento (albarán o ticket; las facturas no van en la app), nº (obligatorios) y la foto o fichero (jpg, png o pdf).
+- **Al guardar:** aviso verde "Vale A0004 guardado"; sin cobertura, "Guardado en el móvil, se enviará solo". Si el servidor lo rechaza (p. ej. albarán repetido), aviso rojo y en Enviados se puede **quitar** ese pendiente.
 - **📦 Ver stock (plegado):**
   - Buscador y stock por material: rojo si es negativo; "pedir" solo con mínimo puesto.
   - Al tocar un material: sus 10 últimos movimientos, con "Vale Nº", fecha, hora, tipo, cantidad, obra, quién se lo lleva o lo devuelve, quién lo anotó, comentario y fotos.
@@ -169,9 +170,11 @@ Radiografía sacada del código del repositorio (`main`, PASO 6) y de una lectur
 - **🔧 ¿Dónde están las herramientas?** (plegado): cada máquina con 📍 obra o "En almacén", quién la tiene y desde cuándo. Al tocarla, su historial.
 
 **Vales** (solo admin; pantalla más ancha en el ordenador):
-- Filtros por fechas, trabajador, tipo y obra; lista del más nuevo al más viejo.
+- Al abrirla carga sola los **últimos 30 días**. Filtros por fechas, trabajador, tipo y obra; lista del más nuevo al más viejo.
 - Al tocar un vale: sus líneas (OTRO marcado), proveedor y albarán, comentario y adjuntos.
 - **ANULAR** con motivo obligatorio: queda tachado como "ANULADO por … el …: motivo".
+
+**Sin ventanas del navegador:** todas las preguntas (parte sin firma, activar o quitar huella, anular, quitar pendiente) salen dentro de la app, no con alert/confirm/prompt.
 
 **Enviados:**
 - **"Pendientes de enviar":** con el error si falló ("reintentar") y el botón "Enviar ahora".
@@ -214,13 +217,13 @@ Radiografía sacada del código del repositorio (`main`, PASO 6) y de una lectur
 
 ## 6) VERSIONES
 
-- **Publicado en Apps Script:** el `Code.gs` del 30/10 (commit `07569b5`, `ESQUEMA = '8'`), según lo que dijo Mateo ("HECHO"). No está verificado desde aquí.
-- **Sin publicar:** el `Code.gs` del **PASO 6** (vales, roles, admin; `ESQUEMA = '9'`). Para activarlo:
+- **Publicado en Apps Script:** el `Code.gs` del 30/10 (commit `07569b5`, `ESQUEMA = '8'`), según lo que dijo Mateo ("HECHO"). No está verificado desde aquí, y no consta que se haya publicado el del PASO 6.
+- **Sin publicar:** el `Code.gs` del **PASO 6 + 6b** (`ESQUEMA = '10'`). Para activarlo:
   1. Pegar el `Code.gs` nuevo en Apps Script y guardar.
-  2. **Ejecutar `instalar`**: crea VALES y las columnas `rol`, `linea`, `anulado` y `recuperado`, pone los roles y rehace las fórmulas de STOCK.
+  2. **Ejecutar `instalar`**: crea VALES y las columnas nuevas, pone los roles y rehace las fórmulas de STOCK. Si el PASO 6 ya se hubiera instalado, el 6b solo no lo necesitaría, porque sus columnas `tipo_doc` y `estado` se crean solas.
   3. **Implementar → Gestionar implementaciones → ✎ → Versión nueva.**
-  - **No hay permisos nuevos:** usa lo mismo (hojas, Drive y Gmail).
-- **Mientras tanto:** la web nueva ya está en GitHub Pages, pero los vales que se hagan se quedan en "Pendientes" con error hasta publicar. No se pierden: se envían solos después.
+  - **No hay permisos nuevos.**
+- **Mientras tanto:** la web nueva ya está en GitHub Pages; los vales se quedan en "Pendientes" hasta publicar y luego se envían solos.
 
 ---
 
