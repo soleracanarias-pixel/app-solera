@@ -8,12 +8,12 @@ La app está **EN PRUEBAS** (ver `CLAUDE.md`). Lo pendiente está en `PENDIENTES
 - `index.html`: la app entera (SOLERA). Con `?modo=almacen` es **SOLERA Almacén** (`almacen/index.html`, sin la pestaña Parte).
 - `sw.js`: guarda la app en el móvil para abrirla sin cobertura (incluye `lib/`).
 - `lib/zxing-0.21.3.min.js`: lector de códigos de barras para iPhone (Apache 2.0), dentro de la app.
-- `backend/Code.gs`: servidor (Apps Script de la hoja "APP SOLERA"). Publicado en la **versión 19**, igual que el repositorio (`ESQUEMA = '19'`).
-- **Versión a la vista:** abajo, en pequeño, en la entrada y en la app: "web v19 · servidor 19 · esquema 19". `VERSION_WEB` (index.html) y `VERSION_SERVIDOR` (Code.gs) = nº de versión publicada en Apps Script; se suben a la vez en cada publicación. Si no coinciden, sale "⚠️ actualiza la app" (al tocarlo, recarga).
+- `backend/Code.gs`: servidor (Apps Script de la hoja "APP SOLERA"). Publicado en la **versión 20**, igual que el repositorio (`ESQUEMA = '19'`).
+- **Versión a la vista:** abajo, en pequeño, en la entrada y en la app: "web v20 · servidor 20 · esquema 19". `VERSION_WEB` (index.html) y `VERSION_SERVIDOR` (Code.gs) = nº de versión publicada en Apps Script; se suben a la vez en cada publicación. Si no coinciden, sale "⚠️ actualiza la app" (al tocarlo, recarga).
 - `docs/MATERIALES_PROPUESTA.csv`: lista de materiales aprobada (sin precios).
 
 ## Quién puede qué (columna `rol` de TRABAJADORES)
-- **trabajador** (todos los compañeros, oficiales o peones; la categoría OFICIAL/PEÓN solo se usa en el parte): parte; en Almacén, solo ME LLEVO, DEVUELVO y ENCONTRÉ; en Herramientas, llevar, devolver, avería y alta.
+- **trabajador** (todos los compañeros, oficiales o peones; la categoría OFICIAL/PEÓN solo se usa en el parte): parte; en Almacén, solo ME LLEVO, DEVUELVO y ENCONTRÉ; en Herramientas, "¿Dónde queda una máquina?" (incluye avería y alta) y Andamios.
 - **encargado:** lo mismo, más "Ver stock".
 - **admin:** además COMPRA (a almacén o a obra), TRASPASO, Ver stock, pestaña Vales y anular.
 - **Inventarios:** los abre, revisa y cierra solo **Mateo (999)**. Cualquiera puede participar si Mateo le asigna categorías.
@@ -25,6 +25,7 @@ La app está **EN PRUEBAS** (ver `CLAUDE.md`). Lo pendiente está en `PENDIENTES
 ## Almacén
 - Tres almacenes (pestaña ALMACENES): **LA MATANZA** (por defecto), **AGÜIMES** y **QUIQUIRÁ (OFICINA)**. Cada vale guarda el suyo; el móvil recuerda el último de su dueño.
 - Cada formulario es un **vale** numerado (A0004…) con varias líneas.
+- **Botones:** ME LLEVO y DEVUELVO grandes, a toda la anchura; debajo, pequeño, "🔎 ¿Ha aparecido material sin albarán?" (ENCONTRÉ). Admin: COMPRA y TRASPASO.
 - **ME LLEVO / DEVUELVO / ENCONTRÉ:** material (con 📷 al lado), cantidad, obra (sale la última usada) y GUARDAR. Almacén y persona van puestos en una línea discreta ("cambiar"); comentario y fotos, plegados en "Más" (en ENCONTRÉ el comentario está a la vista porque es obligatorio).
   Toques para un ME LLEVO de 2 materiales: 7 la primera vez (uno escaneado y otro escrito, eligiendo la obra), 5 con la obra ya puesta, 4 si se escanean los dos (más escribir el material y la cantidad).
 - Tipos: SALIDA (ME LLEVO), DEVOLUCION, RECUPERADO, ENTRADA (compra a almacén), COMPRA_OBRA (no toca el stock), TRASPASO (sale de uno y entra en otro) y AJUSTE (solo al cerrar un inventario).
@@ -33,7 +34,10 @@ La app está **EN PRUEBAS** (ver `CLAUDE.md`). Lo pendiente está en `PENDIENTES
 - **Pestaña STOCK:** el mismo orden (negativos arriba, luego con stock y a cero al final), con total y una columna por almacén.
 - Solo cuentan los materiales activos con `en_almacen = SI`; agua, hormigón, zahorra y áridos a granel van directo a obra (solo en partes y compras a obra).
 - **POR_OBRA:** gastado = salido + comprado − devuelto − recuperado.
-- Lo que no está en la lista entra como **OTRO** y el admin lo ve como "pendiente de dar de alta".
+- Si el material escrito no está en la lista, al salir del campo sale en rojo "No está en la lista: ¿es alguno de estos?" con hasta 3 parecidos y "Guardar tal cual (OTRO)". Al GUARDAR con líneas OTRO se pide confirmación. Lo OTRO no cuenta en el stock y el admin lo ve como "pendiente de dar de alta".
+- **Al guardar** un vale, una máquina o andamios: tarjeta verde "✅ ME LLEVO guardado · 2 líneas · obra" (sin red: "Guardado en el móvil · se enviará solo"), que pasa a "Vale A000n" (o "Nº H000n") cuando llega el número. Botones "Hacer otro" y "Volver".
+- **Errores de los formularios** (vales, máquinas, andamios y parte): junto al campo (en rojo, aviso debajo y la pantalla va hasta él). El toast solo para avisos del servidor.
+- **Fotos:** opcionales ("📷 Foto (opcional)") salvo alta de máquina, avería y andamios. El servidor solo las exige en AVERIA, alta de máquina y andamios.
 - Los partes no tocan el almacén.
 
 ## Inventario (evento; se puede contar entero sin cobertura)
@@ -48,12 +52,13 @@ La app está **EN PRUEBAS** (ver `CLAUDE.md`). Lo pendiente está en `PENDIENTES
 ## Herramientas
 - **Tipos** (HERR_TIPOS): `va_con` = PERSONA (la lleva un trabajador) u OBRA (se queda en la obra aunque cambie la cuadrilla); `control` = UNIDAD (cada una con su número, BAT-01) o CANTIDAD (andamios: por tipo de pieza y cuántas). Valores propuestos por Claude el 31/10/2026, **a revisar por Mateo y Gregorio**: PERSONA radiales, batidora, martillo, cortadora rubí, ventosa, taladro, coronas, atornillador y lijadora; OBRA alargador, amasadora, máquina de piso, tronzadora, foco, escalera, carretilla y compresor; ANDAMIO = CANTIDAD.
 - **Estados** ("¿Dónde están?"): en almacén (cuál), en obra, 👤 con una persona, ⚠️ AVERIADA (dónde y qué le pasa), 🔧 EN REPARACIÓN (con quién y nº de recibo), PENDIENTE DE OK y BAJA. Admin y gestores lo ven agrupado por persona, por obra y por almacén, con las cantidades de andamio (por obra y por almacén).
-- **De PERSONA:** "Mis herramientas" (las que tiene cada uno) y un solo botón **"✋ La tengo yo"** (se la asigna quien la tiene en la mano, venga de otra persona, de una obra o de un almacén; sin foto). Si es una nueva que ya tiene, "… sin número" le da número y queda PENDIENTE DE OK. "Devolver" la deja en un almacén.
-- **De OBRA (con número):** "Llevar a obra" / "Devolver" como siempre (con foto).
+- **Pantalla:** "Mis herramientas" (las que tiene cada uno, cada una con "📍 ¿Dónde queda?"), el botón grande **"📍 ¿Dónde queda una máquina?"** y "🏗️ Andamios".
+- **¿Dónde queda una máquina?** (todas las de control UNIDAD): se escribe o escanea la máquina (salen las que están en almacén, en obra o con alguien; las averiadas y en reparación las llevan los gestores) y se ve dónde está ahora. Cinco botones de 56 px: 👤 Conmigo, 🏗️ En obra, 🏠 En almacén, ⚠️ Averiada, 👥 A un compañero. El habitual va relleno (PERSONA → Conmigo, OBRA → En obra); ninguno bloqueado. Cada uno pide solo su dato: la obra (sale la última usada), el almacén (el último), qué le pasa + foto (se deja en QUIQUIRÁ) o el compañero (primero los que coincidieron con él en vales, misma obra y día, en los últimos 30 días). En el servidor: Conmigo y A un compañero = ASIGNAR (cualquier máquina UNIDAD, a cualquier persona), En obra = SALIDA, En almacén = DEVOLUCION, Averiada = AVERIA.
+- **"No tiene número → darle uno"** (dentro del mismo flujo, o al escribir una que no existe): tipo de máquina, el móvil propone el número (escribirlo con rotulador), foto obligatoria con el número y foto opcional de la placa; luego dónde queda (En almacén = ENTRADA). Queda PENDIENTE DE OK.
 - **Andamios (CANTIDAD):** pantalla "🏗️ Andamios": llevar a obra, recoger de obra o entrada en almacén; almacén, obra, quién; la lista de tipos de pieza con una casilla de número cada una (vacía = 0) y UNA foto general obligatoria. En HERR_MOV, una línea por tipo con el mismo nº, quién, cuándo, de dónde y a dónde. "+ Tipo de pieza nuevo" (material, qué es y foto; **solo gestores**, a los trabajadores no les sale): queda PENDIENTE con un código provisional hasta que un gestor le pone código y nombre (sus movimientos pasan al definitivo).
 - **Alta de máquina:** foto opcional de la placa de características (`foto_placa` en HERRAMIENTAS); `marca`, `modelo` y `n_serie` quedan vacías para que Mateo las rellene desde la foto. Solo en el alta; después basta el número.
 - **Historial** (historial = SI): fecha y hora, quién, de dónde y a dónde (y nº de movimiento); lo anulado sale tachado. Nada se borra. Los trabajadores no lo ven.
-- **⚠️ Avería**, **Alta** con OK y **Reparaciones** (gestores: entregar a reparador con recibo PDF, vuelta, OK de altas y aprobar tipos nuevos) como hasta ahora.
+- **OK de altas** y **Reparaciones** (gestores: entregar a reparador con recibo PDF, vuelta, OK de altas y aprobar tipos nuevos) como hasta ahora.
 - **Inventario:** las máquinas con número por estado (bien/regular/averiada, con altas de las que falten); los andamios por tipo y cantidad, y al cerrar se ajusta la cantidad de cada tipo en ese almacén.
 - El 📷 de Herramientas lee el código de la máquina escrito o en QR (para cuando haya pegatinas).
 

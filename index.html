@@ -81,6 +81,23 @@ textarea{min-height:80px;resize:vertical}
 body:not(.es-admin) .solo-admin{display:none!important}
 .botones-alm .btn.grande{font-size:19px;padding:16px;margin-top:8px}
 .botones-alm .btn.grande:first-child{margin-top:0}
+#btnSalida,#btnDevolucion,#btnDondeQueda{min-height:60px;font-size:20px}
+.dq-botones{display:flex;flex-direction:column;gap:8px}
+.dq-botones button{min-height:56px;font-size:18px;font-weight:600;border-radius:10px;border:2px solid var(--azul);background:#fff;color:var(--azul);cursor:pointer}
+.dq-botones button.habitual{background:var(--ambar);border-color:var(--ambar);color:#343434}
+.dq-botones button.elegido{background:var(--azul);border-color:var(--azul);color:#fff}
+.enlace{display:inline-block;margin-top:8px;font-size:14px;color:var(--azul)}
+.campo-err{border-color:var(--rojo)!important;box-shadow:0 0 0 2px rgba(198,40,40,.25)!important}
+.err-msg{color:var(--rojo);font-size:14px;font-weight:600;margin:4px 0 6px}
+.nolista{font-size:14px}
+.nolista .nl-tit{color:var(--rojo);font-weight:600;margin:4px 0}
+.nolista button{display:block;width:100%;text-align:left;margin:4px 0;padding:9px 10px;border:1px solid var(--azul);border-radius:8px;background:#fff;color:var(--azul);font-size:14px}
+.nolista a{font-size:12px;color:var(--gris)}
+.guardado{background:#e8f5e9;border:2px solid var(--verde)}
+.guardado .g-tit{font-size:21px;font-weight:700;color:#1b5e20}
+.guardado .g-det{font-size:15px;margin-top:4px}
+.guardado .g-est{font-size:15px;margin-top:6px;font-weight:600}
+.guardado .g-est.err{color:var(--rojo)}
 .vlin{margin-bottom:6px}
 .vlin>div:first-child{flex:3;position:relative}
 .vlin .sugs{position:absolute;left:0;right:0;top:100%;z-index:6;box-shadow:0 6px 14px rgba(0,0,0,.15)}
@@ -299,7 +316,7 @@ a{color:var(--azul)}
   <div class="tarjeta botones-alm">
     <button class="btn grande" id="btnSalida">⬆ ME LLEVO</button>
     <button class="btn grande verde" id="btnDevolucion">↩ DEVUELVO</button>
-    <button class="btn grande sec" id="btnRecuperado">🔎 ENCONTRÉ MATERIAL</button>
+    <button class="btn peq sec" id="btnRecuperado" style="width:100%">🔎 ¿Ha aparecido material sin albarán?</button>
     <button class="btn grande sec solo-admin" id="btnEntrada">🧾 COMPRA (admin)</button>
     <button class="btn grande sec solo-admin" id="btnTraspaso">🔁 TRASPASO (admin)</button>
   </div>
@@ -335,19 +352,11 @@ a{color:var(--azul)}
       <button class="btn sec peq" id="valeBtnAlbaran">📎 Foto o fichero del albarán/ticket (jpg, png, pdf)</button>
       <div class="ayuda" id="valeAlbaranNombre"></div>
     </div>
-    <div id="movMatBloque"><label id="movMatLabel">Material</label><div class="fila vlin"><div><div style="position:relative"><input type="text" id="movMatTxt" placeholder="Escribe el material…" autocomplete="off"><div class="sugs" id="movMatSugs" style="display:none"></div></div></div><button class="cam" id="movMatCam" title="Escanear el código o el QR de la máquina">📷</button></div></div>
-    <div id="valeLineasBloque" style="display:none">
+    <div id="valeLineasBloque">
       <label>Materiales</label>
       <div id="valeLineas"></div>
       <button class="btn sec peq" id="valeOtraLinea">+ otra línea</button>
     </div>
-    <div id="numeroNuevo" class="aviso" style="display:none;font-size:16px"></div>
-    <div id="placaBloque" style="display:none">
-      <input type="file" id="movPlacaInput" accept="image/*" style="display:none">
-      <button class="btn sec peq" id="movPlacaBtn">📷 Foto de la placa de características (opcional)</button>
-      <div class="fotos" id="movPlaca"></div>
-    </div>
-    <div id="movCantBloque"><label>Cantidad</label><input type="number" id="movCant" inputmode="decimal" step="any" min="0"></div>
     <div id="movObraBloque"><label id="movObraLabel">Obra</label><input type="text" id="movObraTxt" placeholder="Escribe la obra…" autocomplete="off"><div class="sugs" id="movObraSugs" style="display:none"></div><select id="movObra" style="display:none"></select>
       <div id="personaBloque"><label id="movPersonaLabel">¿Quién se lo lleva?</label><input type="text" id="movPersonaTxt" autocomplete="off"><div class="sugs" id="movPersonaSugs" style="display:none"></div></div>
     </div>
@@ -364,25 +373,49 @@ a{color:var(--azul)}
 
 <!-- HERRAMIENTAS -->
 <section class="pantalla" id="p-herramientas">
-  <!-- las de PERSONA: cada uno ve las suyas; "La tengo yo" se la asigna a quien la tiene en la mano -->
+  <!-- las de PERSONA: cada uno ve las que tiene a su cargo -->
   <div class="tarjeta">
     <h2>Mis herramientas</h2>
     <div class="lista" id="misHerr"></div>
-    <button class="btn" id="btnHLaTengo">✋ La tengo yo</button>
   </div>
-  <div id="movSitioHERP"></div>
-  <div class="tarjeta">
-    <div class="fila">
-      <button class="btn peq" id="btnHSalida">⬆ Llevar a obra</button>
-      <button class="btn peq verde" id="btnHDevolucion">↩ Devolver</button>
-    </div>
-    <div class="fila">
-      <button class="btn peq rojo" id="btnHAveria">⚠️ Avería</button>
-      <button class="btn peq sec" id="btnHEntrada">⬇ Alta (nueva o comprada)</button>
-    </div>
+  <!-- máquinas una a una (control UNIDAD): un solo flujo para llevar, dejar, pasar, averiar o dar de alta -->
+  <div class="tarjeta botones-alm">
+    <button class="btn grande" id="btnDondeQueda">📍 ¿Dónde queda una máquina?</button>
     <button class="btn peq sec" id="btnAndamios" style="width:100%">🏗️ Andamios (por piezas)</button>
   </div>
-  <div id="movSitioHER"></div>
+  <div class="tarjeta" id="dqForm" style="display:none">
+    <h2>📍 ¿Dónde queda?</h2>
+    <div class="ayuda" id="dqCuando"></div>
+    <div id="dqMaqBloque">
+      <label>Máquina</label>
+      <div class="fila vlin"><div><div style="position:relative"><input type="text" id="dqMaqTxt" placeholder="Número o máquina (BAT-01, batidora…)" autocomplete="off"><div class="sugs" id="dqMaqSugs" style="display:none"></div></div><div class="nolista" id="dqNoLista"></div></div><button class="cam" id="dqCam" title="Escanear el código o el QR de la máquina">📷</button></div>
+      <div class="ayuda" id="dqEstado"></div>
+      <a href="#" id="dqSinNum" class="enlace">No tiene número → darle uno</a>
+    </div>
+    <div id="dqAltaBloque" style="display:none">
+      <label>Tipo de máquina</label><select id="dqTipo"></select>
+      <div id="dqNumero" class="aviso" style="display:none;font-size:16px"></div>
+      <input type="file" id="dqPlacaInput" accept="image/*" style="display:none">
+      <button class="btn sec peq" id="dqPlacaBtn">📷 Foto de la placa de características (opcional)</button>
+      <div class="fotos" id="dqPlaca"></div>
+      <div><a href="#" id="dqConNum" class="enlace">← Ya tiene número</a></div>
+    </div>
+    <div id="dqDondeBloque" style="display:none">
+      <label>¿Dónde queda?</label>
+      <div class="dq-botones" id="dqBotones"></div>
+      <div id="dqObraBloque" style="display:none"><label>Obra</label><div style="position:relative"><input type="text" id="dqObraTxt" placeholder="Escribe la obra…" autocomplete="off"><div class="sugs" id="dqObraSugs" style="display:none"></div></div><select id="dqObra" style="display:none"></select></div>
+      <div id="dqAlmBloque" style="display:none"><label>Almacén</label><select id="dqAlmacen"></select></div>
+      <div id="dqAveriaBloque" style="display:none"><label>¿Qué le pasa?</label><input type="text" id="dqNota" placeholder="No arranca, cable roto…"></div>
+      <div id="dqCompBloque" style="display:none"><label>¿Con qué compañero?</label><div style="position:relative"><input type="text" id="dqPersonaTxt" placeholder="Escribe el nombre…" autocomplete="off"><div class="sugs" id="dqPersonaSugs" style="display:none"></div></div></div>
+      <div id="dqFinBloque" style="display:none">
+        <input type="file" id="dqFotoInput" accept="image/*" style="display:none">
+        <button class="btn sec peq" id="dqFoto">📷 Foto (opcional)</button>
+        <div class="fotos" id="dqFotos"></div>
+        <button class="btn verde" id="dqGuardar">GUARDAR</button>
+      </div>
+    </div>
+    <button class="btn peq sec" id="dqCancelar" style="width:100%">Cancelar</button>
+  </div>
   <!-- andamios: una sola pantalla con todas las piezas, una casilla por tipo (vacía = 0) y UNA foto general -->
   <div class="tarjeta" id="andForm" style="display:none">
     <h2>🏗️ Andamios</h2>
@@ -605,7 +638,7 @@ a{color:var(--azul)}
 'use strict';
 var CFG = window.SOLERA_CONFIG || {};
 // número de esta versión de la app (el mismo que VERSION_SERVIDOR de Code.gs: se sube a la vez en cada publicación)
-var VERSION_WEB = 19;
+var VERSION_WEB = 20;
 var $ = function (id) { return document.getElementById(id); };
 
 // ---------------------------------------------------------------- almacenamiento local (IndexedDB)
@@ -656,6 +689,64 @@ function preguntar(texto, si, no) {
 }
 // la huella solo en móviles, no en el ordenador
 function esMovil() { return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && /Macintosh/.test(navigator.userAgent)); }
+// errores de validación junto al campo: en rojo, aviso debajo y scroll hasta él (el toast queda para avisos del servidor)
+function limpiarErrores(caja) {
+  (caja || document).querySelectorAll('.err-msg').forEach(function (x) { x.remove(); });
+  (caja || document).querySelectorAll('.campo-err').forEach(function (x) { x.classList.remove('campo-err'); });
+}
+function errorEn(el, msg) {
+  if (!el) return toast(msg, 'err');
+  var det = el.closest('details'); if (det) det.open = true;
+  var mf = el.closest('#movForm'); if (mf) mf.classList.add('cambiando');   // si estaba recogido (almacén y persona), se enseña
+  var sitio = el.parentNode && el.parentNode.style.position === 'relative' ? el.parentNode : el;
+  var viejo = sitio.nextElementSibling; if (viejo && viejo.classList.contains('err-msg')) viejo.remove();
+  el.classList.add('campo-err');
+  var m = document.createElement('div'); m.className = 'err-msg'; m.textContent = msg;
+  sitio.parentNode.insertBefore(m, sitio.nextSibling);
+  var quitar = function () { el.classList.remove('campo-err'); m.remove(); el.removeEventListener('input', quitar); el.removeEventListener('change', quitar); el.removeEventListener('click', quitar); };
+  el.addEventListener('input', quitar); el.addEventListener('change', quitar); if (el.tagName === 'BUTTON' || el.tagName === 'DIV') el.addEventListener('click', quitar);
+  if (el.scrollIntoView) el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT') { try { el.focus({ preventScroll: true }); } catch (e) { el.focus(); } }
+}
+// tarjeta verde tras guardar (vale, máquina o andamios): se actualiza con el número cuando llega del servidor
+function ocultarGuardado() { var c = document.getElementById('guardado'); if (c) c.style.display = 'none'; }
+function mostrarGuardado(o) {
+  var c = document.getElementById('guardado');
+  if (!c) { c = document.createElement('div'); c.id = 'guardado'; c.className = 'tarjeta guardado'; }
+  o.antes.parentNode.insertBefore(c, o.antes);
+  c.dataset.id = o.id;
+  c.innerHTML = '<div class="g-tit">✅ ' + esc(o.tipo) + ' guardado</div><div class="g-det">' + o.det.filter(Boolean).map(esc).join(' · ') + '</div>' +
+    '<div class="g-est" id="guardadoEst">' + (navigator.onLine ? 'Enviando…' : 'Guardado en el móvil · se enviará solo') + '</div>' +
+    '<div class="fila"><button class="btn" id="guardadoOtro">Hacer otro</button><button class="btn sec" id="guardadoVolver">Volver</button></div>';
+  c.style.display = '';
+  $('guardadoOtro').onclick = function () { ocultarGuardado(); o.otro(); };
+  $('guardadoVolver').onclick = function () { ocultarGuardado(); window.scrollTo(0, 0); };
+  c.scrollIntoView({ block: 'center', behavior: 'smooth' });
+}
+// devuelve true si la tarjeta de ese envío está a la vista (entonces no hace falta el toast)
+function numeroGuardado(id, txt, err) {
+  var c = document.getElementById('guardado');
+  if (!c || c.dataset.id !== id || c.style.display === 'none') return false;
+  $('guardadoEst').textContent = txt; $('guardadoEst').classList.toggle('err', !!err); return true;
+}
+function lineasTxt(n, que) { return n + ' ' + (que || 'línea') + (n === 1 ? '' : 's'); }
+// texto que no está en la lista: hasta 3 parecidos para elegir
+function parecidos(txt, lista, n) {
+  var ps = normal(txt).split(/[^a-z0-9]+/).filter(function (x) { return x.length >= 2; });
+  return lista.map(function (x) {
+    var t = normal(x.nombre + ' ' + (x.alias || '') + ' ' + (x.refs || '')), sc = 0;
+    ps.forEach(function (w) { if (t.indexOf(w) >= 0) sc += 2; else if (w.length >= 4 && t.indexOf(w.slice(0, 4)) >= 0) sc += 1; else if (w.length >= 3 && t.indexOf(w.slice(0, 3)) >= 0) sc += 0.5; });
+    return { x: x, sc: sc };
+  }).filter(function (o) { return o.sc > 0; }).sort(function (a, b) { return b.sc - a.sc; }).slice(0, n || 3).map(function (o) { return o.x; });
+}
+// caja: dónde se pinta; sugs: los parecidos; elegir(x); extra: enlace pequeño ({ txt, fn })
+function pintarNoLista(caja, sugs, elegir, extra) {
+  caja.innerHTML = '<div class="nl-tit">No está en la lista' + (sugs.length ? ': ¿es alguno de estos?' : '.') + '</div>' +
+    sugs.map(function (x, i) { return '<button type="button" data-i="' + i + '">' + esc(x.nombre) + '</button>'; }).join('') +
+    (extra ? '<a href="#" class="nl-extra">' + esc(extra.txt) + '</a>' : '');
+  caja.querySelectorAll('button').forEach(function (b) { b.onclick = function () { caja.innerHTML = ''; elegir(sugs[+b.dataset.i]); }; });
+  var a = caja.querySelector('.nl-extra'); if (a) a.onclick = function (e) { e.preventDefault(); caja.innerHTML = ''; extra.fn(); };
+}
 function aviso(id, msg, tipo) { $(id).innerHTML = msg ? '<div class="aviso ' + (tipo || '') + '">' + msg + '</div>' : ''; }
 function hoyISO() { var d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
 function fechaES(iso) { var m = String(iso || '').match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? m[3] + '/' + m[2] + '/' + m[1] : String(iso || ''); }
@@ -921,42 +1012,6 @@ function verObra(sel, txt) { var s = $(sel); if (s.value && s.selectedIndex >= 0
 function obras() { return (S.datos && S.datos.obras) || []; }
 buscador($('obraTxt'), $('obraSugs'), obras, function (o) { $('obra').value = o ? String(o.codigo) : ''; });
 buscador($('movObraTxt'), $('movObraSugs'), obras, function (o) { $('movObra').value = o ? String(o.codigo) : ''; });
-buscador($('movMatTxt'), $('movMatSugs'), function () {
-  if (!S.datos) return [];
-  if (S.movClase !== 'HER') return matsAlmacen();
-  var tipos = S.datos.herrTipos || [], t = S.movTipo;
-  // de CANTIDAD (andamios): por tipo y cuántas; "tipo nuevo" si no está en la lista
-  // los andamios (CANTIDAD) no van aquí: tienen su pantalla, con todas las piezas a la vez
-  if (t === 'ENTRADA') return tipos.filter(function (x) { return x.control !== 'CANTIDAD'; });
-  var vaCon = function (h) { return (tipoHerr(h.codigo.split('-')[0]) || {}).va_con || 'OBRA'; };
-  var yo = S.usuario ? S.usuario.nombre : '';
-  // llevar a obra: las de OBRA disponibles; "La tengo yo": las de PERSONA que no tengo yo; avería: las que se usan; devolver: en obra o con alguien
-  var hs = (S.datos.herramientas || []).filter(function (h) {
-    var e = h.estado || 'DISPONIBLE';
-    if (t === 'SALIDA') return e === 'DISPONIBLE' && vaCon(h) === 'OBRA';
-    if (t === 'ASIGNAR') return vaCon(h) === 'PERSONA' && ['DISPONIBLE', 'EN OBRA', 'CON PERSONA'].indexOf(e) >= 0 && !(e === 'CON PERSONA' && h.quien === yo);
-    if (t === 'AVERIA') return ['DISPONIBLE', 'EN OBRA', 'CON PERSONA'].indexOf(e) >= 0;
-    if (t === 'DEVOLUCION') return e === 'EN OBRA' || e === 'CON PERSONA';
-    return true;
-  });
-  if (t === 'AVERIA') return hs;
-  // las que ya tienen número y, detrás, cada tipo "sin número" para numerarla en ese momento
-  var sinNum = tipos.filter(function (x) { return x.control !== 'CANTIDAD' && (t === 'ASIGNAR' ? x.va_con === 'PERSONA' : x.va_con !== 'PERSONA'); }).map(function (x) {
-    return { prefijo: x.prefijo, tipo: x.nombre, nuevo: true, nombre: x.nombre + ' · sin número (se le da uno nuevo)' };
-  });
-  if (t === 'ASIGNAR') return hs.concat(sinNum);
-  return hs.concat(t === 'SALIDA' ? sinNum : []);
-}, function (m, alEscribir) {
-  if (m && m.tipoNuevo) { if (!alEscribir) { $('movMatTxt').value = ''; abrirTipoNuevo(); } return; }
-  S.movMat = m;
-  mostrarNumeroNuevo();
-  if (S.movClase === 'HER') pintarFormHer();
-  // al devolver una herramienta, la obra donde estaba sale ya puesta
-  if (m && S.movClase === 'HER' && S.movTipo === 'DEVOLUCION' && m.donde && m.donde !== 'ALMACÉN') {
-    var o = obras().filter(function (x) { return x.nombre === m.donde; })[0];
-    if (o) { $('movObra').value = String(o.codigo); $('movObraTxt').value = o.nombre; }
-  }
-});
 buscador($('movPersonaTxt'), $('movPersonaSugs'), function () { return (S.datos && S.datos.trabajadores) || []; }, function () {});
 
 function filaMat() {
@@ -1058,8 +1113,6 @@ $('fotoInput').onchange = function () {
   Promise.all(fs.map(function (f) { return comprimir(f); })).then(function (r) { r.forEach(function (d) { if (d) S.fotos.push(d); }); pintarFotos(); });
 };
 $('movBtnFoto').onclick = function () { $('movFotoInput').click(); };
-$('movPlacaBtn').onclick = function () { $('movPlacaInput').click(); };
-$('movPlacaInput').onchange = function () { var f = this.files && this.files[0]; this.value = ''; if (f) comprimir(f, 1600).then(function (d) { if (d) { S.movPlaca = [d]; pintarFotosEn('movPlaca', S.movPlaca); } }); };
 $('movFotoInput').onchange = function () {
   var fs = Array.prototype.slice.call(this.files || []); this.value = '';
   Promise.all(fs.map(function (f) { return comprimir(f); })).then(function (r) { r.forEach(function (d) { if (d) S.movFotos.push(d); }); pintarFotosEn('movFotos', S.movFotos); });
@@ -1103,11 +1156,12 @@ $('btnBorrarFirma').onclick = function () { S.firma = null; S.firmadoEn = null; 
 // ---------------------------------------------------------------- guardar parte (cola)
 $('btnGuardarParte').onclick = function () {
   var obra = $('obra').value, trabs = leerTrabs();
-  if (!obra) return aviso('parteAviso', 'Elige la obra.', 'err');
-  if (!trabs.length) return aviso('parteAviso', 'Añade al menos un trabajador.', 'err');
-  if (!$('trabajos').value.trim()) return aviso('parteAviso', 'Escribe los trabajos realizados.', 'err');
+  aviso('parteAviso', ''); limpiarErrores($('p-parte'));
+  if (!obra) return errorEn($('obraTxt'), 'Elige la obra');
+  if (!trabs.length) return errorEn($('addTrab'), 'Añade al menos un trabajador con sus horas');
+  if (!$('trabajos').value.trim()) return errorEn($('trabajos'), 'Escribe los trabajos realizados');
   var email = $('firmanteEmail').value.trim();
-  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return aviso('parteAviso', 'El correo para la copia no es válido.', 'err');
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return errorEn($('firmanteEmail'), 'El correo para la copia no es válido');
   if (!S.firma && !S.sinFirmaOk) return preguntar('El parte va SIN FIRMA del cliente. ¿Guardar igualmente?', 'Guardar sin firma', 'Volver').then(function (ok) {
     if (ok) { S.sinFirmaOk = true; $('btnGuardarParte').onclick(); }
   });
@@ -1211,12 +1265,6 @@ function siguienteNumero(prefijo) {
   });
   return prefijo + '-' + ('0' + (max + 1)).slice(-2);
 }
-function mostrarNumeroNuevo() {
-  var m = S.movMat, nuevo = m && S.movClase === 'HER' && !m.cantidad && (S.movTipo === 'ENTRADA' || m.nuevo);
-  S.codigoNuevo = nuevo ? siguienteNumero(m.prefijo) : '';
-  $('numeroNuevo').style.display = nuevo ? '' : 'none';
-  $('numeroNuevo').innerHTML = nuevo ? 'Número para esta máquina: <b style="font-size:22px">' + S.codigoNuevo + '</b><br>✍️ Escríbelo con el rotulador en la máquina y haz la foto donde se vea.' : '';
-}
 // herramientas una a una (BAT-01…): dónde está cada una y quién la tiene (al tocarla, sus últimos movimientos)
 function herrLocal() { return (S.datos && S.datos.herramientas) || []; }
 // "¿Dónde están?" para admin y gestores: por persona, por obra y por almacén (con los andamios por cantidad)
@@ -1265,7 +1313,7 @@ function pintarHerr() {
     var chip = e === 'AVERIADA' || e === 'BAJA' ? '<span class="chip est">' + e + '</span>' : e === 'EN REPARACION' ? '<span class="chip rep">EN REPARACIÓN</span>' : h.ok === 'PENDIENTE' ? '<span class="chip okp">PENDIENTE DE OK</span>' : '';
     return '<div class="item"><div><b>' + esc(h.nombre) + '</b>' + botonHist({ cod: h.codigo }) + '<small>' + txt +
       (e !== 'EN REPARACION' && h.quien ? ' · ' + esc(h.quien) : '') + (h.desde ? ' · ' + esc(h.desde) : '') + (h.ok === 'PENDIENTE' && chip.indexOf('okp') < 0 ? ' · PENDIENTE DE OK' : '') + '</small></div>' + chip + '</div>';
-  }).join('') : '<div class="aviso">Todavía no hay ninguna numerada. Se numeran al darlas de alta o la primera vez que se llevan a una obra (elige "… sin número").</div>';
+  }).join('') : '<div class="aviso">Todavía no hay ninguna numerada. Se numeran en "¿Dónde queda una máquina?" → "No tiene número → darle uno".</div>';
 }
 $('buscarHerr').oninput = pintarHerr;
 // al tocar un material: sus últimos 10 movimientos (se piden al servidor)
@@ -1317,76 +1365,46 @@ $('herrLista').onclick = function (e) {
       }).join('') : 'Sin movimientos.';
     }).catch(function (er) { h.textContent = er.message; });
 };
-function abrirMov(tipo, clase) {
-  S.movClase = clase || 'MAT';
-  $('andForm').style.display = 'none';
-  $('movSitio' + S.movClase).appendChild($('movForm'));   // el formulario se abre justo debajo de los botones
-  var her = S.movClase === 'HER';
-  $('movMatLabel').textContent = her ? 'Herramienta' : 'Material';
-  $('movMatTxt').placeholder = her ? 'Escribe la herramienta…' : 'Escribe el material…';
-  $('movPersonaLabel').textContent = tipo === 'DEVOLUCION' ? '¿Quién lo devuelve?' : '¿Quién se lo lleva?';
-  $('movPersonaTxt').value = S.usuario ? S.usuario.nombre : '';
-  // herramientas: siempre de una en una y con foto; en el alta se elige el tipo y el número lo pone el sistema
-  $('movCantBloque').style.display = her ? 'none' : '';
-  if (her && tipo === 'ENTRADA') { $('movMatLabel').textContent = 'Tipo de herramienta'; $('movMatTxt').placeholder = 'Escribe el tipo (batidora, rubí…)'; }
-  $('movBtnFoto').textContent = her ? '📷 Foto de la herramienta (obligatoria)' : '📷 Foto (albarán, material…)';
+function abrirMov(tipo) {
+  ocultarGuardado(); limpiarErrores($('movForm'));
+  $('movSitioMAT').appendChild($('movForm'));   // el formulario se abre justo debajo de los botones
   S.movTipo = tipo; $('movForm').style.display = '';
-  $('movTitulo').textContent = (her ? { ENTRADA: 'Alta de herramienta en el almacén', SALIDA: 'Llevar herramienta a obra', DEVOLUCION: 'Devolver herramienta al almacén', AVERIA: '⚠️ Avería de herramienta', ASIGNAR: '✋ La tengo yo' }
-    : { ENTRADA: 'Entrada al almacén', SALIDA: 'Salida a obra', DEVOLUCION: 'Devolución de obra (vuelve al almacén)' })[tipo];
-  $('movObraBloque').style.display = tipo === 'ENTRADA' || tipo === 'AVERIA' || tipo === 'ASIGNAR' ? 'none' : ''; $('movCant').value = ''; $('movNota').value = '';
-  $('movMatCam').style.display = her && tipo !== 'ENTRADA' ? '' : 'none';
-  $('movMatTxt').value = ''; S.movMat = null; S.movCuando = ahoraES();
+  $('movNota').value = ''; S.movCuando = ahoraES(); S.otroOk = false;
   $('movCuando').textContent = 'Fecha y hora: ' + S.movCuando + ' · el nº se asigna al enviarlo';
   S.movFotos = []; pintarFotosEn('movFotos', S.movFotos);
-  S.movPlaca = []; pintarFotosEn('movPlaca', S.movPlaca); $('placaBloque').style.display = 'none';
-  S.codigoNuevo = ''; $('numeroNuevo').style.display = 'none';
-  // materiales: un formulario = un vale con varias líneas
-  var vale = !her;
-  $('movMatBloque').style.display = vale ? 'none' : '';
-  $('valeLineasBloque').style.display = vale ? '' : 'none';
-  $('compraBloque').style.display = vale && tipo === 'ENTRADA' ? '' : 'none';
+  // un formulario = un vale con varias líneas
+  $('compraBloque').style.display = tipo === 'ENTRADA' ? '' : 'none';
   // almacén arriba del formulario (por defecto el último de este usuario); en el traspaso, también el de destino
-  // herramientas: al dejarla (alta, devolver o avería) se elige el almacén; avería: QUIQUIRÁ por defecto
-  var almHer = her && ['ENTRADA', 'DEVOLUCION', 'AVERIA'].indexOf(tipo) >= 0;
-  if (her) $('movSitio' + (tipo === 'ASIGNAR' ? 'HERP' : 'HER')).appendChild($('movForm'));
-  $('almBloque').style.display = vale || almHer ? '' : 'none';
-  if (almHer) almacenGuardado().then(function (c) { opcionesAlmacen('valeAlmacen', tipo === 'AVERIA' && almacenes().some(function (a) { return a.codigo === 'QUI'; }) ? 'QUI' : c); });
+  $('almBloque').style.display = '';
   $('almLabel').textContent = tipo === 'TRASPASO' ? 'Sale del almacén' : 'Almacén';
   $('destinoBloque').style.display = tipo === 'TRASPASO' ? '' : 'none';
+  $('movObraBloque').style.display = tipo === 'ENTRADA' || tipo === 'TRASPASO' ? 'none' : '';
   $('movObra').value = ''; $('movObraTxt').value = '';
-  if (vale) almacenGuardado().then(function (c) {
+  almacenGuardado().then(function (c) {
     opcionesAlmacen('valeAlmacen', c); opcionesAlmacen('valeAlmDestino'); pintarResumen();
     var otro = almacenes().filter(function (a) { return a.codigo !== c; })[0]; if (otro) $('valeAlmDestino').value = otro.codigo;
   });
-  if (vale && tipo === 'TRASPASO') $('movObraBloque').style.display = 'none';
   $('personaBloque').style.display = '';
   $('valeDestino').value = '';
   // ME LLEVO, DEVUELVO y ENCONTRÉ: material, cantidad, obra y GUARDAR; almacén y persona puestos y discretos; lo demás en "Más"
-  var simple = vale && ['SALIDA', 'DEVOLUCION', 'RECUPERADO'].indexOf(tipo) >= 0;
+  var simple = ['SALIDA', 'DEVOLUCION', 'RECUPERADO'].indexOf(tipo) >= 0;
   $('movForm').classList.toggle('simple', simple); $('movForm').classList.remove('cambiando');
   $('invEnCurso').style.display = 'none';
   $('valeResumen').style.display = simple ? '' : 'none';
-  $('movMas').open = her || tipo === 'RECUPERADO' || !simple;   // la foto de la herramienta y el comentario de ENCONTRÉ son obligatorios
+  $('movMas').open = tipo === 'RECUPERADO' || !simple;   // el comentario de ENCONTRÉ es obligatorio
   $('movMasTxt').textContent = 'Más: comentario y fotos';
   if (simple) DB.get('kv', 'ultimaObraVale-' + S.usuario.codigo).then(function (o) {   // la última obra usada, ya puesta (se puede cambiar)
     if (o && obras().some(function (x) { return String(x.codigo) === String(o); })) { $('movObra').value = String(o); verObra('movObra', 'movObraTxt'); }
   });
-  if (vale) {
-    $('movCantBloque').style.display = 'none';
-    $('valeLineas').innerHTML = ''; filaVale();
-    $('valeProveedor').value = ''; $('valeAlbaran').value = ''; $('valeTipoDoc').value = 'ALBARAN'; S.albaranArchivo = null; $('valeAlbaranNombre').textContent = '';
-    $('movTitulo').textContent = TIPO_VALE[tipo] + (tipo === 'SALIDA' ? ' (salida a obra)' : tipo === 'DEVOLUCION' ? ' (vuelve al almacén)' : tipo === 'RECUPERADO' ? ' (material que aparece sin albarán)' : tipo === 'TRASPASO' ? ' (de un almacén a otro)' : ' (entrada con albarán o ticket)');
-    $('movObraLabel').textContent = tipo === 'RECUPERADO' ? 'Obra de procedencia' : 'Obra';
-    $('movPersonaLabel').textContent = { SALIDA: '¿Quién se lo lleva?', DEVOLUCION: '¿Quién lo devuelve?', RECUPERADO: '¿Quién lo encontró?' }[tipo] || '';
-    $('movNotaLabel').textContent = tipo === 'RECUPERADO' ? 'Comentario: dónde y cómo se encontró (obligatorio)' : 'Comentario';
-    $('movBtnFoto').textContent = '📷 Foto (opcional)';
-    if (tipo === 'ENTRADA') pintarDestino();
-  } else {
-    pintarFormHer();
-    $('movObraLabel').textContent = 'Obra'; $('movNotaLabel').textContent = tipo === 'AVERIA' ? '¿Qué le pasa? (obligatorio)' : 'Comentario';
-    $('almLabel').textContent = tipo === 'AVERIA' ? '¿En qué almacén la dejas?' : 'Almacén donde se deja';
-    if (tipo === 'AVERIA') $('movBtnFoto').textContent = '📷 Foto de la máquina y de la avería (obligatoria)';
-  }
+  $('valeLineas').innerHTML = ''; filaVale();
+  $('valeProveedor').value = ''; $('valeAlbaran').value = ''; $('valeTipoDoc').value = 'ALBARAN'; S.albaranArchivo = null; $('valeAlbaranNombre').textContent = '';
+  $('movTitulo').textContent = TIPO_VALE[tipo] + (tipo === 'SALIDA' ? ' (salida a obra)' : tipo === 'DEVOLUCION' ? ' (vuelve al almacén)' : tipo === 'RECUPERADO' ? ' (material que aparece sin albarán)' : tipo === 'TRASPASO' ? ' (de un almacén a otro)' : ' (entrada con albarán o ticket)');
+  $('movObraLabel').textContent = tipo === 'RECUPERADO' ? 'Obra de procedencia' : 'Obra';
+  $('movPersonaLabel').textContent = { SALIDA: '¿Quién se lo lleva?', DEVOLUCION: '¿Quién lo devuelve?', RECUPERADO: '¿Quién lo encontró?' }[tipo] || '';
+  $('movPersonaTxt').value = S.usuario ? S.usuario.nombre : '';
+  $('movNotaLabel').textContent = tipo === 'RECUPERADO' ? 'Comentario: dónde y cómo se encontró (obligatorio)' : 'Comentario';
+  $('movBtnFoto').textContent = '📷 Foto (opcional)';
+  if (tipo === 'ENTRADA') pintarDestino();
 }
 var TIPO_VALE = { SALIDA: 'ME LLEVO', DEVOLUCION: 'DEVUELVO', RECUPERADO: 'ENCONTRÉ MATERIAL', ENTRADA: 'COMPRA', COMPRA_OBRA: 'COMPRA A OBRA', AJUSTE: 'AJUSTE (inventario)', TRASPASO: 'TRASPASO', TRASPASO_SALE: 'TRASPASO (sale)', TRASPASO_ENTRA: 'TRASPASO (entra)' };
 $('valeAlmacen').onchange = function () { recordarAlmacen(this.value); pintarResumen(); };
@@ -1401,7 +1419,7 @@ function compraAObra() { return S.movTipo === 'ENTRADA' && $('valeDestino').valu
 function pintarInvEnCurso() {
   var tipos = ['SALIDA', 'DEVOLUCION', 'RECUPERADO', 'ENTRADA', 'TRASPASO'];
   var alm = $('valeAlmacen').value, dest = S.movTipo === 'TRASPASO' ? $('valeAlmDestino').value : '';
-  var ver = S.movClase !== 'HER' && tipos.indexOf(S.movTipo) >= 0 && !compraAObra() && (!!inventarioEn(alm) || (dest && !!inventarioEn(dest)));
+  var ver = tipos.indexOf(S.movTipo) >= 0 && !compraAObra() && (!!inventarioEn(alm) || (dest && !!inventarioEn(dest)));
   $('invEnCurso').style.display = ver ? '' : 'none';
 }
 function pintarResumen() {
@@ -1411,26 +1429,8 @@ function pintarResumen() {
 }
 $('valeCambiar').onclick = function (e) { e.preventDefault(); $('movForm').classList.add('cambiando'); };
 $('movPersonaTxt').addEventListener('input', pintarResumen);
-// herramientas: el formulario cambia según lo elegido (andamios por cantidad, devolver desde una obra o desde una persona)
-function tipoHerr(p) { return ((S.datos && S.datos.herrTipos) || []).filter(function (t) { return t.prefijo === p; })[0]; }
-function pintarFormHer() {
-  if (S.movClase !== 'HER') { $('placaBloque').style.display = 'none'; return; }
-  var m = S.movMat, t = S.movTipo, cant = !!(m && m.cantidad);
-  // solo en el alta: foto opcional de la placa (marca, modelo y nº de serie los pasa Mateo a HERRAMIENTAS)
-  $('placaBloque').style.display = !cant && (t === 'ENTRADA' || (m && m.nuevo)) ? '' : 'none';
-  $('movCantBloque').style.display = cant ? '' : 'none';
-  $('movMatCam').style.display = cant || t === 'ENTRADA' ? 'none' : '';
-  var conObra = t === 'SALIDA' || (t === 'DEVOLUCION' && (cant || !m || m.estado === 'EN OBRA'));
-  $('movObraBloque').style.display = conObra ? '' : 'none';
-  $('movPersonaLabel').textContent = t === 'DEVOLUCION' ? '¿Quién lo recoge?' : '¿Quién se lo lleva?';
-  // al llevar andamios a obra se dice de qué almacén salen
-  if (t === 'SALIDA') { $('almBloque').style.display = cant ? '' : 'none'; $('almLabel').textContent = 'Sale del almacén'; if (cant && !$('valeAlmacen').value) almacenGuardado().then(function (c) { opcionesAlmacen('valeAlmacen', c); }); }
-  var fotoObl = !cant && t !== 'ASIGNAR' || (m && m.nuevo);
-  $('movBtnFoto').textContent = t === 'AVERIA' ? '📷 Foto de la máquina y de la avería (obligatoria)' : fotoObl ? '📷 Foto de la herramienta (obligatoria)' : '📷 Foto (opcional)';
-  $('movMas').open = !!fotoObl || t === 'AVERIA';
-}
 function pintarDestino() {
-  if (S.movTipo !== 'ENTRADA' || S.movClase === 'HER') return;
+  if (S.movTipo !== 'ENTRADA') return;
   var d = $('valeDestino').value;
   $('almBloque').style.display = d === 'ALMACEN' ? '' : 'none';
   $('movObraBloque').style.display = d === 'OBRA' ? '' : 'none';
@@ -1442,13 +1442,23 @@ $('valeAlmDestino').onchange = pintarInvEnCurso;
 function filaVale() {
   var div = document.createElement('div'); div.className = 'fila vlin'; div.dataset.cod = '';
   div.innerHTML = '<div><div style="position:relative"><input type="text" class="v-txt" placeholder="Material…" autocomplete="off"><div class="sugs" style="display:none"></div></div>' +
-    '<input type="text" class="v-marca" placeholder="Marca (opcional)" autocomplete="off"><small class="v-info"></small></div>' +
+    '<input type="text" class="v-marca" placeholder="Marca (opcional)" autocomplete="off"><small class="v-info"></small><div class="nolista"></div></div>' +
     '<button class="cam" title="Escanear el código de barras">📷</button>' +
     '<div class="corto"><input type="number" class="v-c" inputmode="decimal" step="any" min="0" placeholder="Cant."></div><button class="x">×</button>';
   div.querySelector('.cam').onclick = function () { escanearLinea(div); };
-  buscador(div.querySelector('.v-txt'), div.querySelector('.sugs'), matsAlmacen, function (m, alEscribir) {
+  var txt = div.querySelector('.v-txt'), nl = div.querySelector('.nolista');
+  buscador(txt, div.querySelector('.sugs'), matsAlmacen, function (m, alEscribir) {
     div.dataset.cod = m ? m.codigo : '';
+    if (m) nl.innerHTML = '';
     if (m && !alEscribir) div.querySelector('.v-c').focus();
+  });
+  txt.addEventListener('input', function () { div.dataset.otro = ''; });
+  // al salir del campo sin elegir de la lista: hasta 3 parecidos o "Guardar tal cual (OTRO)"
+  txt.addEventListener('blur', function () {
+    if (!txt.value.trim() || div.dataset.cod || div.dataset.otro) { if (!txt.value.trim()) nl.innerHTML = ''; return; }
+    pintarNoLista(nl, parecidos(txt.value, matsAlmacen()), function (m) {
+      txt.value = m.nombre; div.dataset.cod = m.codigo; div.dataset.otro = ''; limpiarErrores(div); div.querySelector('.v-c').focus();
+    }, { txt: 'Guardar tal cual (OTRO)', fn: function () { div.dataset.otro = '1'; } });
   });
   div.querySelector('.x').onclick = function () { div.remove(); };
   $('valeLineas').appendChild(div);
@@ -1470,7 +1480,7 @@ function leerLineasVale() {
   document.querySelectorAll('#valeLineas .vlin').forEach(function (f) {
     var nombre = f.querySelector('.v-txt').value.trim(), q = +f.querySelector('.v-c').value || 0;
     if (!nombre && !q) return;
-    if (!nombre || !(q > 0)) { falta = true; return; }
+    if (!nombre || !(q > 0)) { if (!falta) S.campoFalta = !nombre ? f.querySelector('.v-txt') : f.querySelector('.v-c'); falta = true; return; }
     var m = mapa[f.dataset.cod];
     // si no se eligió de la lista, va como OTRO (no cuenta en el stock hasta darlo de alta en MATERIALES)
     out.push({ material: m ? String(m.codigo) : 'OTRO', materialNombre: m ? m.nombre : nombre.toUpperCase(), unidad: m ? m.unidad : '', cantidad: q,
@@ -1479,18 +1489,27 @@ function leerLineasVale() {
   return falta ? null : out;
 }
 function guardarVale() {
-  if (S.movTipo === 'ENTRADA' && !$('valeDestino').value) return toast('Elige el destino de la compra: almacén u obra');
+  limpiarErrores($('movForm'));
+  if (S.movTipo === 'ENTRADA' && !$('valeDestino').value) return errorEn($('valeDestino'), 'Elige el destino de la compra: almacén u obra');
   var tipo = compraAObra() ? 'COMPRA_OBRA' : S.movTipo, lineas = leerLineasVale();
-  if (!lineas) return toast('Cada línea necesita material y cantidad');
-  if (!lineas.length) return toast('Añade al menos un material con su cantidad');
+  if (!lineas) return errorEn(S.campoFalta, S.campoFalta && S.campoFalta.classList.contains('v-c') ? 'Pon la cantidad' : 'Escribe el material');
+  if (!lineas.length) return errorEn(document.querySelector('#valeLineas .v-txt') || $('valeOtraLinea'), 'Añade al menos un material con su cantidad');
   var conObra = tipo !== 'ENTRADA' && tipo !== 'TRASPASO', nota = $('movNota').value.trim();
   var almacen = tipo === 'COMPRA_OBRA' ? '' : $('valeAlmacen').value, destino = tipo === 'TRASPASO' ? $('valeAlmDestino').value : '';
-  if (!almacen && tipo !== 'COMPRA_OBRA') return toast('Elige el almacén');
-  if (tipo === 'TRASPASO' && (!destino || destino === almacen)) return toast('Elige otro almacén de destino');
-  if (conObra && !$('movObra').value) return toast('Elige la obra');
-  if (tipo === 'RECUPERADO' && !nota) return toast('Escribe dónde y cómo se encontró');
+  if (!almacen && tipo !== 'COMPRA_OBRA') return errorEn($('valeAlmacen'), 'Elige el almacén');
+  if (tipo === 'TRASPASO' && (!destino || destino === almacen)) return errorEn($('valeAlmDestino'), 'Elige otro almacén de destino');
+  if (conObra && !$('movObra').value) return errorEn($('movObraTxt'), 'Elige la obra');
+  if (tipo === 'RECUPERADO' && !nota) return errorEn($('movNota'), 'Escribe dónde y cómo se encontró');
   var proveedor = $('valeProveedor').value.trim(), albaran = $('valeAlbaran').value.trim(), compra = tipo === 'ENTRADA' || tipo === 'COMPRA_OBRA';
-  if (compra && (!proveedor || !albaran)) return toast('La compra necesita proveedor y nº de albarán o ticket');
+  if (compra && !proveedor) return errorEn($('valeProveedor'), 'Escribe el proveedor');
+  if (compra && !albaran) return errorEn($('valeAlbaran'), 'Escribe el nº de albarán o ticket');
+  // líneas que no están en la lista: van como OTRO (no cuentan en el stock); se pide confirmación
+  var otros = lineas.filter(function (l) { return l.material === 'OTRO'; });
+  if (otros.length && !S.otroOk) return preguntar((otros.length === 1 ? 'Hay 1 línea que no está' : 'Hay ' + otros.length + ' líneas que no están') + ' en la lista de materiales (' +
+    otros.map(function (l) { return l.materialNombre; }).join(', ') + '). Irán como OTRO y no cuentan en el stock. ¿Guardar igualmente?', 'Guardar', 'Revisar').then(function (ok) {
+    if (ok) { S.otroOk = true; guardarVale(); }
+  });
+  S.otroOk = false;
   var obraSel = $('movObra'), obraTxt = conObra ? obraSel.options[obraSel.selectedIndex].text : '';
   var vale = { id: uid(), tipo: 'vale', valeTipo: tipo, obra: obraTxt, persona: conObra && !compra ? ($('movPersonaTxt').value.trim() || S.usuario.nombre) : '',
     nota: nota, fotos: S.movFotos.slice(), albaranArchivo: compra ? S.albaranArchivo : null, proveedor: compra ? proveedor : '',
@@ -1502,7 +1521,7 @@ function guardarVale() {
   var conPin = compra || tipo === 'TRASPASO';
   (conPin ? DB.get('kv', 'pin-' + S.usuario.codigo) : Promise.resolve(null)).then(function (pin) {
     if (conPin) {
-      if (!pin) return toast('Para registrar compras o traspasos, sal y vuelve a entrar con tu PIN');
+      if (!pin) return toast('Para registrar compras o traspasos, sal y vuelve a entrar con tu PIN', 'err');
       vale.auth = { codigo: S.usuario.codigo, pin: pin };
     }
     // stock del móvil hasta que llegue el del servidor: total y por almacén
@@ -1517,8 +1536,9 @@ function guardarVale() {
     DB.put('kv', S.datos, 'datos');
     return DB.put('cola', vale).then(function () {
       $('movForm').style.display = 'none'; pintarStock(); actualizarPend();
-      if (!navigator.onLine) return toast('Guardado en el móvil, se enviará solo', 'ok');
-      toast('Enviando vale…'); sincronizar();
+      var deNuevo = S.movTipo;
+      mostrarGuardado({ id: vale.id, antes: $('movForm'), tipo: TIPO_VALE[tipo], det: [lineasTxt(lineas.length), obraTxt || (compra ? proveedor : '') || nombreAlmacen(destino || almacen).split(' · ')[0]], otro: function () { abrirMov(deNuevo); } });
+      if (navigator.onLine) sincronizar();
     });
   });
 }
@@ -1675,7 +1695,7 @@ function escanearLinea(div) {
     if (ya) { var q = ya.querySelector('.v-c'); q.value = (+q.value || 0) + 1; toast(m.nombre + (mc ? ' · ' + mc : '') + ': ' + q.value, 'ok'); }
     else {
       var f = div.querySelector('.v-txt').value.trim() ? (filaVale(), lineasVale().pop()) : div;
-      f.querySelector('.v-txt').value = m.nombre; f.dataset.cod = m.codigo; f.dataset.ean = '';
+      f.querySelector('.v-txt').value = m.nombre; f.dataset.cod = m.codigo; f.dataset.ean = ''; f.querySelector('.nolista').innerHTML = '';
       f.querySelector('.v-marca').value = mc; f.querySelector('.v-c').value = 1; infoLinea(f, mc ? 'Marca ' + mc : '');
     }
     lineaVaciaAlFinal();
@@ -2084,15 +2104,6 @@ function puedeHerr() {
 }
 // 📷 en Herramientas: lee el código de la máquina (BAT-01), escrito o en un QR (cuando haya pegatinas)
 function esCodigoMaquina(t) { return /^[A-Z]{2,4}-\d{2,}$/i.test(String(t || '').trim()); }
-$('movMatCam').onclick = function () {
-  escanear(esCodigoMaquina).then(function (c) {
-    if (!c) return;
-    var h = (S.datos.herramientas || []).filter(function (x) { return x.codigo === c; })[0];
-    if (!h) return toast('No hay ninguna máquina ' + c);
-    $('movMatTxt').value = h.nombre; $('movMatTxt').dispatchEvent(new Event('input')); $('movMatSugs').style.display = 'none';
-    if (!S.movMat || S.movMat.codigo !== h.codigo) toast(h.nombre + ' no vale para esto (' + (h.estado || '') + ')');
-  });
-};
 function pintarHerrGestion() {
   if (!puedeHerr()) return;
   var tp = ((S.datos && S.datos.herrTipos) || []).filter(function (t) { return t.estado === 'PENDIENTE'; });
@@ -2184,11 +2195,6 @@ $('btnTraspaso').onclick = function () { abrirMov('TRASPASO'); };
 $('btnSalida').onclick = function () { abrirMov('SALIDA'); };
 $('btnDevolucion').onclick = function () { abrirMov('DEVOLUCION'); };
 $('btnRecuperado').onclick = function () { abrirMov('RECUPERADO'); };
-$('btnHSalida').onclick = function () { abrirMov('SALIDA', 'HER'); };
-$('btnHDevolucion').onclick = function () { abrirMov('DEVOLUCION', 'HER'); };
-$('btnHEntrada').onclick = function () { abrirMov('ENTRADA', 'HER'); };
-$('btnHAveria').onclick = function () { abrirMov('AVERIA', 'HER'); };
-$('btnHLaTengo').onclick = function () { abrirMov('ASIGNAR', 'HER'); };
 // ---------------------------------------------------------------- andamios (tipos de CANTIDAD)
 S.andFotos = [];
 function andamiosLocal() { return (S.datos && S.datos.andamios) || []; }
@@ -2210,7 +2216,8 @@ function pintarAndModo() {
   pintarAndLista();
 }
 $('btnAndamios').onclick = function () {
-  $('movForm').style.display = 'none'; $('andForm').style.display = '';
+  ocultarGuardado(); limpiarErrores($('andForm'));
+  $('dqForm').style.display = 'none'; $('andForm').style.display = '';
   $('andTipoNuevo').style.display = puedeHerr() ? '' : 'none';
   $('andModo').value = 'SALIDA'; $('andObra').value = ''; $('andObraTxt').value = ''; $('andPersona').value = S.usuario ? S.usuario.nombre : '';
   $('andLista').innerHTML = ''; S.andFotos = []; pintarFotosEn('andFotos', S.andFotos); S.andCuando = ahoraES();
@@ -2228,9 +2235,10 @@ $('andCancelar').onclick = function () { $('andForm').style.display = 'none'; };
 $('andGuardar').onclick = function () {
   var modo = $('andModo').value, lineas = [];
   $('andLista').querySelectorAll('input').forEach(function (i) { var q = +i.value || 0; if (q > 0) lineas.push({ prefijo: i.dataset.p, cantidad: q }); });
-  if (!lineas.length) return toast('Pon cuántas piezas de algún tipo');
-  if (modo !== 'ENTRADA' && !$('andObra').value) return toast('Elige la obra');
-  if (!S.andFotos.length) return toast('Haz la foto general del conjunto');
+  limpiarErrores($('andForm'));
+  if (!lineas.length) return errorEn($('andLista').querySelector('input') || $('andLista'), 'Pon cuántas piezas de algún tipo');
+  if (modo !== 'ENTRADA' && !$('andObra').value) return errorEn($('andObraTxt'), 'Elige la obra');
+  if (!S.andFotos.length) return errorEn($('andFoto'), 'Haz la foto general del conjunto');
   var obra = modo === 'ENTRADA' ? '' : $('andObra').options[$('andObra').selectedIndex].text, alm = $('andAlmacen').value;
   var mov = { id: uid(), tipo: modo, obra: obra, almacen: alm, persona: modo === 'ENTRADA' ? '' : ($('andPersona').value.trim() || S.usuario.nombre), usuario: S.usuario.nombre,
     lineas: lineas, foto: S.andFotos[0], fecha: hoyISO(), hora: S.andCuando.slice(11) };
@@ -2246,21 +2254,180 @@ $('andGuardar').onclick = function () {
   DB.put('kv', S.datos, 'datos');
   DB.put('cola', { id: mov.id, tipo: 'andamios', mov: mov, fecha: mov.fecha, hora: mov.hora, creadoEn: new Date().toISOString() }).then(function () {
     $('andForm').style.display = 'none'; pintarHerr(); actualizarPend();
-    toast(navigator.onLine ? 'Andamios guardados. Enviando…' : 'Guardado en el móvil, se enviará solo', 'ok'); if (navigator.onLine) sincronizar();
+    var piezas = lineas.reduce(function (a, l) { return a + l.cantidad; }, 0);
+    mostrarGuardado({ id: mov.id, antes: $('andForm'), tipo: 'ANDAMIOS ' + ({ SALIDA: 'A OBRA', DEVOLUCION: 'RECOGIDOS', ENTRADA: 'ENTRADA' })[modo], det: [lineasTxt(lineas.length), lineasTxt(piezas, 'pieza'), obra || nombreAlmacen(alm).split(' · ')[0]], otro: function () { $('btnAndamios').onclick(); } });
+    if (navigator.onLine) sincronizar();
   });
 };
-// Mis herramientas: las que tengo a mi cargo (CON PERSONA); "Devolver" las deja en un almacén
+// Mis herramientas: las que tengo a mi cargo (CON PERSONA); "¿Dónde queda?" abre el flujo con esa máquina ya puesta
 function pintarMisHerr() {
   var yo = S.usuario ? S.usuario.nombre : '', mias = herrLocal().filter(function (h) { return h.estado === 'CON PERSONA' && h.quien === yo; });
   $('misHerr').innerHTML = mias.length ? mias.map(function (h) {
-    return '<div class="item"><div><b>' + esc(h.nombre) + '</b><small>desde ' + esc(h.desde || '') + (h.ok === 'PENDIENTE' ? ' · PENDIENTE DE OK' : '') + '</small></div><button class="btn peq sec devolverMia" data-cod="' + esc(h.codigo) + '" style="flex:0 0 auto">↩ Devolver</button></div>';
-  }).join('') : '<div class="ayuda">No tienes ninguna a tu cargo. Si tienes una en la mano, pulsa "La tengo yo".</div>';
+    return '<div class="item"><div><b>' + esc(h.nombre) + '</b><small>desde ' + esc(h.desde || '') + (h.ok === 'PENDIENTE' ? ' · PENDIENTE DE OK' : '') + '</small></div><button class="btn peq sec dqMia" data-cod="' + esc(h.codigo) + '" style="flex:0 0 auto">📍 ¿Dónde queda?</button></div>';
+  }).join('') : '<div class="ayuda">No tienes ninguna a tu cargo. Si tienes una en la mano: "¿Dónde queda una máquina?" → 👤 Conmigo.</div>';
 }
-$('misHerr').onclick = function (e) {
-  var b = e.target.closest('.devolverMia'); if (!b) return;
-  abrirMov('DEVOLUCION', 'HER');
-  var h = herrLocal().filter(function (x) { return x.codigo === b.dataset.cod; })[0];
-  $('movMatTxt').value = h.nombre; $('movMatTxt').dispatchEvent(new Event('input')); $('movMatSugs').style.display = 'none';
+$('misHerr').onclick = function (e) { var b = e.target.closest('.dqMia'); if (b) abrirDq(b.dataset.cod); };
+
+// ---------------------------------------------------------------- ¿Dónde queda una máquina? (control UNIDAD)
+// Un solo flujo: se elige o escanea la máquina (o se le da número: alta) y dónde queda.
+// Conmigo / A un compañero → ASIGNAR · En obra → SALIDA · En almacén → DEVOLUCION (ENTRADA si es nueva) · Averiada → AVERIA
+var DQ = { YO: '👤 Conmigo', OBRA: '🏗️ En obra', ALM: '🏠 En almacén', AVERIA: '⚠️ Averiada', COMP: '👥 A un compañero' };
+var DQ_TIT = { YO: 'CONMIGO', OBRA: 'EN OBRA', ALM: 'EN ALMACÉN', AVERIA: 'AVERÍA', COMP: 'A UN COMPAÑERO' };
+function tipoHerr(p) { return ((S.datos && S.datos.herrTipos) || []).filter(function (t) { return t.prefijo === p; })[0]; }
+function tiposUnidad() { return ((S.datos && S.datos.herrTipos) || []).filter(function (t) { return t.control !== 'CANTIDAD'; }); }
+// las que se pueden mover desde aquí; averiadas y en reparación las llevan los gestores (Reparaciones y altas)
+function maquinasMovibles() {
+  return herrLocal().filter(function (h) { var t = tipoHerr(String(h.codigo).split('-')[0]); return (!t || t.control !== 'CANTIDAD') && ['DISPONIBLE', 'EN OBRA', 'CON PERSONA'].indexOf(h.estado || 'DISPONIBLE') >= 0; });
+}
+function dondeEsta(h) {
+  var e = h.estado || 'DISPONIBLE';
+  return e === 'CON PERSONA' ? '👤 con ' + h.quien : e === 'EN OBRA' ? '🏗️ en obra · ' + h.donde : e === 'DISPONIBLE' ? '🏠 en ' + (h.almacen ? nombreAlmacen(h.almacen).split(' · ')[0] : 'el almacén') : e;
+}
+// compañeros: primero los que coincidieron conmigo en vales (misma obra y día) en los últimos 30 días
+function companeros() {
+  var yo = S.usuario ? S.usuario.nombre : '', c = ((S.datos && S.datos.companeros) || {})[yo] || [];
+  var pos = function (n) { var i = c.indexOf(n); return i < 0 ? 9999 : i; };
+  return ((S.datos && S.datos.trabajadores) || []).filter(function (t) { return t.nombre !== yo; })
+    .sort(function (a, b) { return pos(a.nombre) - pos(b.nombre) || String(a.nombre).localeCompare(String(b.nombre)); });
+}
+function abrirDq(codigo) {
+  ocultarGuardado(); limpiarErrores($('dqForm'));
+  $('andForm').style.display = 'none';
+  S.dqMaq = null; S.dqAlta = null; S.dqDestino = ''; S.dqFotos = []; S.dqPlaca = []; S.dqCodigoNuevo = ''; S.dqCuando = ahoraES();
+  $('dqCuando').textContent = 'Fecha y hora: ' + S.dqCuando;
+  ['dqMaqTxt', 'dqNota', 'dqPersonaTxt', 'dqObraTxt'].forEach(function (k) { $(k).value = ''; });
+  $('dqNoLista').innerHTML = ''; $('dqEstado').textContent = '';
+  opciones($('dqObra'), obras(), 'codigo', 'nombre', '— obra —');
+  opciones($('dqTipo'), tiposUnidad(), 'prefijo', 'nombre', '— elige el tipo —');
+  pintarFotosEn('dqFotos', S.dqFotos); pintarFotosEn('dqPlaca', S.dqPlaca);
+  $('dqMaqBloque').style.display = ''; $('dqAltaBloque').style.display = 'none'; $('dqNumero').style.display = 'none';
+  $('dqForm').style.display = '';
+  var h = codigo && herrLocal().filter(function (x) { return x.codigo === codigo; })[0];
+  if (h) { $('dqMaqTxt').value = h.nombre; S.dqMaq = h; }
+  pintarDq();
+  $('dqForm').scrollIntoView({ block: 'start', behavior: 'smooth' });
+}
+function dqVaCon() {
+  var p = S.dqAlta ? S.dqAlta.prefijo : S.dqMaq ? String(S.dqMaq.codigo).split('-')[0] : '';
+  return (tipoHerr(p) || {}).va_con || 'OBRA';
+}
+function pintarDq() {
+  var hay = !!(S.dqMaq || S.dqAlta), d = S.dqDestino;
+  $('dqEstado').textContent = S.dqMaq ? 'Ahora: ' + dondeEsta(S.dqMaq) : '';
+  $('dqDondeBloque').style.display = hay ? '' : 'none';
+  // el habitual según va_con, relleno de color; los demás con borde; ninguno bloqueado
+  var habitual = dqVaCon() === 'PERSONA' ? 'YO' : 'OBRA';
+  $('dqBotones').innerHTML = Object.keys(DQ).map(function (k) {
+    return '<button type="button" data-d="' + k + '" class="' + (k === d ? 'elegido' : k === habitual ? 'habitual' : '') + '">' + DQ[k] + (k === d ? ' ✓' : '') + '</button>';
+  }).join('');
+  $('dqObraBloque').style.display = d === 'OBRA' ? '' : 'none';
+  $('dqAlmBloque').style.display = d === 'ALM' ? '' : 'none';
+  $('dqAveriaBloque').style.display = d === 'AVERIA' ? '' : 'none';
+  $('dqCompBloque').style.display = d === 'COMP' ? '' : 'none';
+  $('dqFinBloque').style.display = d ? '' : 'none';
+  // foto obligatoria solo en el alta y en la avería
+  $('dqFoto').textContent = S.dqAlta ? '📷 Foto de la máquina con el número (obligatoria)' : d === 'AVERIA' ? '📷 Foto de la máquina y de la avería (obligatoria)' : '📷 Foto (opcional)';
+}
+$('btnDondeQueda').onclick = function () { abrirDq(); };
+$('dqCancelar').onclick = function () { $('dqForm').style.display = 'none'; };
+buscador($('dqMaqTxt'), $('dqMaqSugs'), maquinasMovibles, function (h) { S.dqMaq = h; if (h) $('dqNoLista').innerHTML = ''; pintarDq(); });
+// al salir del campo sin elegir: parecidas, o darle número
+$('dqMaqTxt').addEventListener('blur', function () {
+  var t = $('dqMaqTxt').value.trim(); if (!t || S.dqMaq) return;
+  var c = t.toUpperCase(), h = herrLocal().filter(function (x) { return x.codigo === c; })[0];
+  if (h) { $('dqNoLista').innerHTML = '<div class="nl-tit">' + esc(h.codigo) + ' está ' + esc(h.estado) + ': la llevan los gestores en Reparaciones y altas.</div>'; return; }
+  pintarNoLista($('dqNoLista'), parecidos(t, maquinasMovibles()), function (x) { $('dqMaqTxt').value = x.nombre; S.dqMaq = x; pintarDq(); },
+    { txt: 'No tiene número → darle uno', fn: function () { $('dqSinNum').onclick(); } });
+});
+$('dqCam').onclick = function () {
+  escanear(esCodigoMaquina).then(function (c) {
+    if (!c) return;
+    c = String(c).trim().toUpperCase();
+    var h = maquinasMovibles().filter(function (x) { return x.codigo === c; })[0], otra = herrLocal().filter(function (x) { return x.codigo === c; })[0];
+    if (!h) return errorEn($('dqMaqTxt'), otra ? c + ' está ' + otra.estado + ': la llevan los gestores en Reparaciones y altas' : 'No hay ninguna máquina ' + c);
+    $('dqMaqTxt').value = h.nombre; $('dqNoLista').innerHTML = ''; S.dqMaq = h; pintarDq();
+  });
+};
+// "No tiene número → darle uno": alta (se elige el tipo y el móvil propone el número)
+$('dqSinNum').onclick = function (e) {
+  if (e) e.preventDefault();
+  S.dqMaq = null; $('dqMaqTxt').value = ''; $('dqNoLista').innerHTML = '';
+  $('dqMaqBloque').style.display = 'none'; $('dqAltaBloque').style.display = ''; $('dqTipo').value = ''; S.dqAlta = null; $('dqNumero').style.display = 'none';
+  pintarDq();
+};
+$('dqConNum').onclick = function (e) { e.preventDefault(); S.dqAlta = null; S.dqCodigoNuevo = ''; $('dqAltaBloque').style.display = 'none'; $('dqMaqBloque').style.display = ''; pintarDq(); };
+$('dqTipo').onchange = function () {
+  S.dqAlta = tiposUnidad().filter(function (t) { return t.prefijo === $('dqTipo').value; })[0] || null;
+  S.dqCodigoNuevo = S.dqAlta ? siguienteNumero(S.dqAlta.prefijo) : '';
+  $('dqNumero').style.display = S.dqAlta ? '' : 'none';
+  $('dqNumero').innerHTML = S.dqAlta ? 'Número para esta máquina: <b style="font-size:22px">' + esc(S.dqCodigoNuevo) + '</b><br>✍️ Escríbelo con el rotulador en la máquina y haz la foto donde se vea.' : '';
+  pintarDq();
+};
+$('dqPlacaBtn').onclick = function () { $('dqPlacaInput').click(); };
+$('dqPlacaInput').onchange = function () { var f = this.files && this.files[0]; this.value = ''; if (f) comprimir(f, 1600).then(function (d) { if (d) { S.dqPlaca = [d]; pintarFotosEn('dqPlaca', S.dqPlaca); } }); };
+$('dqFoto').onclick = function () { $('dqFotoInput').click(); };
+$('dqFotoInput').onchange = function () { var f = this.files && this.files[0]; this.value = ''; if (f) comprimir(f).then(function (d) { if (d) { S.dqFotos = [d]; pintarFotosEn('dqFotos', S.dqFotos); } }); };
+buscador($('dqObraTxt'), $('dqObraSugs'), obras, function (o) { $('dqObra').value = o ? String(o.codigo) : ''; });
+buscador($('dqPersonaTxt'), $('dqPersonaSugs'), companeros, function () {});
+// cada botón pide solo su dato, ya relleno con lo último usado
+$('dqBotones').onclick = function (e) {
+  var b = e.target.closest('[data-d]'); if (!b) return;
+  S.dqDestino = b.dataset.d; limpiarErrores($('dqForm')); pintarDq();
+  var d = S.dqDestino, yo = S.usuario.codigo;
+  if (d === 'OBRA' && !$('dqObra').value) DB.get('kv', 'ultimaObraHer-' + yo).then(function (o) { return o || DB.get('kv', 'ultimaObraVale-' + yo); }).then(function (o) {
+    if (o && obras().some(function (x) { return String(x.codigo) === String(o); })) { $('dqObra').value = String(o); verObra('dqObra', 'dqObraTxt'); }
+  });
+  if (d === 'ALM') almacenGuardado().then(function (c) { opcionesAlmacen('dqAlmacen', c); });
+  if (d === 'AVERIA') $('dqNota').focus();
+  if (d === 'COMP') $('dqPersonaTxt').focus();
+};
+$('dqGuardar').onclick = function () {
+  limpiarErrores($('dqForm'));
+  var d = S.dqDestino, alta = !!S.dqAlta, h = S.dqMaq, yo = S.usuario.nombre;
+  if (!alta && !h) return errorEn($('dqAltaBloque').style.display === 'none' ? $('dqMaqTxt') : $('dqTipo'), $('dqAltaBloque').style.display === 'none' ? 'Elige la máquina de la lista o escanéala' : 'Elige el tipo de máquina');
+  if (!d) return errorEn($('dqBotones'), 'Elige dónde queda');
+  var tipo = d === 'YO' || d === 'COMP' ? 'ASIGNAR' : d === 'OBRA' ? 'SALIDA' : d === 'AVERIA' ? 'AVERIA' : alta ? 'ENTRADA' : 'DEVOLUCION';
+  var persona = yo, obra = '', almacen = '', nota = $('dqNota').value.trim(), donde = '';
+  if (d === 'COMP') {
+    var t = companeros().filter(function (x) { return normal(x.nombre) === normal($('dqPersonaTxt').value); })[0];
+    if (!t) return errorEn($('dqPersonaTxt'), 'Elige el compañero de la lista');
+    persona = t.nombre; donde = t.nombre;
+  }
+  if (d === 'OBRA') {
+    if (!$('dqObra').value) return errorEn($('dqObraTxt'), 'Elige la obra');
+    obra = $('dqObra').options[$('dqObra').selectedIndex].text; donde = obra;
+    DB.put('kv', $('dqObra').value, 'ultimaObraHer-' + S.usuario.codigo);
+  }
+  if (d === 'ALM') {
+    almacen = $('dqAlmacen').value; if (!almacen) return errorEn($('dqAlmacen'), 'Elige el almacén');
+    recordarAlmacen(almacen); donde = nombreAlmacen(almacen).split(' · ')[0];
+    if (h && h.estado === 'EN OBRA') obra = h.donde;   // de qué obra vuelve
+  }
+  if (d === 'AVERIA') {
+    if (!nota) return errorEn($('dqNota'), 'Escribe qué le pasa');
+    almacen = almacenes().some(function (a) { return a.codigo === 'QUI'; }) ? 'QUI' : '';   // se deja en QUIQUIRÁ
+  }
+  if ((alta || d === 'AVERIA') && !S.dqFotos.length) return errorEn($('dqFoto'), alta ? 'Haz la foto de la máquina con el número' : 'Haz la foto de la máquina y de la avería');
+  var nombre = alta ? S.dqCodigoNuevo + ' · ' + S.dqAlta.nombre : h.nombre;
+  var mov = { id: uid(), tipo: 'mov', clase: 'HER', persona: tipo === 'ENTRADA' ? '' : persona, movTipo: tipo, material: alta ? '' : String(h.codigo), materialNombre: alta ? S.dqAlta.nombre : h.nombre,
+    tipoHer: alta ? S.dqAlta.prefijo : '', codigoNuevo: alta ? S.dqCodigoNuevo : '', almacen: almacen, fotoPlaca: alta && S.dqPlaca[0] || '', hora: S.dqCuando.slice(11), cantidad: 1,
+    obra: tipo === 'SALIDA' || tipo === 'DEVOLUCION' ? obra : '', nota: nota, fotos: S.dqFotos.slice(), fecha: hoyISO(), usuario: yo, creadoEn: new Date().toISOString() };
+  // el móvil ya la enseña donde queda, hasta que llegue lo del servidor
+  var estado = { ASIGNAR: 'CON PERSONA', SALIDA: 'EN OBRA', AVERIA: 'AVERIADA' }[tipo] || 'DISPONIBLE';
+  var pon = function (x) {
+    x.estado = estado; x.donde = tipo === 'SALIDA' ? obra : tipo === 'ASIGNAR' ? persona : 'ALMACÉN'; x.quien = persona; x.desde = S.dqCuando; x.almacen = tipo === 'ASIGNAR' || tipo === 'SALIDA' ? '' : almacen;
+    if (tipo === 'AVERIA') x.averia = nota;
+  };
+  if (alta) {   // la nueva entra ya en la lista del móvil, para no repetir su número
+    (S.numerosPendientes = S.numerosPendientes || []).push(S.dqCodigoNuevo);
+    var nueva = { codigo: S.dqCodigoNuevo, tipo: S.dqAlta.nombre, nombre: nombre, ok: 'PENDIENTE' }; pon(nueva); herrLocal().push(nueva);
+  } else herrLocal().forEach(function (x) { if (x.codigo === h.codigo) pon(x); });
+  DB.put('kv', S.datos, 'datos');
+  DB.put('cola', mov).then(function () {
+    $('dqForm').style.display = 'none'; pintarHerr(); actualizarPend();
+    mostrarGuardado({ id: mov.id, antes: $('dqForm'), tipo: DQ_TIT[d], det: [nombre, donde || (d === 'YO' ? yo : '')], otro: function () { abrirDq(); } });
+    if (navigator.onLine) sincronizar();
+  });
 };
 // tipo de andamio nuevo: se guarda en el móvil y se sube primero (antes que sus movimientos)
 S.tnFotos = [];
@@ -2289,49 +2456,7 @@ $('tnGuardar').onclick = function () {
   });
 };
 $('movCancelar').onclick = function () { $('movForm').style.display = 'none'; };
-$('movGuardar').onclick = function () {
-  if (S.movClase !== 'HER') return guardarVale();
-  var her = S.movClase === 'HER', porCant = her && S.movMat && S.movMat.cantidad, nombreMat = $('movMatTxt').value.trim(), cant = her && !porCant ? 1 : +$('movCant').value;
-  if (her && !S.movMat) return toast(S.movTipo === 'ENTRADA' ? 'Elige el tipo de la lista' : 'Elige la herramienta de la lista (por su número)');
-  if (porCant && !(cant > 0)) return toast('Pon cuántas');
-  var fotoObl = her && ((!porCant && S.movTipo !== 'ASIGNAR') || S.movMat.nuevo);   // andamios y "La tengo yo": foto opcional
-  if (fotoObl && !S.movFotos.length) return toast('Haz una foto de la herramienta');
-  if (her && S.movTipo === 'AVERIA' && !$('movNota').value.trim()) return toast('Escribe qué le pasa');
-  if (!nombreMat || !cant) return toast('Escribe material y cantidad');
-  // si no se eligió de la lista, va como texto libre (código OTRO, no cuenta en el stock)
-  var mat = S.movMat ? String(S.movMat.codigo || '') : 'OTRO', matNombre = S.movMat ? (S.movMat.nuevo ? S.movMat.tipo : S.movMat.nombre) : nombreMat.toUpperCase();
-  var conObra = her ? $('movObraBloque').style.display !== 'none' : S.movTipo !== 'ENTRADA' && S.movTipo !== 'AVERIA';   // herramientas: según el formulario
-  var almacenHer = her && S.movTipo !== 'ASIGNAR' && (S.movTipo !== 'SALIDA' || porCant) ? $('valeAlmacen').value : '';
-  if (almacenHer) recordarAlmacen(almacenHer);
-  if (conObra && !$('movObra').value) return toast('Elige la obra');
-  var obraSel = $('movObra'), obraTxt = conObra ? obraSel.options[obraSel.selectedIndex].text : '';
-  var persona = conObra ? ($('movPersonaTxt').value.trim() || S.usuario.nombre) : S.movTipo === 'ASIGNAR' ? S.usuario.nombre : '';
-  var mov = { id: uid(), tipo: 'mov', clase: S.movClase, persona: persona, movTipo: S.movTipo, material: mat, materialNombre: matNombre, tipoHer: her && !porCant && (S.movTipo === 'ENTRADA' || S.movMat.nuevo) ? S.movMat.prefijo : '', codigoNuevo: S.codigoNuevo || '', almacen: almacenHer,
-    fotoPlaca: her && $('placaBloque').style.display !== 'none' && S.movPlaca && S.movPlaca[0] || '', hora: S.movCuando.slice(11), cantidad: cant, obra: obraTxt, nota: $('movNota').value.trim(), fotos: S.movFotos.slice(), fecha: hoyISO(), usuario: S.usuario.nombre, creadoEn: new Date().toISOString() };
-  // ajuste optimista del stock local
-  if (porCant) { mov.material = S.movMat.prefijo; mov.materialNombre = S.movMat.nombre; }
-  else if (her && S.codigoNuevo) {   // la nueva entra ya en la lista del móvil, para no repetir su número
-    (S.numerosPendientes = S.numerosPendientes || []).push(S.codigoNuevo);
-    herrLocal().push({ codigo: S.codigoNuevo, tipo: S.movMat.tipo || S.movMat.nombre, nombre: S.codigoNuevo + ' · ' + (S.movMat.tipo || S.movMat.nombre),
-      donde: S.movTipo === 'SALIDA' ? obraTxt : S.movTipo === 'ASIGNAR' ? S.usuario.nombre : 'ALMACÉN', quien: persona || S.usuario.nombre, desde: S.movCuando,
-      estado: S.movTipo === 'SALIDA' ? 'EN OBRA' : S.movTipo === 'ASIGNAR' ? 'CON PERSONA' : 'DISPONIBLE', almacen: almacenHer, ok: 'PENDIENTE' });
-  } else if (her) herrLocal().forEach(function (h) {
-    if (h.codigo === mat) {
-      h.donde = S.movTipo === 'SALIDA' ? obraTxt : S.movTipo === 'ASIGNAR' ? S.usuario.nombre : 'ALMACÉN'; h.quien = persona || S.usuario.nombre; h.desde = S.movCuando; h.almacen = almacenHer;
-      h.estado = S.movTipo === 'SALIDA' ? 'EN OBRA' : S.movTipo === 'AVERIA' ? 'AVERIADA' : S.movTipo === 'ASIGNAR' ? 'CON PERSONA' : 'DISPONIBLE'; if (S.movTipo === 'AVERIA') h.averia = $('movNota').value.trim();
-    }
-  });
-  else stockLocal().forEach(function (m) { if (m.codigo === mat) m.stock += (S.movTipo === 'SALIDA' ? -cant : cant); });
-  DB.put('kv', S.datos, 'datos');
-  if (porCant) (S.datos.andamios || []).forEach(function (a) {   // cantidades del móvil hasta que llegue lo del servidor
-    if (a.prefijo !== mov.material) return;
-    var s = function (o, k, v) { if (k) o[k] = (o[k] || 0) + v; };
-    if (S.movTipo === 'SALIDA') { s(a.porAlmacen, almacenHer, -cant); s(a.porObra, obraTxt, cant); }
-    else if (S.movTipo === 'DEVOLUCION') { s(a.porObra, obraTxt, -cant); s(a.porAlmacen, almacenHer, cant); }
-    else s(a.porAlmacen, almacenHer, cant);
-  });
-  DB.put('cola', mov).then(function () { $('movForm').style.display = 'none'; pintarStock(); pintarHerr(); pintarMisHerr(); toast('Movimiento guardado'); actualizarPend(); sincronizar(); });
-};
+$('movGuardar').onclick = function () { guardarVale(); };
 
 // ---------------------------------------------------------------- vales (solo admin; el servidor comprueba el rol)
 function authAdmin() {
@@ -2419,11 +2544,11 @@ function sincronizar() {
         if (it.tipo === 'foto' && pendientes[it.valeId]) return;   // la foto espera a que llegue su inventario
         if (it.tipo === 'fotoInv' && pendientes['inv:' + it.inventario]) return;
         if (it.tipo === 'andamios') return api('andamios', { mov: it.mov }).then(function (j) {
-          toast('Andamios ' + j.numero + ' guardados', 'ok');
+          if (!numeroGuardado(it.id, 'Nº ' + j.numero)) toast('Andamios ' + j.numero + ' guardados', 'ok');
           return DB.put('hist', { id: it.id, tipo: 'vale', fecha: it.fecha, numero: j.numero, resumen: 'Andamios · ' + ({ SALIDA: 'a obra', DEVOLUCION: 'recogidos de obra', ENTRADA: 'entrada en almacén' })[it.mov.tipo] + (it.mov.obra ? ' · ' + it.mov.obra : '') + ' · ' + it.mov.lineas.map(function (l) { return l.cantidad; }).reduce(function (a, b) { return a + b; }, 0) + ' piezas', hora: it.hora, enviadoEn: new Date().toISOString() })
             .then(function () { return DB.del('cola', it.id); });
         }).catch(function (e) {
-          if (navigator.onLine && !/fetch|network|Failed/i.test(e.message)) toast('Los andamios no se han guardado: ' + e.message, 'err');
+          if (navigator.onLine && !/fetch|network|Failed/i.test(e.message)) { numeroGuardado(it.id, '⚠️ No se ha guardado: ' + e.message, true); toast('Los andamios no se han guardado: ' + e.message, 'err'); }
           it.error = e.message; it.intentos = (it.intentos || 0) + 1; return DB.put('cola', it);
         });
         if (it.tipo === 'herrTipoNuevo') return api('herrTipoNuevo', { tipo: it.tipoNuevo, auth: it.auth }).then(function () { return DB.del('cola', it.id); })
@@ -2458,7 +2583,8 @@ function sincronizar() {
         return llamada.then(function (j) {
           enviados++;
           // confirmación clara con el número
-          if (it.tipo === 'vale') toast((it.valeTipo === 'AJUSTE' ? 'Inventario ' : 'Vale ') + j.numero + ' guardado', 'ok');
+          if (it.tipo === 'vale' && !numeroGuardado(it.id, 'Vale ' + j.numero)) toast((it.valeTipo === 'AJUSTE' ? 'Inventario ' : 'Vale ') + j.numero + ' guardado', 'ok');
+          if (it.tipo === 'mov') numeroGuardado(it.id, 'Nº ' + j.numero + (it.tipoHer ? ' · máquina ' + (j.herramienta || it.codigoNuevo) + (j.cambiado ? ' ⚠️ CAMBIADO: tenía ' + it.codigoNuevo + ', corrige el número en la máquina' : '') : ''));
           else if (it.tipo === 'parte') toast('Parte Nº ' + j.numero + ' guardado', 'ok');
           if (it.tipo === 'vale') delete pendientes[it.id];
           var cambiadas = (j.altas || []).filter(function (a) { return a.cambiado; });
@@ -2472,7 +2598,10 @@ function sincronizar() {
           return DB.put('hist', h).then(function () { return DB.del('cola', it.id); });
         }).catch(function (e) {
           // sin cobertura se queda en cola; si el servidor lo rechaza, se avisa
-          if (it.tipo === 'vale' && navigator.onLine && !/fetch|network|Failed/i.test(e.message)) toast('El vale no se ha guardado: ' + e.message, 'err');
+          if ((it.tipo === 'vale' || it.tipo === 'mov') && navigator.onLine && !/fetch|network|Failed/i.test(e.message)) {
+            numeroGuardado(it.id, '⚠️ No se ha guardado: ' + e.message, true);
+            toast((it.tipo === 'vale' ? 'El vale' : 'El movimiento') + ' no se ha guardado: ' + e.message, 'err');
+          }
           it.error = e.message; it.intentos = (it.intentos || 0) + 1; return DB.put('cola', it);
         });
       });

@@ -16,7 +16,7 @@ Cosas pedidas que todavía NO se han hecho. Se borran de aquí cuando estén hec
 - **A la vez: elegir la categoría de cada trabajador en el parte (PEÓN / OFICIAL).** Depende del día o del
   trabajo: a veces un peón hace de oficial y al revés. Por defecto, la de la hoja TRABAJADORES. Es solo para
   el cliente (PDF y facturación), NO cuenta para nóminas ni cambia TRABAJADORES. *(Pedido 30/10/2026, esperar OK.)*
-- Publicado hasta herramientas con averías, reparador y OK (versión 19, 31/10/2026). Pendiente: permisos propios para encargado (hoy = trabajador + Ver stock).
+- Publicado hasta la revisión UX ("¿Dónde queda una máquina?", tarjeta verde, "no está en la lista", errores junto al campo; versión 20, 31/10/2026). Probarlo en un móvil real. Pendiente: permisos propios para encargado (hoy = trabajador + Ver stock).
 - Compras: estado PENDIENTE_LEER (albaranes que se meten sin líneas para leerlos después); hoy todo CONFIRMADA.
 - Probar la huella en los móviles reales (si da error, la app enseña el motivo: pasárselo a Claude).
 - Foto para reconocer el material (propuesta; decidir con Fable si se hace y con qué servicio).

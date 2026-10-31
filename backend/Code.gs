@@ -48,7 +48,7 @@ var HOJAS = {
   // va_con: PERSONA u OBRA; control: UNIDAD (con número) o CANTIDAD (andamios); estado PENDIENTE = tipo nuevo propuesto por un trabajador
   HERR_TIPOS: ['prefijo','tipo','orden','va_con','control','estado','material','definicion','foto','propuesto_por','creado_en'],
   HERRAMIENTAS: ['codigo','tipo','activo','alta_fecha','alta_por','ok','ok_por','ok_en','motivo_rechazo','marca','modelo','n_serie','foto_placa'],   // marca, modelo y nº de serie: los rellena Mateo desde la foto de la placa (alta)   // ok: PENDIENTE (alta de cualquiera) / OK / RECHAZADA
-  // tipo: ENTRADA (alta), SALIDA (a obra), DEVOLUCION, AVERIA, REPARACION (al reparador), VUELTA (reparada), BAJA, ASIGNAR ("La tengo yo": con persona), AJUSTE (inventario de las de CANTIDAD)
+  // tipo: ENTRADA (alta), SALIDA (a obra), DEVOLUCION, AVERIA, REPARACION (al reparador), VUELTA (reparada), BAJA, ASIGNAR (queda con una persona: "Conmigo" o "A un compañero"), AJUSTE (inventario de las de CANTIDAD)
   HERR_MOV: ['id','fecha','tipo','herramienta_codigo','herramienta','cantidad','unidad','obra','usuario','nota','creado_en','fotos','numero','hora','persona','almacen','recibo'],
   HERR_DONDE: ['codigo','herramienta','donde','quien','desde','ultimo_mov','foto','estado','almacen','ok','averia'],
   REPARADORES: ['nombre','telefono','email'],
@@ -66,7 +66,7 @@ function movFilas_(c) {
 }
 var ESQUEMA = '19';
 // número de la versión publicada en Apps Script (subirlo en cada publicación, igual que VERSION_WEB de index.html)
-var VERSION_SERVIDOR = 19;            // subir cuando cambien las columnas de HOJAS
+var VERSION_SERVIDOR = 20;            // subir cuando cambien las columnas de HOJAS
 var EMAIL_COPIA = 'soleracanarias@gmail.com';
 var CSV_NOMBRE = 'PARTES APP 2026.csv';  // se crea en la carpeta CARPETA_CSV_ID de CONFIG (CLIENTES\PARTES\APP)
 var CSV_COLUMNAS = ['N_PARTE','FECHA','DIA_SEMANA','CLIENTE','OBRA','COD_OBRA_APP','RESP_CLIENTE','RESP_CERT','RESP_SOLERA','MATRICULA',
@@ -345,12 +345,35 @@ function bootstrap_() {
       .map(function (f) { return { prefijo: String(f.prefijo), nombre: String(f.tipo), va_con: String(f.va_con || '').toUpperCase() === 'PERSONA' ? 'PERSONA' : 'OBRA',
         control: String(f.control || '').toUpperCase() === 'CANTIDAD' ? 'CANTIDAD' : 'UNIDAD', estado: String(f.estado || '') }; }),
     andamios: andamios_(),
+    companeros: companeros_(),
     firmantes: filas_('FIRMANTES').filter(function (f) { return f.nombre; })
       .sort(function (a, b) { return (Number(b.veces) || 0) - (Number(a.veces) || 0); })
       .map(function (f) { return { nombre: String(f.nombre), email: String(f.email || '') }; }),
     version_servidor: VERSION_SERVIDOR, esquema: ESQUEMA,
     hora: ahora_()
   };
+}
+
+// compañeros de cada uno: los que coincidieron en vales (misma obra y mismo día) en los últimos 30 días, de más a menos veces.
+// Sirve para ordenar "A un compañero" en "¿Dónde queda una máquina?".
+function companeros_() {
+  var desde = new Date(); desde.setDate(desde.getDate() - 30);
+  var d0 = Utilities.formatDate(desde, 'Atlantic/Canary', 'yyyy-MM-dd'), grupos = {};
+  filas_('VALES').forEach(function (v) {
+    if (si_(v.anulado) || !v.obra) return;
+    var t = txtFecha_(v.fecha, 'dd/MM/yyyy').split('/');
+    if (t.length !== 3 || t[2] + '-' + t[1] + '-' + t[0] < d0) return;
+    var k = String(v.obra) + '|' + t.join('/'), g = grupos[k] = grupos[k] || {};
+    [v.persona, v.usuario].forEach(function (n) { n = String(n || '').trim(); if (n) g[n] = true; });
+  });
+  var veces = {};
+  Object.keys(grupos).forEach(function (k) {
+    var ns = Object.keys(grupos[k]);
+    ns.forEach(function (a) { ns.forEach(function (b) { if (a !== b) { veces[a] = veces[a] || {}; veces[a][b] = (veces[a][b] || 0) + 1; } }); });
+  });
+  var out = {};
+  Object.keys(veces).forEach(function (a) { out[a] = Object.keys(veces[a]).sort(function (x, y) { return veces[a][y] - veces[a][x]; }); });
+  return out;
 }
 
 // lo más usado primero: uso = uso_base (partes y compras de 2026) + líneas de vales de los últimos 90 días.
@@ -594,7 +617,10 @@ function movimiento_(m) {
   // herramientas de CANTIDAD (andamios): se mueven por tipo y cuántas, sin número
   if (tCant && tCant.control === 'CANTIDAD') { mat = { codigo: tCant.prefijo, nombre: tCant.tipo, unidad: 'ud' }; porCantidad = true; if (!(Number(m.cantidad) > 0)) throw new Error('Pon cuántas'); }
   // alta, o herramienta que aún no tenía número (se le da uno al llevarla, devolverla o al decir "La tengo yo")
-  else if (her && (m.tipo === 'ENTRADA' || (!m.material && m.tipoHer))) { mat = altaHerramienta_(m.tipoHer, m.usuario, m.codigoNuevo); mat.alta = true; }
+  else if (her && (m.tipo === 'ENTRADA' || (!m.material && m.tipoHer))) {
+    if (!(m.fotos && m.fotos.length)) throw new Error('El alta de una máquina necesita una foto (con el número escrito)');
+    mat = altaHerramienta_(m.tipoHer, m.usuario, m.codigoNuevo); mat.alta = true;
+  }
   else if (her) {
     var u = filas_('HERRAMIENTAS').filter(function (f) { return String(f.codigo) === String(m.material); })[0];
     if (!u) throw new Error('Herramienta no encontrada: ' + (m.material || ''));
@@ -610,7 +636,6 @@ function movimiento_(m) {
   setConfig_(c.contador, n + 1);
   var numero = c.prefijo + ('000' + n).slice(-4);
   var tipo = ['ENTRADA', 'DEVOLUCION', 'AVERIA', 'ASIGNAR'].indexOf(m.tipo) >= 0 && (her || ['AVERIA', 'ASIGNAR'].indexOf(m.tipo) < 0) ? m.tipo : 'SALIDA';
-  if (tipo === 'ASIGNAR' && (porCantidad || (tiposH[String(mat.codigo).split('-')[0]] || {}).va_con !== 'PERSONA')) throw new Error('"La tengo yo" es solo para las herramientas que van con la persona');
   if (porCantidad && ['AVERIA', 'ASIGNAR'].indexOf(tipo) >= 0) throw new Error('Los andamios se mueven por cantidad: llevar, devolver o alta');
   if (her && !porCantidad && tipo !== 'ENTRADA' && mat.codigo) {
     var est = (herrPorCodigo_(mat.codigo) || {}).estado;
