@@ -6,18 +6,21 @@ La app está **EN PRUEBAS** (ver `CLAUDE.md`). Lo pendiente está en `PENDIENTES
 - `index.html`: la app entera (SOLERA). Con `?modo=almacen` es **SOLERA Almacén** (`almacen/index.html`, sin la pestaña Parte).
 - `sw.js`: guarda la app en el móvil para abrirla sin cobertura (incluye `lib/`).
 - `lib/zxing-0.21.3.min.js`: lector de códigos de barras para iPhone (Apache 2.0), dentro de la app.
-- `backend/Code.gs`: servidor (Apps Script de la hoja "APP SOLERA"). Publicado en la **versión 12**, igual que el repositorio (`ESQUEMA = '14'`).
+- `backend/Code.gs`: servidor (Apps Script de la hoja "APP SOLERA"). Publicado en la **versión 13**, igual que el repositorio (`ESQUEMA = '15'`).
 - `docs/MATERIALES_PROPUESTA.csv`: lista de materiales aprobada (sin precios).
 
-## Quién puede qué
-- **Todos:** parte, ME LLEVO, DEVUELVO, ENCONTRÉ MATERIAL, herramientas, ver stock, escanear (si el código ya es conocido).
-- **Admin** (rol en TRABAJADORES): COMPRA (a almacén o a obra), TRASPASO, pestaña Vales y anular.
+## Quién puede qué (columna `rol` de TRABAJADORES)
+- **trabajador** (todos los compañeros, oficiales o peones; la categoría OFICIAL/PEÓN solo se usa en el parte): parte, herramientas y, en Almacén, solo ME LLEVO, DEVUELVO y ENCONTRÉ.
+- **encargado:** lo mismo, más "Ver stock".
+- **admin:** además COMPRA (a almacén o a obra), TRASPASO, Ver stock, pestaña Vales y anular.
 - **Inventario = SI** (Mateo 999 y Gregorio 998): pestaña Inventario y asociar códigos de barras nuevos.
 - El servidor lo comprueba con código + PIN. Quien entra solo con huella tiene que entrar una vez con el PIN para compras, traspasos e inventario.
 
 ## Almacén
 - Dos almacenes (pestaña ALMACENES): **LA MATANZA** (por defecto) y **AGÜIMES**. Cada vale guarda el suyo; el móvil recuerda el último de su dueño.
-- Cada formulario es un **vale** numerado (A0004…) con varias líneas; cada línea puede llevar **marca** y se puede **escanear** el EAN.
+- Cada formulario es un **vale** numerado (A0004…) con varias líneas.
+- **ME LLEVO / DEVUELVO / ENCONTRÉ:** material (con 📷 al lado), cantidad, obra (sale la última usada) y GUARDAR. Almacén y persona van puestos en una línea discreta ("cambiar"); comentario y fotos, plegados en "Más" (en ENCONTRÉ el comentario está a la vista porque es obligatorio).
+  Toques para un ME LLEVO de 2 materiales: 7 la primera vez (uno escaneado y otro escrito, eligiendo la obra), 5 con la obra ya puesta, 4 si se escanean los dos (más escribir el material y la cantidad).
 - Tipos: SALIDA (ME LLEVO), DEVOLUCION, RECUPERADO, ENTRADA (compra a almacén), COMPRA_OBRA (no toca el stock), TRASPASO (sale de uno y entra en otro) y AJUSTE (inventario).
 - **Stock** por almacén, por marca y total (app y pestaña STOCK): entradas + devoluciones + recuperado + traspasos que entran + ajustes − salidas − traspasos que salen. Sin anulados.
 - Solo cuentan los materiales activos con `en_almacen = SI`; agua, hormigón, zahorra y áridos a granel van directo a obra (solo en partes y compras a obra).
@@ -33,8 +36,11 @@ La app está **EN PRUEBAS** (ver `CLAUDE.md`). Lo pendiente está en `PENDIENTES
 - Envío solo al volver la cobertura: EAN nuevos → inventario → fotos una a una, con reintento. En Enviados: "Inventario A00xx: 12 de 30 fotos subidas".
 
 ## Códigos de barras
-- Pestaña **EANS** (ean, material_codigo, marca, nombre_envase, proveedor). EAN conocido: rellena material y marca y salta a la cantidad. Nuevo: Mateo y Gregorio lo asocian (también sin cobertura); los demás lo eligen a mano.
-- Los artículos de proveedor (`MATERIALES APP.csv` y las tablas de precios) **no traen EAN**: no hay nada que cargar; se irán dando de alta al escanear.
+- Lector: primero el del navegador (BarcodeDetector, Android) y si no ZXing (iPhone), que va dentro de la app y se guarda en el móvil al instalar/actualizar, al abrirla con cobertura y con "Preparar". Sin cámara se escribe el número o la referencia del fabricante.
+- Pestaña **EANS** (ean, material_codigo, marca, nombre_envase, proveedor, ref_fabricante, estado, sugerido, visto_en). Los materiales también se encuentran escribiendo la referencia del fabricante.
+- **En los vales:** EAN conocido → material y marca, cantidad 1; cada escaneo repetido del mismo producto suma 1. EAN desconocido → se elige el material a mano y el código queda **PENDIENTE** (con el material elegido).
+- **Asociar** (solo Mateo y Gregorio): en Inventario, "Códigos pendientes de asociar", o al escanear un código nuevo en el inventario.
+- Los artículos de proveedor (`MATERIALES APP.csv` y las tablas de precios) **no traen EAN**; `ref_fabricante` se puede rellenar a mano en EANS.
 
 ## Pestañas de la hoja
 CONFIG, TRABAJADORES (+ `rol`, `inventario`), OBRAS, MATERIALES (+ `codigo_mercadona`, `en_almacen`, `alias`, `uso_base`), PARTES, PARTES_LINEAS, MOVIMIENTOS (+ `almacen`, `contado`, `marca`, `stock_antes`), VALES (+ `almacen`, `almacen_destino`, `inicio`, `cierre`), STOCK (fórmulas, con `stock_MAT` y `stock_AGU`), POR_OBRA, ALMACENES, EANS, INV_MAQUINAS, FIRMANTES, HERR_TIPOS, HERRAMIENTAS, HERR_MOV, HERR_DONDE, MATERIALES_ANTES_6D (copia de seguridad) y "Hoja 1" (vacía, no se usa).

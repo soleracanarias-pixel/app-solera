@@ -23,7 +23,7 @@
 var MESES = ['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
 var HOJAS = {
   CONFIG: ['clave','valor'],
-  TRABAJADORES: ['codigo','nombre','categoria','pin','activo','encargado','rol','inventario'],   // rol: admin / encargado / oficial; inventario SI = hace inventarios y asocia EAN
+  TRABAJADORES: ['codigo','nombre','categoria','pin','activo','encargado','rol','inventario'],   // rol: admin / encargado / trabajador (la categoría OFICIAL/PEÓN es solo para el parte); inventario SI = hace inventarios y asocia EAN
   OBRAS: ['codigo','nombre','cliente','activa'],
   MATERIALES: ['codigo','nombre','unidad','stock_min','activo','orden','categoria','codigo_mercadona','en_almacen','alias','uso_base'],   // en_almacen NO = va directo a obra: sale en partes, no en stock ni vales
   PARTES: ['id','numero','fecha','obra_codigo','obra','cliente','creado_por','trabajadores','total_horas','trabajos','materiales','medios','observaciones','firmado','firmante','pdf_url','fotos','creado_en','origen','firmado_en','copia_enviada_a','copia_enviada_en','copia_error'],
@@ -34,7 +34,8 @@ var HOJAS = {
   // almacenes físicos (MAT = La Matanza, AGU = Agüimes); en la app se ve 'NOMBRE · dirección corta', el código solo en la hoja
   ALMACENES: ['codigo','nombre','direccion','activo','por_defecto'],
   // códigos de barras (EAN) de los envases: qué material y qué marca son
-  EANS: ['ean','material_codigo','marca','nombre_envase','proveedor','creado_por','creado_en'],
+  // estado PENDIENTE = código escaneado en un vale que nadie conocía: Mateo o Gregorio lo asocian desde Inventario
+  EANS: ['ean','material_codigo','marca','nombre_envase','proveedor','creado_por','creado_en','ref_fabricante','estado','sugerido','visto_en'],
   // máquinas contadas en cada inventario (por tipo y estado) y las que se dieron de alta al cerrarlo
   INV_MAQUINAS: ['numero','fecha','almacen','prefijo','tipo','bien','regular','averiada','total','en_almacen_antes','altas'],
   STOCK: ['codigo','nombre','unidad','entradas','salidas','stock','stock_min','aviso'],
@@ -56,7 +57,7 @@ function clase_(c) { return CLASES[c === 'HER' ? 'HER' : 'MAT']; }
 function movFilas_(c) {
   return filas_(c.mov).map(function (f) { f.material_codigo = f[c.cod]; f.material = f[c.nom]; return f; });
 }
-var ESQUEMA = '14';            // subir cuando cambien las columnas de HOJAS
+var ESQUEMA = '15';            // subir cuando cambien las columnas de HOJAS
 var EMAIL_COPIA = 'soleracanarias@gmail.com';
 var CSV_NOMBRE = 'PARTES APP 2026.csv';  // se crea en la carpeta CARPETA_CSV_ID de CONFIG (CLIENTES\PARTES\APP)
 var CSV_COLUMNAS = ['N_PARTE','FECHA','DIA_SEMANA','CLIENTE','OBRA','COD_OBRA_APP','RESP_CLIENTE','RESP_CERT','RESP_SOLERA','MATRICULA',
@@ -152,6 +153,8 @@ function migrarAlmacenes_() {
   var tr = filas_('TRABAJADORES');
   if (!tr.some(function (t) { return String(t.inventario || '').trim(); }))
     tr.forEach(function (t, i) { if (['999', '998'].indexOf(String(t.codigo)) >= 0) ponerEnFila_('TRABAJADORES', i + 2, { inventario: 'SI' }); });
+  // el rol 'oficial' pasa a llamarse 'trabajador' (todos los compañeros tienen los mismos permisos)
+  tr.forEach(function (t, i) { if (normal_(t.rol) === 'oficial') ponerEnFila_('TRABAJADORES', i + 2, { rol: 'trabajador' }); });
   var ha = hoja_('ALMACENES');
   if (ha.getLastRow() < 2) ALMACENES_INICIALES.forEach(function (r) { ha.appendRow(r); });
   ['MOVIMIENTOS', 'VALES'].forEach(function (n) {
@@ -263,8 +266,9 @@ function login_(b) {
 // (de momento encargado tiene los mismos permisos que oficial)
 function rolDe_(t) {
   var r = normal_(t.rol);
-  if (r === 'admin' || r === 'encargado' || r === 'oficial') return r;
-  return String(t.codigo) === '999' ? 'admin' : (si_(t.encargado) ? 'encargado' : 'oficial');
+  if (r === 'admin' || r === 'encargado' || r === 'trabajador') return r;
+  if (r === 'oficial') return 'trabajador';   // nombre antiguo del rol
+  return String(t.codigo) === '999' ? 'admin' : (si_(t.encargado) ? 'encargado' : 'trabajador');
 }
 // las acciones de admin llevan auth = {codigo, pin} y se comprueban aquí (ocultar botones no basta)
 // inventario y asociar EAN: solo quien tenga inventario = SI en TRABAJADORES (Mateo y Gregorio), con su PIN
@@ -292,8 +296,10 @@ function bootstrap_() {
       .map(function (f) { return { codigo: String(f.codigo), nombre: f.nombre, cliente: f.cliente }; }),
     materiales: materialesPorUso_(),
     almacenes: almacenes_(),
-    eans: filas_('EANS').filter(function (e) { return e.ean; }).map(function (e) {
-      return { ean: String(e.ean), material: String(e.material_codigo), marca: String(e.marca || ''), envase: String(e.nombre_envase || '') }; }),
+    eans: filas_('EANS').filter(function (e) { return e.ean && e.material_codigo && String(e.estado) !== 'PENDIENTE'; }).map(function (e) {
+      return { ean: String(e.ean), material: String(e.material_codigo), marca: String(e.marca || ''), envase: String(e.nombre_envase || ''), ref: String(e.ref_fabricante || '') }; }),
+    eansPendientes: filas_('EANS').filter(function (e) { return e.ean && String(e.estado) === 'PENDIENTE'; }).map(function (e) {
+      return { ean: String(e.ean), sugerido: String(e.sugerido || ''), visto_en: String(e.visto_en || '') }; }),
     stock: stock_(),
     otros: otrosPendientes_(),
     herramientas: herrDonde_(false),
@@ -318,10 +324,12 @@ function materialesPorUso_() {
     if (t.length !== 3 || t[2] + '-' + t[1] + '-' + t[0] < d0) return;
     var k = String(m.material_codigo); lineas[k] = (lineas[k] || 0) + 1;
   });
+  var refs = {};   // referencias de fabricante (EANS) para buscar el material por ellas
+  filas_('EANS').forEach(function (e) { if (e.material_codigo && e.ref_fabricante) (refs[e.material_codigo] = refs[e.material_codigo] || []).push(String(e.ref_fabricante)); });
   return filas_('MATERIALES').filter(function (f) { return si_(f.activo); }).map(function (f) {
     var k = String(f.codigo);
     return { codigo: k, nombre: f.nombre, unidad: f.unidad, stock_min: Number(f.stock_min) || 0, categoria: String(f.categoria || ''),
-      alias: String(f.alias || ''), en_almacen: enAlmacen_(f) ? 'SI' : 'NO',
+      alias: String(f.alias || ''), refs: (refs[k] || []).join(','), en_almacen: enAlmacen_(f) ? 'SI' : 'NO',
       uso: (Number(f.uso_base) || 0) + (lineas[k] || 0), orden: Number(f.orden) || 9999 };
   }).sort(function (a, b) { return b.uso - a.uso || a.orden - b.orden; })
     .map(function (m) { delete m.orden; return m; });
@@ -709,6 +717,7 @@ function vale_(v) {
     almacen: almacen, almacen_destino: destino,
     inicio: v.inicio ? "'" + v.inicio : '', cierre: v.cierre ? "'" + v.cierre : '' });
   var altas = inventarioMaquinas_(maquinas, v, numero, fecha, almacen, hora, creadoEn);
+  eansPendientes_(lineas, numero, v.usuario);
   avisarStock_(lineas.map(function (l) { return String(l.material); }));
   if (['SALIDA', 'DEVOLUCION', 'RECUPERADO', 'COMPRA_OBRA'].indexOf(tipo) >= 0) try { porObra_(); } catch (err) { console.error('POR_OBRA: ' + err); }
   return { ok: true, numero: numero, fotos: urls, n_lineas: lineas.length, altas: altas, cambios: cambios.length };
@@ -736,19 +745,33 @@ function inventarioMaquinas_(maquinas, v, numero, fecha, almacen, hora, creadoEn
   if (altas.length) try { herrDonde_(true); } catch (err) { console.error('HERR_DONDE: ' + err); }
   return altas;
 }
+// códigos escaneados en un vale que nadie conocía: quedan PENDIENTE (con el material que eligió a mano quien lo escaneó)
+function eansPendientes_(lineas, numero, usuario) {
+  var nuevos = lineas.filter(function (l) { return /^\d{8,14}$/.test(String(l.ean || '')); });
+  if (!nuevos.length) return;
+  var ya = {}; filas_('EANS').forEach(function (e) { ya[String(e.ean)] = true; });
+  nuevos.forEach(function (l) {
+    var ean = String(l.ean); if (ya[ean]) return; ya[ean] = true;
+    anadirFila_('EANS', { ean: "'" + ean, material_codigo: '', estado: 'PENDIENTE', sugerido: String(l.material || ''), visto_en: numero, creado_por: usuario || '', creado_en: ahora_() });
+  });
+}
 // EAN nuevos (pueden llegar con retraso, desde un móvil que estuvo sin cobertura). Si el EAN ya estaba, se deja el primero.
 function guardarEans_(lista, auth) {
-  var t = exigirInventario_(auth), ya = {}, mats = {};
-  filas_('EANS').forEach(function (e) { ya[String(e.ean)] = e; });
+  var t = exigirInventario_(auth), ya = {}, fila = {}, mats = {};
+  filas_('EANS').forEach(function (e, i) { ya[String(e.ean)] = e; fila[String(e.ean)] = i + 2; });
   filas_('MATERIALES').forEach(function (f) { mats[String(f.codigo)] = f; });
   var res = [];
   (lista || []).forEach(function (e) {
     var ean = String(e.ean || '').replace(/\D/g, '');
     if (!ean) return;
-    if (ya[ean]) { res.push({ ean: ean, estado: String(ya[ean].material_codigo) === String(e.material) ? 'ya' : 'otro', material: String(ya[ean].material_codigo) }); return; }
     if (!mats[String(e.material)]) throw new Error('Material no encontrado: ' + e.material);
-    anadirFila_('EANS', { ean: "'" + ean, material_codigo: String(e.material), marca: marca_(e.marca), nombre_envase: String(e.envase || '').trim(),
-      proveedor: String(e.proveedor || '').trim(), creado_por: t.nombre, creado_en: ahora_() });
+    var datos = { material_codigo: String(e.material), marca: marca_(e.marca), nombre_envase: String(e.envase || '').trim(), ref_fabricante: String(e.ref || '').trim(), estado: '' };
+    if (ya[ean] && String(ya[ean].estado) === 'PENDIENTE') {   // pendiente de asociar: se completa
+      ponerEnFila_('EANS', fila[ean], Object.assign(datos, { creado_por: t.nombre, creado_en: ahora_() })); ya[ean].estado = ''; ya[ean].material_codigo = e.material;
+      res.push({ ean: ean, estado: 'nuevo' }); return;
+    }
+    if (ya[ean]) { res.push({ ean: ean, estado: String(ya[ean].material_codigo) === String(e.material) ? 'ya' : 'otro', material: String(ya[ean].material_codigo) }); return; }
+    anadirFila_('EANS', Object.assign(datos, { ean: "'" + ean, proveedor: String(e.proveedor || '').trim(), creado_por: t.nombre, creado_en: ahora_() }));
     ya[ean] = { material_codigo: e.material }; res.push({ ean: ean, estado: 'nuevo' });
   });
   return { ok: true, eans: res };

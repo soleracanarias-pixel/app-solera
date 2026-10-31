@@ -95,6 +95,17 @@ body:not(.es-admin) .solo-admin{display:none!important}
 body.ancho main{max-width:1100px}
 /* inventario (solo quien tenga inventario = SI) */
 body:not(.puede-inv) .solo-inv{display:none!important}
+body.es-trabajador .no-trabajador{display:none!important}
+.resumen{font-size:14px;color:var(--gris);background:var(--fondo);border-radius:8px;padding:8px 10px;margin:4px 0 6px}
+#movForm.simple:not(.cambiando) #almBloque,#movForm.simple:not(.cambiando) #personaBloque{display:none}
+#movForm.simple .v-marca{display:none}
+.vlin .x{flex:0 0 44px}
+.vlin .cam{flex:0 0 44px;height:44px;border:1px solid var(--borde);background:#fff;border-radius:8px;font-size:20px}
+.v-info{display:block;font-size:12px;color:var(--gris);margin-top:2px}
+.v-info.nuevo{color:#b26a00}
+details#movMas{margin-top:10px}
+details#movMas summary{color:var(--azul);font-size:14px;cursor:pointer;padding:6px 0}
+#movGuardar{font-size:19px;padding:16px}
 .pestanas{display:flex;gap:6px;margin:10px 0}
 .pestanas button{flex:1;padding:10px;border:2px solid var(--azul);background:#fff;border-radius:8px;font-weight:600;color:var(--azul)}
 .pestanas button.activa{background:var(--azul);color:#fff}
@@ -265,7 +276,7 @@ a{color:var(--azul)}
     <button class="btn grande sec solo-admin" id="btnTraspaso">🔁 TRASPASO (admin)</button>
   </div>
   <div id="movSitioMAT"></div>
-  <div class="tarjeta">
+  <div class="tarjeta no-trabajador">
     <button class="btn peq sec" id="verStock" style="width:100%">📦 Ver stock</button>
     <div id="stockBloque" style="display:none">
       <select id="stockAlmacen" style="margin-top:10px"></select>
@@ -277,6 +288,8 @@ a{color:var(--azul)}
   <div class="tarjeta" id="movForm" style="display:none">
     <h2 id="movTitulo">Movimiento</h2>
     <div class="ayuda" id="movCuando"></div>
+    <!-- vale sencillo (ME LLEVO, DEVUELVO, ENCONTRÉ): almacén y persona ya puestos, en una línea discreta -->
+    <div class="resumen" id="valeResumen" style="display:none"><span id="valeResumenTxt"></span> · <a href="#" id="valeCambiar">cambiar</a></div>
     <div id="almBloque"><label id="almLabel">Almacén</label><select id="valeAlmacen"></select>
       <div id="destinoBloque" style="display:none"><label>Llevar al almacén</label><select id="valeAlmDestino"></select></div>
     </div>
@@ -295,21 +308,20 @@ a{color:var(--azul)}
       <label>Materiales</label>
       <div id="valeLineas"></div>
       <button class="btn sec peq" id="valeOtraLinea">+ otra línea</button>
-      <button class="btn sec peq" id="valeEscanear">📷 Escanear</button>
     </div>
     <div id="numeroNuevo" class="aviso" style="display:none;font-size:16px"></div>
     <div id="movCantBloque"><label>Cantidad</label><input type="number" id="movCant" inputmode="decimal" step="any" min="0"></div>
     <div id="movObraBloque"><label id="movObraLabel">Obra</label><input type="text" id="movObraTxt" placeholder="Escribe la obra…" autocomplete="off"><div class="sugs" id="movObraSugs" style="display:none"></div><select id="movObra" style="display:none"></select>
-      <label id="movPersonaLabel">¿Quién se lo lleva?</label><input type="text" id="movPersonaTxt" autocomplete="off"><div class="sugs" id="movPersonaSugs" style="display:none"></div>
+      <div id="personaBloque"><label id="movPersonaLabel">¿Quién se lo lleva?</label><input type="text" id="movPersonaTxt" autocomplete="off"><div class="sugs" id="movPersonaSugs" style="display:none"></div></div>
     </div>
-    <label id="movNotaLabel">Comentario</label><input type="text" id="movNota">
-    <input type="file" id="movFotoInput" accept="image/*" multiple style="display:none">
-    <button class="btn sec peq" id="movBtnFoto">📷 Foto (albarán, material…)</button>
-    <div class="fotos" id="movFotos"></div>
-    <div class="fila">
-      <button class="btn peq sec" id="movCancelar">Cancelar</button>
-      <button class="btn peq verde" id="movGuardar">Guardar</button>
-    </div>
+    <details id="movMas"><summary id="movMasTxt">Más: comentario y fotos</summary>
+      <label id="movNotaLabel">Comentario</label><input type="text" id="movNota">
+      <input type="file" id="movFotoInput" accept="image/*" multiple style="display:none">
+      <button class="btn sec peq" id="movBtnFoto">📷 Foto (albarán, material…)</button>
+      <div class="fotos" id="movFotos"></div>
+    </details>
+    <button class="btn verde" id="movGuardar">GUARDAR</button>
+    <button class="btn peq sec" id="movCancelar" style="width:100%">Cancelar</button>
   </div>
 </section>
 
@@ -342,6 +354,7 @@ a{color:var(--azul)}
     <label>Almacén</label><select id="invAlmacen"></select>
     <div class="ayuda" id="invInfo"></div>
   </div>
+  <div class="tarjeta" id="invPendientes" style="display:none"></div>
   <div class="tarjeta">
     <div class="fila">
       <button class="btn peq" id="invEscanear">📷 Escanear</button>
@@ -421,8 +434,8 @@ a{color:var(--azul)}
   <div class="caja">
     <div class="scan-marco"><video id="scanVideo" playsinline muted autoplay></video></div>
     <div class="ayuda" id="scanMsg">Apunta a las barras, con la línea roja cruzándolas.</div>
-    <label>O escribe el número que hay debajo de las barras</label>
-    <input type="text" id="scanManual" inputmode="numeric" autocomplete="off">
+    <label>O escribe el número que hay debajo de las barras (o la referencia del fabricante)</label>
+    <input type="text" id="scanManual" autocomplete="off">
   </div>
   <div class="pie"><button class="btn sec" id="scanCancelar">Cancelar</button><button class="btn" id="scanOk">Usar el número</button></div>
 </div>
@@ -664,12 +677,14 @@ function motivo(e) { return ((e && e.name) || 'error') + (e && e.message ? ': ' 
 function rolActual() {
   if (!S.usuario) return '';
   var t = ((S.datos && S.datos.trabajadores) || []).filter(function (x) { return String(x.codigo) === String(S.usuario.codigo); })[0];
-  return (t && t.rol) || S.usuario.rol || 'oficial';
+  var r = (t && t.rol) || S.usuario.rol || 'trabajador';
+  return r === 'oficial' ? 'trabajador' : r;   // 'oficial' es el nombre antiguo del rol
 }
 function pintarRol() {
   var admin = rolActual() === 'admin';
   document.body.classList.toggle('es-admin', admin);
   document.body.classList.toggle('puede-inv', puedeInventario());
+  document.body.classList.toggle('es-trabajador', rolActual() === 'trabajador');
   if (!admin && S.pantalla === 'vales') cambiar(MODO_ALMACEN ? 'almacen' : 'parte');
   if (!puedeInventario() && S.pantalla === 'inventario') cambiar('almacen');
 }
@@ -747,7 +762,7 @@ function buscador(txt, caja, lista, elegir) {
   var mostrar = function () {
     var palabras = normal(txt.value).split(/[^a-z0-9,]+/).filter(Boolean);   // "bat-02", "bat 02" o "02"
     var res = lista().filter(function (x) {
-      return encaja(palabras, x.nombre) || String(x.alias || '').split(',').some(function (a) { return a.trim() && encaja(palabras, a); });
+      return encaja(palabras, x.nombre) || String(x.alias || '').split(',').concat(String(x.refs || '').split(',')).some(function (a) { return a.trim() && encaja(palabras, a); });
     }).slice(0, palabras.length ? 8 : 10);
     var exacto = res.filter(function (x) { return normal(x.nombre) === normal(txt.value); })[0];
     elegir(exacto || null, true);
@@ -1089,13 +1104,23 @@ function abrirMov(tipo, clase) {
   $('almBloque').style.display = vale ? '' : 'none';
   $('almLabel').textContent = tipo === 'TRASPASO' ? 'Sale del almacén' : 'Almacén';
   $('destinoBloque').style.display = tipo === 'TRASPASO' ? '' : 'none';
+  $('movObra').value = ''; $('movObraTxt').value = '';
   if (vale) almacenGuardado().then(function (c) {
-    opcionesAlmacen('valeAlmacen', c); opcionesAlmacen('valeAlmDestino');
+    opcionesAlmacen('valeAlmacen', c); opcionesAlmacen('valeAlmDestino'); pintarResumen();
     var otro = almacenes().filter(function (a) { return a.codigo !== c; })[0]; if (otro) $('valeAlmDestino').value = otro.codigo;
   });
   if (vale && tipo === 'TRASPASO') $('movObraBloque').style.display = 'none';
-  $('movPersonaLabel').style.display = $('movPersonaTxt').style.display = '';
+  $('personaBloque').style.display = '';
   $('valeDestino').value = '';
+  // ME LLEVO, DEVUELVO y ENCONTRÉ: material, cantidad, obra y GUARDAR; almacén y persona puestos y discretos; lo demás en "Más"
+  var simple = vale && ['SALIDA', 'DEVOLUCION', 'RECUPERADO'].indexOf(tipo) >= 0;
+  $('movForm').classList.toggle('simple', simple); $('movForm').classList.remove('cambiando');
+  $('valeResumen').style.display = simple ? '' : 'none';
+  $('movMas').open = her || tipo === 'RECUPERADO' || !simple;   // la foto de la herramienta y el comentario de ENCONTRÉ son obligatorios
+  $('movMasTxt').textContent = 'Más: comentario y fotos';
+  if (simple) DB.get('kv', 'ultimaObraVale-' + S.usuario.codigo).then(function (o) {   // la última obra usada, ya puesta (se puede cambiar)
+    if (o && obras().some(function (x) { return String(x.codigo) === String(o); })) { $('movObra').value = String(o); verObra('movObra', 'movObraTxt'); }
+  });
   if (vale) {
     $('movCantBloque').style.display = 'none';
     $('valeLineas').innerHTML = ''; filaVale();
@@ -1109,7 +1134,7 @@ function abrirMov(tipo, clase) {
   } else { $('movObraLabel').textContent = 'Obra'; $('movNotaLabel').textContent = 'Comentario'; }
 }
 var TIPO_VALE = { SALIDA: 'ME LLEVO', DEVOLUCION: 'DEVUELVO', RECUPERADO: 'ENCONTRÉ MATERIAL', ENTRADA: 'COMPRA', COMPRA_OBRA: 'COMPRA A OBRA', AJUSTE: 'AJUSTE (inventario)', TRASPASO: 'TRASPASO', TRASPASO_SALE: 'TRASPASO (sale)', TRASPASO_ENTRA: 'TRASPASO (entra)' };
-$('valeAlmacen').onchange = function () { recordarAlmacen(this.value); };
+$('valeAlmacen').onchange = function () { recordarAlmacen(this.value); pintarResumen(); };
 // en los vales solo lo que pasa por el almacén (en_almacen = NO va directo a obra y solo sale en los partes)
 function matsAlmacen() {
   var todos = (S.datos && S.datos.materiales) || [];
@@ -1118,20 +1143,28 @@ function matsAlmacen() {
 }
 function compraAObra() { return S.movTipo === 'ENTRADA' && $('valeDestino').value === 'OBRA'; }
 // compra: destino ALMACÉN (selector de almacén) u OBRA (buscador de obra)
+function pintarResumen() {
+  var quien = { SALIDA: 'se lo lleva', DEVOLUCION: 'lo devuelve', RECUPERADO: 'lo encontró' }[S.movTipo] || '';
+  $('valeResumenTxt').textContent = nombreAlmacen($('valeAlmacen').value).split(' · ')[0] + (quien ? ' · ' + quien + ' ' + ($('movPersonaTxt').value.trim() || (S.usuario && S.usuario.nombre) || '') : '');
+}
+$('valeCambiar').onclick = function (e) { e.preventDefault(); $('movForm').classList.add('cambiando'); };
+$('movPersonaTxt').addEventListener('input', pintarResumen);
 function pintarDestino() {
   if (S.movTipo !== 'ENTRADA' || S.movClase === 'HER') return;
   var d = $('valeDestino').value;
   $('almBloque').style.display = d === 'ALMACEN' ? '' : 'none';
   $('movObraBloque').style.display = d === 'OBRA' ? '' : 'none';
-  $('movPersonaLabel').style.display = $('movPersonaTxt').style.display = 'none';
+  $('personaBloque').style.display = 'none';
   $('movTitulo').textContent = d === 'OBRA' ? 'COMPRA A OBRA (no entra en el almacén)' : 'COMPRA (entrada con albarán o ticket)';
 }
 $('valeDestino').onchange = pintarDestino;
 function filaVale() {
   var div = document.createElement('div'); div.className = 'fila vlin'; div.dataset.cod = '';
   div.innerHTML = '<div><div style="position:relative"><input type="text" class="v-txt" placeholder="Material…" autocomplete="off"><div class="sugs" style="display:none"></div></div>' +
-    '<input type="text" class="v-marca" placeholder="Marca (opcional)" autocomplete="off"></div>' +
+    '<input type="text" class="v-marca" placeholder="Marca (opcional)" autocomplete="off"><small class="v-info"></small></div>' +
+    '<button class="cam" title="Escanear el código de barras">📷</button>' +
     '<div class="corto"><input type="number" class="v-c" inputmode="decimal" step="any" min="0" placeholder="Cant."></div><button class="x">×</button>';
+  div.querySelector('.cam').onclick = function () { escanearLinea(div); };
   buscador(div.querySelector('.v-txt'), div.querySelector('.sugs'), matsAlmacen, function (m, alEscribir) {
     div.dataset.cod = m ? m.codigo : '';
     if (m && !alEscribir) div.querySelector('.v-c').focus();
@@ -1160,7 +1193,7 @@ function leerLineasVale() {
     var m = mapa[f.dataset.cod];
     // si no se eligió de la lista, va como OTRO (no cuenta en el stock hasta darlo de alta en MATERIALES)
     out.push({ material: m ? String(m.codigo) : 'OTRO', materialNombre: m ? m.nombre : nombre.toUpperCase(), unidad: m ? m.unidad : '', cantidad: q,
-      marca: f.querySelector('.v-marca').value.trim().toUpperCase() });
+      marca: f.querySelector('.v-marca').value.trim().toUpperCase(), ean: f.dataset.ean || '' });
   });
   return falta ? null : out;
 }
@@ -1183,6 +1216,7 @@ function guardarVale() {
     albaran: compra ? albaran : '', tipoDoc: compra ? $('valeTipoDoc').value : '', lineas: lineas, fecha: hoyISO(), hora: S.movCuando.slice(11), usuario: S.usuario.nombre, creadoEn: new Date().toISOString(),
     almacen: almacen, almacenDestino: destino };
   if (almacen) recordarAlmacen(almacen);
+  if (conObra && tipo !== 'COMPRA_OBRA') DB.put('kv', $('movObra').value, 'ultimaObraVale-' + S.usuario.codigo);
   // la compra y el traspaso van con el código y PIN de quien los hace: el servidor comprueba que es admin
   var conPin = compra || tipo === 'TRASPASO';
   (conPin ? DB.get('kv', 'pin-' + S.usuario.codigo) : Promise.resolve(null)).then(function (pin) {
@@ -1260,9 +1294,11 @@ function escanear() {
     $('modalScan').classList.add('activa');
     $('scanCancelar').onclick = function () { fin(null); };
     $('scanOk').onclick = function () {
-      var v = $('scanManual').value.replace(/\D/g, '');
-      if (!eanValido(v)) return toast('Ese número no es un código de barras válido: revísalo');
-      fin(v);
+      var v = $('scanManual').value.replace(/\D/g, ''), t = $('scanManual').value.trim();
+      if (eanValido(v)) return fin(v);
+      var e = t && eanConocido(t);   // también vale la referencia del fabricante
+      if (e) return fin(e.ean);
+      toast('Ese número no es un código de barras válido ni una referencia conocida: revísalo');
     };
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { $('scanMsg').textContent = 'Aquí no se puede usar la cámara: escribe el número.'; return; }
     navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false }).then(function (st) {
@@ -1284,8 +1320,10 @@ function escanear() {
   });
 }
 // EAN conocidos: los de la hoja EANS y los asociados en este móvil que aún no se han subido
+function refNormal(r) { return String(r || '').toUpperCase().replace(/[^A-Z0-9]/g, ''); }
 function eanConocido(c) {
-  return (S.eansLocal || []).concat((S.datos && S.datos.eans) || []).filter(function (e) { return e.ean === c; })[0] || null;
+  var r = refNormal(c);
+  return (S.eansLocal || []).concat((S.datos && S.datos.eans) || []).filter(function (e) { return e.ean === c || (e.ref && refNormal(e.ref) === r); })[0] || null;
 }
 function puedeInventario() {
   if (!S.usuario) return false;
@@ -1303,11 +1341,11 @@ function leerCodigo() {
     return asociarEan(c);
   });
 }
-function asociarEan(c) {
+function asociarEan(c, sugerido) {
   return new Promise(function (res) {
-    var elegido = null;
+    var elegido = materialesActivos().filter(function (m) { return m.codigo === sugerido; })[0] || null;
     $('eanTxt').textContent = 'El código ' + c + ' no está en la lista. ¿Qué material es? ¿Qué marca?';
-    $('eanMatTxt').value = ''; $('eanMarca').value = ''; $('eanEnvase').value = '';
+    $('eanMatTxt').value = elegido ? elegido.nombre : ''; $('eanMarca').value = ''; $('eanEnvase').value = '';
     buscador($('eanMatTxt'), $('eanMatSugs'), materialesActivos, function (m) { elegido = m; });
     $('modalEan').classList.add('activa');
     $('eanCancelar').onclick = function () { $('modalEan').classList.remove('activa'); res(null); };
@@ -1317,6 +1355,7 @@ function asociarEan(c) {
         if (!pin) return toast('Para asociar códigos, sal y vuelve a entrar con tu PIN');
         var e = { ean: c, material: String(elegido.codigo), marca: $('eanMarca').value.trim().toUpperCase(), envase: $('eanEnvase').value.trim() };
         S.eansLocal = (S.eansLocal || []).concat([e]);
+        if (S.datos && S.datos.eansPendientes) S.datos.eansPendientes = S.datos.eansPendientes.filter(function (p) { return p.ean !== c; });
         // se guarda en el móvil y se sube cuando haya cobertura (lo primero de la cola)
         return DB.put('kv', S.eansLocal, 'eansLocal').then(function () {
           return DB.put('cola', { id: uid(), tipo: 'eans', eans: [e], auth: { codigo: S.usuario.codigo, pin: pin }, fecha: hoyISO(), hora: ahoraES().slice(11), creadoEn: new Date().toISOString() });
@@ -1328,20 +1367,47 @@ function asociarEan(c) {
     };
   });
 }
-// vales y compras: escanear rellena el material y la marca y salta a la cantidad
-$('valeEscanear').onclick = function () {
-  leerCodigo().then(function (e) {
-    if (!e) return;
+// vales y compras: 📷 al lado de cada material (siempre opcional, se puede seguir escribiendo).
+// Código conocido: material y marca, cantidad 1; si ese producto ya está en otra línea, le suma 1.
+// Código desconocido: se elige el material a mano y el código queda "pendiente de asociar" (Mateo o Gregorio, en Inventario).
+function lineasVale() { return Array.prototype.slice.call(document.querySelectorAll('#valeLineas .vlin')); }
+function infoLinea(f, txt, nuevo) { var i = f.querySelector('.v-info'); i.textContent = txt || ''; i.classList.toggle('nuevo', !!nuevo); }
+function lineaVaciaAlFinal() {
+  var l = lineasVale(), u = l[l.length - 1];
+  if (!u || u.querySelector('.v-txt').value.trim()) filaVale();
+}
+function escanearLinea(div) {
+  escanear().then(function (c) {
+    if (!c) return;
+    var e = eanConocido(c);
+    if (!e) {
+      div.dataset.ean = c; infoLinea(div, 'Código ' + c + ' nuevo: elige el material (queda pendiente de asociar)', true);
+      toast('Código no conocido: elige el material'); div.querySelector('.v-txt').focus();
+      return;
+    }
     var m = matsAlmacen().filter(function (x) { return x.codigo === e.material; })[0];
     if (!m) return toast('Ese material no va en este vale (va directo a obra o está dado de baja)');
-    var filas = document.querySelectorAll('#valeLineas .vlin'), f = filas[filas.length - 1];
-    if (!f || f.querySelector('.v-txt').value.trim()) { filaVale(); filas = document.querySelectorAll('#valeLineas .vlin'); f = filas[filas.length - 1]; }
-    f.querySelector('.v-txt').value = m.nombre; f.dataset.cod = m.codigo; f.querySelector('.v-marca').value = e.marca || '';
-    f.querySelector('.v-c').focus();
+    var mc = String(e.marca || '').toUpperCase();
+    var ya = lineasVale().filter(function (f) { return f.dataset.cod === m.codigo && f.querySelector('.v-marca').value.trim().toUpperCase() === mc; })[0];
+    if (ya) { var q = ya.querySelector('.v-c'); q.value = (+q.value || 0) + 1; toast(m.nombre + (mc ? ' · ' + mc : '') + ': ' + q.value, 'ok'); }
+    else {
+      var f = div.querySelector('.v-txt').value.trim() ? (filaVale(), lineasVale().pop()) : div;
+      f.querySelector('.v-txt').value = m.nombre; f.dataset.cod = m.codigo; f.dataset.ean = '';
+      f.querySelector('.v-marca').value = mc; f.querySelector('.v-c').value = 1; infoLinea(f, mc ? 'Marca ' + mc : '');
+    }
+    lineaVaciaAlFinal();
   });
-};
+}
 
 // ---------------------------------------------------------------- listas en el móvil (para ir sin cobertura)
+// el lector de códigos (ZXing) se guarda en la caché del service worker desde el primer uso, para escanear sin conexión
+function guardarLector() {
+  if (!window.caches) return Promise.resolve();
+  return caches.keys().then(function (ks) {
+    var k = ks.filter(function (x) { return /^solera-/.test(x); }).sort().pop() || 'solera-lector';
+    return caches.open(k).then(function (c) { return c.match('lib/zxing-0.21.3.min.js').then(function (r) { return r || c.add('lib/zxing-0.21.3.min.js'); }); });
+  }).catch(function () {});
+}
 function pintarListasFecha() {
   var t = S.datos && S.datos.cargadoEn ? 'Listas actualizadas el ' + S.datos.cargadoEn : 'Las listas aún no se han descargado en este móvil';
   document.querySelectorAll('.listasFecha').forEach(function (d) { d.textContent = t; });
@@ -1352,7 +1418,7 @@ document.querySelectorAll('.preparar').forEach(function (b) {
     toast('Descargando todo…');
     cargarDatos(true).then(function () {
       // el lector de códigos se guarda también en el móvil
-      return fetch('lib/zxing-0.21.3.min.js').catch(function () {});
+      return guardarLector();
     }).then(function () {
       pintarListasFecha();
       toast(S.datos && S.datos.cargadoEn ? 'Listo para ir sin cobertura (listas del ' + S.datos.cargadoEn + ')' : 'No se pudo descargar: inténtalo otra vez', S.datos && S.datos.cargadoEn ? 'ok' : 'err');
@@ -1367,9 +1433,23 @@ document.querySelectorAll('.preparar').forEach(function (b) {
 S.inv = null; S.invTab = 'MAT';
 function claveInv(alm) { return 'inv-' + (S.usuario ? S.usuario.codigo : '') + '-' + (alm || $('invAlmacen').value); }
 function nuevoInv(alm) { return { almacen: alm, inicio: '', listas: S.datos && S.datos.cargadoEn || '', mats: {}, maq: {}, otros: [], fotos: [], nota: '' }; }
+// códigos escaneados por los compañeros que nadie conocía: se asocian aquí
+function pintarPendientesEan() {
+  var l = ((S.datos && S.datos.eansPendientes) || []).filter(function (p) { return !eanConocido(p.ean); });
+  var nombre = function (c) { var m = materialesActivos().filter(function (x) { return x.codigo === c; })[0]; return m ? m.nombre : (c || ''); };
+  $('invPendientes').style.display = l.length ? '' : 'none';
+  $('invPendientes').innerHTML = '<h2>Códigos pendientes de asociar (' + l.length + ')</h2><div class="lista">' + l.map(function (p) {
+    return '<div class="item"><div><b>' + esc(p.ean) + '</b><small>' + (p.sugerido ? 'eligieron ' + esc(nombre(p.sugerido)) : '') + (p.visto_en ? ' · vale ' + esc(p.visto_en) : '') + '</small></div>' +
+      '<button class="btn peq" data-ean="' + esc(p.ean) + '" data-sug="' + esc(p.sugerido) + '">Asociar</button></div>';
+  }).join('') + '</div>';
+}
+$('invPendientes').onclick = function (e) {
+  var b = e.target.closest('[data-ean]'); if (!b) return;
+  asociarEan(b.dataset.ean, b.dataset.sug).then(function (r) { if (r) pintarPendientesEan(); });
+};
 function abrirInventario() {
   if (!puedeInventario()) return cambiar('almacen');
-  pintarListasFecha(); $('invResultado').style.display = 'none';
+  pintarListasFecha(); pintarPendientesEan(); $('invResultado').style.display = 'none';
   return almacenGuardado().then(function (c) { opcionesAlmacen('invAlmacen', c); return cargarInv(); });
 }
 function cargarInv() {
@@ -1820,6 +1900,7 @@ DB.abrir().then(function () {
   });
   if (navigator.onLine) cargarDatos(true).then(sincronizar);
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(function () {});
+  if (navigator.onLine) setTimeout(guardarLector, 3000);
   setInterval(function () { if (navigator.onLine) sincronizar(); }, 60000);
 });
 // acceso para las pruebas automáticas (no cambia nada de la app)
