@@ -21,5 +21,7 @@ Backend: `backend/Code.gs` se publica en el proyecto de Apps Script 10WOhx5Egs-L
 - clasp (necesita que Mateo inicie sesión): `clasp clone <id>`, copiar Code.gs a Código.js, `clasp push --force`,
   `clasp create-version "<desc>"`, `clasp update-deployment <deploymentId> -V <n>`.
 - A mano: pegar, guardar e Implementar → Gestionar implementaciones → ✎ → Versión nueva (nunca "Nueva implementación").
+En cada publicación, subir a la vez `VERSION_WEB` (index.html) y `VERSION_SERVIDOR` (Code.gs) al nº de la versión nueva de Apps Script
+(la app lo enseña abajo y avisa "actualiza la app" si no coinciden).
 Si cambia ESQUEMA, las pestañas y columnas nuevas se crean solas en la primera llamada; `instalar` solo hace falta
 para rellenar roles y rehacer las fórmulas de STOCK.

@@ -6,7 +6,8 @@ La app está **EN PRUEBAS** (ver `CLAUDE.md`). Lo pendiente está en `PENDIENTES
 - `index.html`: la app entera (SOLERA). Con `?modo=almacen` es **SOLERA Almacén** (`almacen/index.html`, sin la pestaña Parte).
 - `sw.js`: guarda la app en el móvil para abrirla sin cobertura (incluye `lib/`).
 - `lib/zxing-0.21.3.min.js`: lector de códigos de barras para iPhone (Apache 2.0), dentro de la app.
-- `backend/Code.gs`: servidor (Apps Script de la hoja "APP SOLERA"). Publicado en la **versión 15**, igual que el repositorio (`ESQUEMA = '17'`).
+- `backend/Code.gs`: servidor (Apps Script de la hoja "APP SOLERA"). Publicado en la **versión 16**, igual que el repositorio (`ESQUEMA = '17'`).
+- **Versión a la vista:** abajo, en pequeño, en la entrada y en la app: "web v16 · servidor 16 · esquema 17". `VERSION_WEB` (index.html) y `VERSION_SERVIDOR` (Code.gs) = nº de versión publicada en Apps Script; se suben a la vez en cada publicación. Si no coinciden, sale "⚠️ actualiza la app" (al tocarlo, recarga).
 - `docs/MATERIALES_PROPUESTA.csv`: lista de materiales aprobada (sin precios).
 
 ## Quién puede qué (columna `rol` de TRABAJADORES)

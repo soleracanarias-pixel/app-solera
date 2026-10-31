@@ -63,7 +63,9 @@ function clase_(c) { return CLASES[c === 'HER' ? 'HER' : 'MAT']; }
 function movFilas_(c) {
   return filas_(c.mov).map(function (f) { f.material_codigo = f[c.cod]; f.material = f[c.nom]; return f; });
 }
-var ESQUEMA = '17';            // subir cuando cambien las columnas de HOJAS
+var ESQUEMA = '17';
+// número de la versión publicada en Apps Script (subirlo en cada publicación, igual que VERSION_WEB de index.html)
+var VERSION_SERVIDOR = 16;            // subir cuando cambien las columnas de HOJAS
 var EMAIL_COPIA = 'soleracanarias@gmail.com';
 var CSV_NOMBRE = 'PARTES APP 2026.csv';  // se crea en la carpeta CARPETA_CSV_ID de CONFIG (CLIENTES\PARTES\APP)
 var CSV_COLUMNAS = ['N_PARTE','FECHA','DIA_SEMANA','CLIENTE','OBRA','COD_OBRA_APP','RESP_CLIENTE','RESP_CERT','RESP_SOLERA','MATRICULA',
@@ -239,7 +241,7 @@ function blobDeDataUrl_(dataUrl, nombre) {
 function esc_(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>'); }
 
 // ---------------------------------------------------------------- API
-function doGet() { return json_({ ok: true, app: 'APP SOLERA', hora: ahora_() }); }
+function doGet() { return json_({ ok: true, app: 'APP SOLERA', version_servidor: VERSION_SERVIDOR, esquema: ESQUEMA, hora: ahora_() }); }
 
 function doPost(e) {
   var lock = LockService.getScriptLock();
@@ -334,6 +336,7 @@ function bootstrap_() {
     firmantes: filas_('FIRMANTES').filter(function (f) { return f.nombre; })
       .sort(function (a, b) { return (Number(b.veces) || 0) - (Number(a.veces) || 0); })
       .map(function (f) { return { nombre: String(f.nombre), email: String(f.email || '') }; }),
+    version_servidor: VERSION_SERVIDOR, esquema: ESQUEMA,
     hora: ahora_()
   };
 }

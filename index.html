@@ -97,6 +97,8 @@ body.ancho main{max-width:1100px}
 body:not(.puede-inv) .solo-inv{display:none!important}
 body.es-trabajador .no-trabajador{display:none!important}
 body:not(.es-mateo) .solo-mateo{display:none!important}
+.version-pie{text-align:center;font-size:11px;color:#999;margin:18px 0 4px}
+.version-pie a{color:var(--rojo);font-weight:600;cursor:pointer}
 body:not(.puede-herr) .solo-herr{display:none!important}
 .chip.est{background:#ffebee;color:var(--rojo)}.chip.rep{background:#fff3e0;color:#b26a00}.chip.okp{background:#e3f2fd;color:#1565c0}
 #repMaquinas label{display:flex;gap:8px;align-items:center;color:var(--texto);font-size:15px;margin:6px 0}
@@ -473,6 +475,7 @@ a{color:var(--azul)}
     <div class="lista" id="histLista"></div>
   </div>
 </section>
+  <div id="versionPie" class="version-pie"></div>
 </main>
 
 <nav id="nav">
@@ -538,6 +541,8 @@ a{color:var(--azul)}
 (function () {
 'use strict';
 var CFG = window.SOLERA_CONFIG || {};
+// número de esta versión de la app (el mismo que VERSION_SERVIDOR de Code.gs: se sube a la vez en cada publicación)
+var VERSION_WEB = 16;
 var $ = function (id) { return document.getElementById(id); };
 
 // ---------------------------------------------------------------- almacenamiento local (IndexedDB)
@@ -777,8 +782,21 @@ function opciones(sel, lista, valor, texto, vacio) {
   sel.innerHTML = (vacio ? '<option value="">' + vacio + '</option>' : '') +
     lista.map(function (x) { return '<option value="' + esc(x[valor]) + '">' + esc(x[texto]) + '</option>'; }).join('');
 }
+// pie: "web v16 · servidor 16 · esquema 17"; si web y servidor no coinciden, aviso para actualizar
+function pintarVersion() {
+  var sv = S.datos && S.datos.version_servidor, esq = S.datos && S.datos.esquema;
+  var distinto = sv != null && Number(sv) !== VERSION_WEB;
+  $('versionPie').innerHTML = 'web v' + VERSION_WEB + ' · servidor ' + (sv != null ? esc(sv) : '?') + ' · esquema ' + (esq != null ? esc(esq) : '?') +
+    (distinto ? '<br><a id="actualizaApp">⚠️ actualiza la app</a>' : '');
+  if (distinto) $('actualizaApp').onclick = function () {
+    // web más antigua: se recarga la página nueva; si el servidor es el antiguo, al recargar se piden las listas otra vez
+    if ('serviceWorker' in navigator) navigator.serviceWorker.getRegistration().then(function (r) { if (r) r.update(); }).catch(function () {});
+    location.reload();
+  };
+}
 function pintarListas() {
   var d = S.datos || { trabajadores: [], obras: [], materiales: [] };
+  pintarVersion();
   opcionesAlmacen('fAlm', $('fAlm').value, '<option value="">Todos</option>');
   // repinta un select conservando lo elegido si esa opción sigue existiendo
   var repintar = function (sel, lista, vacio) {
