@@ -23,7 +23,7 @@
 var MESES = ['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
 var HOJAS = {
   CONFIG: ['clave','valor'],
-  TRABAJADORES: ['codigo','nombre','categoria','pin','activo','encargado','rol','inventario','herramientas'],   // rol: admin / encargado / trabajador (la categoría OFICIAL/PEÓN es solo para el parte); inventario SI = hace inventarios y asocia EAN
+  TRABAJADORES: ['codigo','nombre','categoria','pin','activo','encargado','rol','inventario','herramientas','historial'],   // historial SI = ve el historial de cada herramienta   // rol: admin / encargado / trabajador (la categoría OFICIAL/PEÓN es solo para el parte); inventario SI = hace inventarios y asocia EAN
   OBRAS: ['codigo','nombre','cliente','activa'],
   MATERIALES: ['codigo','nombre','unidad','stock_min','activo','orden','categoria','codigo_mercadona','en_almacen','alias','uso_base'],   // en_almacen NO = va directo a obra: sale en partes, no en stock ni vales
   PARTES: ['id','numero','fecha','obra_codigo','obra','cliente','creado_por','trabajadores','total_horas','trabajos','materiales','medios','observaciones','firmado','firmante','pdf_url','fotos','creado_en','origen','firmado_en','copia_enviada_a','copia_enviada_en','copia_error'],
@@ -47,7 +47,7 @@ var HOJAS = {
   // herramientas una a una: cada máquina con su número (BAT-01…), que se marca en la propia máquina
   // va_con: PERSONA u OBRA; control: UNIDAD (con número) o CANTIDAD (andamios); estado PENDIENTE = tipo nuevo propuesto por un trabajador
   HERR_TIPOS: ['prefijo','tipo','orden','va_con','control','estado','material','definicion','foto','propuesto_por','creado_en'],
-  HERRAMIENTAS: ['codigo','tipo','activo','alta_fecha','alta_por','ok','ok_por','ok_en','motivo_rechazo'],   // ok: PENDIENTE (alta de cualquiera) / OK / RECHAZADA
+  HERRAMIENTAS: ['codigo','tipo','activo','alta_fecha','alta_por','ok','ok_por','ok_en','motivo_rechazo','marca','modelo','n_serie','foto_placa'],   // marca, modelo y nº de serie: los rellena Mateo desde la foto de la placa (alta)   // ok: PENDIENTE (alta de cualquiera) / OK / RECHAZADA
   // tipo: ENTRADA (alta), SALIDA (a obra), DEVOLUCION, AVERIA, REPARACION (al reparador), VUELTA (reparada), BAJA, ASIGNAR ("La tengo yo": con persona), AJUSTE (inventario de las de CANTIDAD)
   HERR_MOV: ['id','fecha','tipo','herramienta_codigo','herramienta','cantidad','unidad','obra','usuario','nota','creado_en','fotos','numero','hora','persona','almacen','recibo'],
   HERR_DONDE: ['codigo','herramienta','donde','quien','desde','ultimo_mov','foto','estado','almacen','ok','averia'],
@@ -64,9 +64,9 @@ function clase_(c) { return CLASES[c === 'HER' ? 'HER' : 'MAT']; }
 function movFilas_(c) {
   return filas_(c.mov).map(function (f) { f.material_codigo = f[c.cod]; f.material = f[c.nom]; return f; });
 }
-var ESQUEMA = '18';
+var ESQUEMA = '19';
 // número de la versión publicada en Apps Script (subirlo en cada publicación, igual que VERSION_WEB de index.html)
-var VERSION_SERVIDOR = 18;            // subir cuando cambien las columnas de HOJAS
+var VERSION_SERVIDOR = 19;            // subir cuando cambien las columnas de HOJAS
 var EMAIL_COPIA = 'soleracanarias@gmail.com';
 var CSV_NOMBRE = 'PARTES APP 2026.csv';  // se crea en la carpeta CARPETA_CSV_ID de CONFIG (CLIENTES\PARTES\APP)
 var CSV_COLUMNAS = ['N_PARTE','FECHA','DIA_SEMANA','CLIENTE','OBRA','COD_OBRA_APP','RESP_CLIENTE','RESP_CERT','RESP_SOLERA','MATRICULA',
@@ -171,6 +171,8 @@ function migrarAlmacenes_() {
   // herramientas: SI para Mateo (999), Gregorio (998) y Sergio (997) al crear la columna
   if (!tr.some(function (t) { return String(t.herramientas || '').trim(); }))
     tr.forEach(function (t, i) { if (['999', '998', '997'].indexOf(String(t.codigo)) >= 0) ponerEnFila_('TRABAJADORES', i + 2, { herramientas: 'SI' }); });
+  if (!tr.some(function (t) { return String(t.historial || '').trim(); }))
+    tr.forEach(function (t, i) { if (['999', '998', '997'].indexOf(String(t.codigo)) >= 0) ponerEnFila_('TRABAJADORES', i + 2, { historial: 'SI' }); });
   if (hoja_('REPARADORES').getLastRow() < 2) hoja_('REPARADORES').appendRow(['Bernabé', '', '']);
   var ha = hoja_('ALMACENES');
   // los almacenes que falten (por código); los que ya están no se tocan
@@ -260,7 +262,7 @@ function doPost(e) {
       case 'movimiento': lock.waitLock(30000); return json_(movimiento_(body.mov));
       case 'stock': return json_({ ok: true, stock: stock_() });
       case 'partes': return json_({ ok: true, partes: ultimosPartes_(body.limite || 30) });
-      case 'movimientos': return json_({ ok: true, movimientos: movimientosMaterial_(body.material, 10, body.clase) });
+      case 'movimientos': if (body.clase === 'HER') exigirHistorial_(body.auth); return json_({ ok: true, movimientos: movimientosMaterial_(body.material, 10, body.clase) });
       case 'vale': lock.waitLock(30000); return json_(vale_(body.vale));
       case 'eans': lock.waitLock(30000); return json_(guardarEans_(body.eans, body.auth));
       case 'fotoVale': lock.waitLock(30000); return json_(fotoVale_(body.foto));
@@ -274,7 +276,8 @@ function doPost(e) {
       case 'herrReparar': lock.waitLock(30000); return json_(herrReparar_(body));
       case 'herrVuelta': lock.waitLock(30000); return json_(herrVuelta_(body));
       case 'herrOk': lock.waitLock(30000); return json_(herrOk_(body));
-      case 'herrTipoNuevo': lock.waitLock(30000); return json_(herrTipoNuevo_(body.tipo));
+      case 'herrTipoNuevo': lock.waitLock(30000); return json_(herrTipoNuevo_(body.tipo, body.auth));
+      case 'herrHistorial': return json_(herrHistorial_(body));
       case 'andamios': lock.waitLock(30000); return json_(andamiosMov_(body.mov));
       case 'herrTipoAprobar': lock.waitLock(30000); return json_(herrTipoAprobar_(body));
       case 'vales': exigirAdmin_(body.auth); return json_({ ok: true, vales: listaVales_(body.filtros || {}) });
@@ -323,7 +326,7 @@ function bootstrap_() {
   return {
     ok: true,
     trabajadores: filas_('TRABAJADORES').filter(function (f) { return si_(f.activo); })
-      .map(function (f) { return { codigo: f.codigo, nombre: f.nombre, categoria: f.categoria, rol: rolDe_(f), inventario: si_(f.inventario), herramientas: si_(f.herramientas) }; }),
+      .map(function (f) { return { codigo: f.codigo, nombre: f.nombre, categoria: f.categoria, rol: rolDe_(f), inventario: si_(f.inventario), herramientas: si_(f.herramientas), historial: si_(f.historial) }; }),
     obras: filas_('OBRAS').filter(function (f) { return si_(f.activa); })
       .map(function (f) { return { codigo: String(f.codigo), nombre: f.nombre, cliente: f.cliente }; }),
     materiales: materialesPorUso_(),
@@ -591,7 +594,7 @@ function movimiento_(m) {
   // herramientas de CANTIDAD (andamios): se mueven por tipo y cuántas, sin número
   if (tCant && tCant.control === 'CANTIDAD') { mat = { codigo: tCant.prefijo, nombre: tCant.tipo, unidad: 'ud' }; porCantidad = true; if (!(Number(m.cantidad) > 0)) throw new Error('Pon cuántas'); }
   // alta, o herramienta que aún no tenía número (se le da uno al llevarla, devolverla o al decir "La tengo yo")
-  else if (her && (m.tipo === 'ENTRADA' || (!m.material && m.tipoHer))) mat = altaHerramienta_(m.tipoHer, m.usuario, m.codigoNuevo);
+  else if (her && (m.tipo === 'ENTRADA' || (!m.material && m.tipoHer))) { mat = altaHerramienta_(m.tipoHer, m.usuario, m.codigoNuevo); mat.alta = true; }
   else if (her) {
     var u = filas_('HERRAMIENTAS').filter(function (f) { return String(f.codigo) === String(m.material); })[0];
     if (!u) throw new Error('Herramienta no encontrada: ' + (m.material || ''));
@@ -636,6 +639,14 @@ function movimiento_(m) {
     persona: tipo === 'ENTRADA' ? '' : (m.persona || m.usuario || '') };   // quién se la lleva / la recoge / la tiene (ASIGNAR); usuario = quién lo anota
   fila[c.cod] = String(mat.codigo); fila[c.nom] = mat.nombre;
   anadirFila_(c.mov, fila);
+  // alta de máquina: foto (opcional) de la placa de características; marca, modelo y nº de serie se rellenan después en HERRAMIENTAS
+  if (her && mat.alta && m.fotoPlaca && idCarpeta) {
+    var bp = blobDeDataUrl_(m.fotoPlaca, [fechaNombre_(fecha), mat.codigo, 'PLACA'].join(' ') + '.jpg');
+    if (bp) {
+      var urlPlaca = subcarpeta_(subcarpeta_(DriveApp.getFolderById(idCarpeta), c.carpeta), mesDe_(fecha)).createFile(bp).getUrl();
+      filas_('HERRAMIENTAS').forEach(function (f, i) { if (String(f.codigo) === String(mat.codigo)) ponerEnFila_('HERRAMIENTAS', i + 2, { foto_placa: urlPlaca }); });
+    }
+  }
   if (her) { try { herrDonde_(true); } catch (err) { console.error('HERR_DONDE: ' + err); } }
   else {
     avisarStock_([String(mat.codigo)]);   // una ENTRADA que repone rearma el aviso
@@ -1163,9 +1174,40 @@ function andamiosMov_(a) {
   });
   return { ok: true, numero: numero, lineas: lineas.length };
 }
-// tipo nuevo de andamio propuesto por un trabajador: queda PENDIENTE (con un código provisional) hasta que el admin lo apruebe
-function herrTipoNuevo_(d) {
+// historial (solo historial = SI): de una máquina, o de un tipo de andamio en un almacén u obra. Fecha y hora, quién, de dónde y a dónde.
+function exigirHistorial_(auth) {
+  auth = auth || {};
+  var t = filas_('TRABAJADORES').filter(function (f) { return String(f.codigo) === String(auth.codigo) && si_(f.activo); })[0];
+  if (!t || String(t.pin).padStart(4, '0') !== String(auth.pin || '').padStart(4, '0')) throw new Error('Vuelve a entrar con tu PIN para ver el historial');
+  if (!si_(t.historial)) throw new Error('El historial solo lo ven Mateo, Gregorio y Sergio');
+  return t;
+}
+function herrHistorial_(b) {
+  exigirHistorial_(b.auth);
+  var nomAlm = {}; almacenes_().forEach(function (a) { nomAlm[a.codigo] = a.nombre; });
+  var alm = function (c) { return nomAlm[c] || c || ''; }, cod = String(b.codigo || ''), sitio = String(b.sitio || '');
+  var movs = movFilas_(CLASES.HER).filter(function (m) { return String(m.material_codigo) === cod; }), lista = [], antes = '';
+  movs.forEach(function (m) {
+    var tipo = String(m.tipo), q = Number(m.cantidad) || 0, de = '', a = '';
+    if (b.cantidad) {   // andamios: de dónde salen y a dónde van, por tipo
+      if (tipo === 'SALIDA') { de = alm(m.almacen); a = m.obra; }
+      else if (tipo === 'DEVOLUCION') { de = m.obra; a = alm(m.almacen); }
+      else { de = tipo === 'AJUSTE' ? 'inventario' : 'entrada'; a = alm(m.almacen); }
+      if (sitio && de !== sitio && a !== sitio && String(m.almacen) !== sitio && String(m.obra) !== sitio) return;
+    } else {   // una máquina: de dónde estaba a dónde va
+      a = tipo === 'SALIDA' ? m.obra : tipo === 'ASIGNAR' ? 'con ' + (m.persona || m.usuario) : tipo === 'REPARACION' ? 'reparador ' + (m.persona || '') + (m.recibo ? ' (' + m.recibo + ')' : '')
+        : tipo === 'BAJA' ? 'BAJA' : alm(m.almacen) + (tipo === 'AVERIA' ? ' (averiada)' : '');
+      de = antes; antes = a;
+    }
+    lista.push({ fecha: txtFecha_(m.fecha, 'dd/MM/yyyy'), hora: String(m.hora || ''), tipo: tipo, cantidad: b.cantidad ? q : '', quien: String(m.persona || m.usuario || ''),
+      anotado: String(m.usuario || ''), de: de, a: a, numero: String(m.numero || ''), nota: String(m.nota || ''), anulado: si_(m.anulado) });
+  });
+  return { ok: true, historial: lista.reverse() };
+}
+// tipo nuevo de andamio propuesto por un gestor: queda PENDIENTE (con un código provisional) hasta que el admin lo apruebe
+function herrTipoNuevo_(d, auth) {
   d = d || {};
+  exigirHerr_(auth);   // solo gestores (herramientas = SI)
   var id = String(d.id || '');
   if (!/^NUEVO-[A-Z0-9]{4,}$/.test(id)) throw new Error('Código provisional no válido');
   if (tiposHerr_()[id]) return { ok: true, repetido: true, prefijo: id };
