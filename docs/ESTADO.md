@@ -217,13 +217,10 @@ Radiografía sacada del código del repositorio (`main`, PASO 6) y de una lectur
 
 ## 6) VERSIONES
 
-- **Publicado en Apps Script:** el `Code.gs` del 30/10 (commit `07569b5`, `ESQUEMA = '8'`), según lo que dijo Mateo ("HECHO"). No está verificado desde aquí, y no consta que se haya publicado el del PASO 6.
-- **Sin publicar:** el `Code.gs` del **PASO 6 + 6b** (`ESQUEMA = '10'`). Para activarlo:
-  1. Pegar el `Code.gs` nuevo en Apps Script y guardar.
-  2. **Ejecutar `instalar`**: crea VALES y las columnas nuevas, pone los roles y rehace las fórmulas de STOCK. Si el PASO 6 ya se hubiera instalado, el 6b solo no lo necesitaría, porque sus columnas `tipo_doc` y `estado` se crean solas.
-  3. **Implementar → Gestionar implementaciones → ✎ → Versión nueva.**
-  - **No hay permisos nuevos.**
-- **Mientras tanto:** la web nueva ya está en GitHub Pages; los vales se quedan en "Pendientes" hasta publicar y luego se envían solos.
+- **Publicado en Apps Script (comprobado con clasp el 31/10/2026):** la implementación de la app (`AKfycbxon542…`, la de `config.js`) está en la **versión 8** ("PASO 6b"), que es **exactamente el `backend/Code.gs` del repositorio** (`ESQUEMA = '10'`). La versión 7 era el PASO 6 (commit `c54c066`).
+- **`instalar` ya se ejecutó** con el PASO 6: roles en TRABAJADORES, fórmulas nuevas de STOCK y pestaña VALES (ya con `tipo_doc` y `estado`). No hace falta repetirlo para el 6b.
+- **Cómo se publica a partir de ahora:** con clasp desde Claude Code (`clasp push`, `clasp create-version`, `clasp update-deployment AKfycbxon542… -V <n>`), o a mano como hasta ahora (pegar, guardar y luego Implementar → Gestionar implementaciones → ✎ → Versión nueva). clasp necesita el inicio de sesión de Mateo, que se guarda en el entorno de la sesión y se pierde al cerrarla.
+- **En la hoja hay datos de prueba de otra sesión:** el trabajador 990 "PRUEBA (Claude)" y el vale A0003 (anulado).
 
 ---
 

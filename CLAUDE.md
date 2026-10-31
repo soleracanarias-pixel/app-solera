@@ -15,5 +15,11 @@ La app está EN PRUEBAS. Hasta que Mateo diga lo contrario:
 - Borrar datos o ficheros: solo con permiso explícito de Mateo.
 
 Pendientes: ver `PENDIENTES.md`.
-Backend: `backend/Code.gs` se pega a mano en Apps Script y se publica con
-Implementar → Gestionar implementaciones → ✎ → Versión nueva (nunca "Nueva implementación").
+Backend: `backend/Code.gs` se publica en el proyecto de Apps Script 10WOhx5Egs-LIBxwB0I2Y3omVTityZeJhcYBEHCuS564jE2oLFyBw-gsK
+(fichero `Código`), en la implementación existente AKfycbxon542bV7Jt6RAfU7SZgfVZoNnHs9OipjbzVr7Rpu0RUT3QJWRr6KS_grmkNE64ELp
+(la de config.js), nunca en una nueva. Dos formas:
+- clasp (necesita que Mateo inicie sesión): `clasp clone <id>`, copiar Code.gs a Código.js, `clasp push --force`,
+  `clasp create-version "<desc>"`, `clasp update-deployment <deploymentId> -V <n>`.
+- A mano: pegar, guardar e Implementar → Gestionar implementaciones → ✎ → Versión nueva (nunca "Nueva implementación").
+Si cambia ESQUEMA, las pestañas y columnas nuevas se crean solas en la primera llamada; `instalar` solo hace falta
+para rellenar roles y rehacer las fórmulas de STOCK.
