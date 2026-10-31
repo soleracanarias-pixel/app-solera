@@ -97,6 +97,19 @@ body.ancho main{max-width:1100px}
 body:not(.puede-inv) .solo-inv{display:none!important}
 body.es-trabajador .no-trabajador{display:none!important}
 body:not(.es-mateo) .solo-mateo{display:none!important}
+html,body{overflow-x:hidden}
+.lista .item>div:first-child{min-width:0;flex:1}
+.lista .item b{overflow-wrap:anywhere}
+details.cat-stock{border-bottom:1px solid var(--borde)}
+details.cat-stock>summary{display:flex;justify-content:space-between;gap:8px;padding:12px 2px;font-weight:600;color:var(--azul);cursor:pointer;list-style:none}
+details.cat-stock>summary::-webkit-details-marker{display:none}
+details.cat-stock>summary:before{content:'▸';margin-right:6px}details.cat-stock[open]>summary:before{content:'▾'}
+details.cat-stock>summary span:first-child{flex:1;min-width:0;overflow-wrap:anywhere}
+details.cat-stock>summary small{font-weight:400;color:var(--gris);white-space:nowrap}
+details.cat-stock .item{padding:8px 2px 8px 18px}
+details.ceros>summary{font-size:13px;color:var(--gris);padding:8px 2px 8px 18px;cursor:pointer}
+.item.neg b,.item.neg .stock{color:var(--rojo)}
+.historial .marca{display:flex;justify-content:space-between;gap:8px;padding:3px 0}
 .version-pie{text-align:center;font-size:11px;color:#999;margin:18px 0 4px}
 .version-pie a{color:var(--rojo);font-weight:600;cursor:pointer}
 body:not(.puede-herr) .solo-herr{display:none!important}
@@ -291,8 +304,10 @@ a{color:var(--azul)}
   <div class="tarjeta no-trabajador">
     <button class="btn peq sec" id="verStock" style="width:100%">📦 Ver stock</button>
     <div id="stockBloque" style="display:none">
-      <select id="stockAlmacen" style="margin-top:10px"></select>
-      <input type="text" id="buscarMat" placeholder="Buscar material…" style="margin-top:10px">
+      <div class="fila" style="margin-top:10px">
+        <div style="flex:0 0 42%"><select id="stockAlmacen"></select></div>
+        <div><input type="text" id="buscarMat" placeholder="Nombre, palabra, ref. o código de barras…" autocomplete="off"></div>
+      </div>
       <div class="lista" id="stockLista"></div>
     </div>
   </div>
@@ -542,7 +557,7 @@ a{color:var(--azul)}
 'use strict';
 var CFG = window.SOLERA_CONFIG || {};
 // número de esta versión de la app (el mismo que VERSION_SERVIDOR de Code.gs: se sube a la vez en cada publicación)
-var VERSION_WEB = 16;
+var VERSION_WEB = 17;
 var $ = function (id) { return document.getElementById(id); };
 
 // ---------------------------------------------------------------- almacenamiento local (IndexedDB)
@@ -1078,27 +1093,52 @@ function almacenGuardado() {
 function recordarAlmacen(c) { if (S.usuario) DB.put('kv', c, 'almacen-' + S.usuario.codigo); }
 function stockLocal() { return (S.datos && S.datos.stock) || []; }
 function stockEn(m, alm) { return alm ? ((m.porAlmacen || {})[alm] || 0) : m.stock; }
-function pintarStock() {
-  var q = $('buscarMat').value.trim().toLowerCase(), alm = $('stockAlmacen').value;
-  var lista = stockLocal().filter(function (m) { return !q || (m.nombre + ' ' + m.codigo).toLowerCase().indexOf(q) >= 0; });
-  $('stockLista').innerHTML = lista.length ? lista.map(function (m) {
-    // "pedir" solo si el material tiene stock mínimo puesto (sobre el total); en rojo también si queda en negativo
-    var bajo = m.stock_min > 0 && m.stock <= m.stock_min, n = stockEn(m, alm);
-    var detalle = !alm && almacenes().length > 1 ? ' · ' + almacenes().map(function (a) { return a.nombre.replace(/^ALMACÉN /, '') + ' ' + stockEn(m, a.codigo); }).join(' · ') : '';
-    return '<div class="item toca" data-cod="' + esc(m.codigo) + '"><div><b>' + esc(m.nombre) + '</b><small>' + esc(m.codigo) + esc(detalle) + (bajo ? ' · <span style="color:var(--rojo)">pedir</span>' : '') + '</small></div>' +
-      '<div class="stock' + (bajo || n < 0 ? ' bajo' : '') + '">' + n + ' <small style="display:inline">' + esc(m.unidad) + '</small></div></div>';
-  }).join('') : '<div class="aviso">Sin materiales. Pulsa "Actualizar listas" en Enviados o da de alta materiales en la hoja.</div>';
-  // admin: materiales metidos como OTRO que habría que dar de alta en MATERIALES
-  var otros = (S.datos && S.datos.otros) || [];
-  if (rolActual() === 'admin' && otros.length) $('stockLista').innerHTML = '<div class="aviso otro-pend"><b>Pendientes de dar de alta en MATERIALES (metidos como OTRO):</b><br>' +
-    otros.map(function (o) { return esc(o.nombre) + ' <small style="display:inline">(' + o.veces + ' vez/veces' + (o.ultimo ? ', último vale ' + esc(o.ultimo) : '') + ')</small>'; }).join('<br>') + '</div>' + $('stockLista').innerHTML;
+// "Ver stock": almacén y buscador arriba; por categoría (plegadas), negativos en rojo, luego con stock y "A cero (n)" plegado
+S.stockAbiertas = {};
+function textoBusquedaMat(m, mat) {
+  var eans = ((S.datos && S.datos.eans) || []).concat(S.eansLocal || []).filter(function (e) { return e.material === m.codigo; });
+  return [m.nombre, m.codigo].concat(String(mat.alias || '').split(','), String(mat.refs || '').split(','), eans.map(function (e) { return e.ean; }), eans.map(function (e) { return e.ref || ''; }));
 }
+function pintarStock() {
+  var q = normal($('buscarMat').value).split(/[^a-z0-9,]+/).filter(Boolean), alm = $('stockAlmacen').value;
+  var mats = {}; ((S.datos && S.datos.materiales) || []).forEach(function (m) { mats[m.codigo] = m; });
+  var lista = stockLocal().filter(function (m) {
+    return !q.length || textoBusquedaMat(m, mats[m.codigo] || {}).some(function (t) { return t && encaja(q, String(t)); });
+  });
+  var cats = {};
+  lista.forEach(function (m) { var c = (mats[m.codigo] || {}).categoria || 'OTROS'; (cats[c] = cats[c] || []).push(m); });
+  var linea = function (m) {
+    var n = stockEn(m, alm), bajo = m.stock_min > 0 && m.stock <= m.stock_min;   // "pedir": sobre el total y con mínimo puesto
+    return '<div class="item toca' + (n < 0 ? ' neg' : '') + '" data-cod="' + esc(m.codigo) + '"><div><b>' + esc(m.nombre) + '</b>' + (bajo ? ' <small style="display:inline;color:var(--rojo)">· pedir</small>' : '') + '</div>' +
+      '<div class="stock">' + n + ' <small style="display:inline">' + esc(m.unidad) + '</small></div></div>';
+  };
+  var h = Object.keys(cats).sort(function (a, b) { return a.localeCompare(b, 'es'); }).map(function (c) {
+    var l = cats[c].slice().sort(function (a, b) { return a.nombre.localeCompare(b.nombre); });
+    var neg = l.filter(function (m) { return stockEn(m, alm) < 0; }), pos = l.filter(function (m) { return stockEn(m, alm) > 0; }), cero = l.filter(function (m) { return !stockEn(m, alm); });
+    var abierta = q.length > 0 || S.stockAbiertas[c];
+    return '<details class="cat-stock" data-cat="' + esc(c) + '"' + (abierta ? ' open' : '') + '><summary><span>' + esc(c) + '</span><small>' + pos.length + ' con stock' + (neg.length ? ' · <span style="color:var(--rojo)">' + neg.length + ' en negativo</span>' : '') + '</small></summary>' +
+      neg.map(linea).join('') + pos.map(linea).join('') +
+      (cero.length ? '<details class="ceros"' + (q.length ? ' open' : '') + '><summary>A cero (' + cero.length + ')</summary>' + cero.map(linea).join('') + '</details>' : '') + '</details>';
+  }).join('');
+  $('stockLista').innerHTML = h || '<div class="aviso">' + (q.length ? 'Ningún material con ese nombre o código.' : 'Sin materiales. Pulsa "Actualizar listas" en Enviados.') + '</div>';
+  // admin: materiales metidos como OTRO que habría que dar de alta en MATERIALES (plegado)
+  var otros = (S.datos && S.datos.otros) || [];
+  if (rolActual() === 'admin' && otros.length) $('stockLista').innerHTML = '<details class="aviso otro-pend"><summary><b>Pendientes de dar de alta en MATERIALES (' + otros.length + ')</b></summary>' +
+    otros.map(function (o) { return esc(o.nombre) + ' <small style="display:inline">(' + o.veces + ' vez/veces' + (o.ultimo ? ', último vale ' + esc(o.ultimo) : '') + ')</small>'; }).join('<br>') + '</details>' + $('stockLista').innerHTML;
+}
+$('stockLista').addEventListener('toggle', function (e) {
+  var d = e.target; if (d.classList && d.classList.contains('cat-stock') && !$('buscarMat').value.trim()) S.stockAbiertas[d.dataset.cat] = d.open;
+}, true);
 $('buscarMat').oninput = pintarStock;
 $('stockAlmacen').onchange = pintarStock;
 $('verStock').onclick = function () {
   var b = $('stockBloque'), ver = b.style.display === 'none'; b.style.display = ver ? '' : 'none';
   if (!ver) return;
-  almacenGuardado().then(function (c) { opcionesAlmacen('stockAlmacen', c, '<option value="">TOTAL (todos los almacenes)</option>'); pintarStock(); });
+  // LA MATANZA (el de por defecto), AGÜIMES… o Todos
+  if (!$('stockAlmacen').options.length) opcionesAlmacen('stockAlmacen', (almacenes().filter(function (a) { return a.por_defecto; })[0] || almacenes()[0]).codigo);
+  var antes = $('stockAlmacen').value;
+  $('stockAlmacen').innerHTML = almacenes().map(function (a) { return '<option value="' + esc(a.codigo) + '">' + esc(a.nombre.replace(/^ALMACÉN /, '')) + '</option>'; }).join('') + '<option value="">Todos</option>';
+  $('stockAlmacen').value = antes; pintarStock();
 };
 $('verHerr').onclick = function () { var b = $('herrBloque'), ver = b.style.display === 'none'; b.style.display = ver ? '' : 'none'; if (ver) pintarHerr(); };
 // número para una herramienta nueva: se da en el momento para escribirlo con rotulador y que salga en la foto
@@ -1138,8 +1178,8 @@ function desgloseMarcas(cod) {
   var alm = $('stockAlmacen').value, suma = {};
   Object.keys(m.marcas).forEach(function (a) { if (alm && a !== alm) return; Object.keys(m.marcas[a]).forEach(function (mc) { suma[mc] = (suma[mc] || 0) + m.marcas[a][mc]; }); });
   var ks = Object.keys(suma).filter(function (mc) { return suma[mc]; });
-  if (!ks.length || (ks.length === 1 && !ks[0])) return '';
-  return '<div><b>Por marca:</b> ' + ks.sort().map(function (mc) { return esc(mc || 'sin marca') + ' ' + suma[mc]; }).join(' · ') + '</div>';
+  if (!ks.length) return '<div>Sin marcas apuntadas.</div>';
+  return '<div><b>Por marca</b></div>' + ks.sort().map(function (mc) { return '<div class="marca"><span>' + esc(mc || 'sin marca') + '</span><b>' + suma[mc] + ' ' + esc(m.unidad) + '</b></div>'; }).join('');
 }
 function verHistorial(e) {
   var it = e.target.closest('.item.toca'); if (!it) return;

@@ -65,7 +65,7 @@ function movFilas_(c) {
 }
 var ESQUEMA = '17';
 // número de la versión publicada en Apps Script (subirlo en cada publicación, igual que VERSION_WEB de index.html)
-var VERSION_SERVIDOR = 16;            // subir cuando cambien las columnas de HOJAS
+var VERSION_SERVIDOR = 17;            // subir cuando cambien las columnas de HOJAS
 var EMAIL_COPIA = 'soleracanarias@gmail.com';
 var CSV_NOMBRE = 'PARTES APP 2026.csv';  // se crea en la carpeta CARPETA_CSV_ID de CONFIG (CLIENTES\PARTES\APP)
 var CSV_COLUMNAS = ['N_PARTE','FECHA','DIA_SEMANA','CLIENTE','OBRA','COD_OBRA_APP','RESP_CLIENTE','RESP_CERT','RESP_SOLERA','MATRICULA',
@@ -101,15 +101,18 @@ function instalar() {
   var col = function (n) { var l = letra(cm.indexOf(n) + 1); return 'MOVIMIENTOS!' + l + '2:' + l; };
   // SUMIFS no calcula fila a fila dentro de ARRAYFORMULA (daba la misma cifra en todas): SUMIF con clave código|tipo|anulado|almacén
   var clave = col('material_codigo') + '&"|"&' + col('tipo') + '&"|"&' + col('anulado');
-  var suma = function (tipo, alm) {
-    return 'SUMIF(' + clave + (alm ? '&"|"&' + col('almacen') : '') + ';A2:A&"|' + tipo + '|' + (alm ? '|' + alm : '') + '";' + col('cantidad') + ')';
+  var suma = function (tipo, alm, cods) {
+    return 'SUMIF(' + clave + (alm ? '&"|"&' + col('almacen') : '') + ';' + (cods || 'A2:A') + '&"|' + tipo + '|' + (alm ? '|' + alm : '') + '";' + col('cantidad') + ')';
   };
   var MAS = TIPOS_SUMAN, MENOS = TIPOS_RESTAN;   // AJUSTE (con su signo) va en entradas; COMPRA_OBRA no cuenta
   // en STOCK solo lo que pasa por el almacén (en_almacen <> NO); lo que va directo a obra no sale
   var cma = ma.getRange(1, 1, 1, ma.getLastColumn()).getValues()[0];
   var colM = function (n) { var l = letra(cma.indexOf(n) + 1); return 'MATERIALES!' + l + '2:' + l; };
   st.getRange('A2:C').clearContent(); st.getRange('G2:G').clearContent();
-  st.getRange('A2').setFormula('=IFERROR(FILTER(MATERIALES!A2:A;MATERIALES!A2:A<>"";' + colM('en_almacen') + '<>"NO";' + colM('activo') + '<>"NO"))');
+  // orden: primero los negativos, luego los que tienen stock y al final los que están a cero
+  var stk = MAS.map(function (t) { return suma(t, '', 'cods'); }).join('+') + '-(' + MENOS.map(function (t) { return suma(t, '', 'cods'); }).join('+') + ')';
+  st.getRange('A2').setFormula('=IFERROR(ARRAYFORMULA(LET(cods;FILTER(MATERIALES!A2:A;MATERIALES!A2:A<>"";' + colM('en_almacen') + '<>"NO";' + colM('activo') + '<>"NO");' +
+    'stk;' + stk + ';SORT(cods;IF(stk<0;0;IF(stk>0;1;2));TRUE;stk;TRUE))))');
   st.getRange('B2').setFormula('=ARRAYFORMULA(IF(A2:A="";;VLOOKUP(A2:A;MATERIALES!A2:C;2;FALSE)))');
   st.getRange('C2').setFormula('=ARRAYFORMULA(IF(A2:A="";;VLOOKUP(A2:A;MATERIALES!A2:C;3;FALSE)))');
   st.getRange('D2').setFormula('=ARRAYFORMULA(IF(A2:A="";;' + MAS.map(function (t) { return suma(t); }).join('+') + '))');
