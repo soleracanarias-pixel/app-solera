@@ -23,16 +23,20 @@
 var MESES = ['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
 var HOJAS = {
   CONFIG: ['clave','valor'],
-  TRABAJADORES: ['codigo','nombre','categoria','pin','activo','encargado','rol'],   // rol: admin / encargado / oficial
+  TRABAJADORES: ['codigo','nombre','categoria','pin','activo','encargado','rol','inventario'],   // rol: admin / encargado / oficial; inventario SI = hace inventarios y asocia EAN
   OBRAS: ['codigo','nombre','cliente','activa'],
   MATERIALES: ['codigo','nombre','unidad','stock_min','activo','orden','categoria','codigo_mercadona','en_almacen','alias','uso_base'],   // en_almacen NO = va directo a obra: sale en partes, no en stock ni vales
   PARTES: ['id','numero','fecha','obra_codigo','obra','cliente','creado_por','trabajadores','total_horas','trabajos','materiales','medios','observaciones','firmado','firmante','pdf_url','fotos','creado_en','origen','firmado_en','copia_enviada_a','copia_enviada_en','copia_error'],
   PARTES_LINEAS: ['id','numero','fecha','obra','trabajador_codigo','trabajador','categoria','horas','horas_extra','firmado'],
-  MOVIMIENTOS: ['id','fecha','tipo','material_codigo','material','cantidad','unidad','obra','parte_numero','usuario','nota','creado_en','fotos','numero','hora','persona','linea','anulado','almacen','contado'],   // contado: solo en AJUSTE (lo contado en el inventario)
+  MOVIMIENTOS: ['id','fecha','tipo','material_codigo','material','cantidad','unidad','obra','parte_numero','usuario','nota','creado_en','fotos','numero','hora','persona','linea','anulado','almacen','contado','marca','stock_antes'],   // contado y stock_antes (del servidor): solo en AJUSTE
   // un vale de almacén = una fila aquí + sus líneas en MOVIMIENTOS (mismo numero, linea 1, 2, 3…)
-  VALES: ['numero','fecha','hora','tipo','obra','usuario','persona','nota','fotos','proveedor','albaran','n_lineas','anulado','anulado_por','anulado_en','motivo_anulacion','creado_en','id','tipo_doc','estado','almacen','almacen_destino'],   // estado: PENDIENTE_LEER / CONFIRMADA; almacen_destino solo en TRASPASO
+  VALES: ['numero','fecha','hora','tipo','obra','usuario','persona','nota','fotos','proveedor','albaran','n_lineas','anulado','anulado_por','anulado_en','motivo_anulacion','creado_en','id','tipo_doc','estado','almacen','almacen_destino','inicio','cierre'],   // inicio y cierre: del inventario (AJUSTE)   // estado: PENDIENTE_LEER / CONFIRMADA; almacen_destino solo en TRASPASO
   // almacenes físicos (MAT = La Matanza, AGU = Agüimes); en la app se ve 'NOMBRE · dirección corta', el código solo en la hoja
   ALMACENES: ['codigo','nombre','direccion','activo','por_defecto'],
+  // códigos de barras (EAN) de los envases: qué material y qué marca son
+  EANS: ['ean','material_codigo','marca','nombre_envase','proveedor','creado_por','creado_en'],
+  // máquinas contadas en cada inventario (por tipo y estado) y las que se dieron de alta al cerrarlo
+  INV_MAQUINAS: ['numero','fecha','almacen','prefijo','tipo','bien','regular','averiada','total','en_almacen_antes','altas'],
   STOCK: ['codigo','nombre','unidad','entradas','salidas','stock','stock_min','aviso'],
   FIRMANTES: ['nombre','email','obra_ultima','veces','actualizado_en'],
   POR_OBRA: ['obra','material_codigo','material','unidad','salido','devuelto','gastado','recuperado','comprado'],   // comprado = COMPRA_OBRA (directo a obra)
@@ -52,7 +56,7 @@ function clase_(c) { return CLASES[c === 'HER' ? 'HER' : 'MAT']; }
 function movFilas_(c) {
   return filas_(c.mov).map(function (f) { f.material_codigo = f[c.cod]; f.material = f[c.nom]; return f; });
 }
-var ESQUEMA = '13';            // subir cuando cambien las columnas de HOJAS
+var ESQUEMA = '14';            // subir cuando cambien las columnas de HOJAS
 var EMAIL_COPIA = 'soleracanarias@gmail.com';
 var CSV_NOMBRE = 'PARTES APP 2026.csv';  // se crea en la carpeta CARPETA_CSV_ID de CONFIG (CLIENTES\PARTES\APP)
 var CSV_COLUMNAS = ['N_PARTE','FECHA','DIA_SEMANA','CLIENTE','OBRA','COD_OBRA_APP','RESP_CLIENTE','RESP_CERT','RESP_SOLERA','MATRICULA',
@@ -144,6 +148,10 @@ var ALMACENES_INICIALES = [
   ['MAT', 'ALMACÉN LA MATANZA', 'C/ Chamiana 21, local L1 (Edificio Chamiana), 38379 La Matanza de Acentejo', 'SI', 'SI'],
   ['AGU', 'ALMACÉN AGÜIMES', 'C/ Falla 23, Las Rosas, Agüimes (Gran Canaria)', 'SI', 'NO']];
 function migrarAlmacenes_() {
+  // inventario: al crear la columna, SI para Mateo (999) y Gregorio (998)
+  var tr = filas_('TRABAJADORES');
+  if (!tr.some(function (t) { return String(t.inventario || '').trim(); }))
+    tr.forEach(function (t, i) { if (['999', '998'].indexOf(String(t.codigo)) >= 0) ponerEnFila_('TRABAJADORES', i + 2, { inventario: 'SI' }); });
   var ha = hoja_('ALMACENES');
   if (ha.getLastRow() < 2) ALMACENES_INICIALES.forEach(function (r) { ha.appendRow(r); });
   ['MOVIMIENTOS', 'VALES'].forEach(function (n) {
@@ -232,6 +240,8 @@ function doPost(e) {
       case 'partes': return json_({ ok: true, partes: ultimosPartes_(body.limite || 30) });
       case 'movimientos': return json_({ ok: true, movimientos: movimientosMaterial_(body.material, 10, body.clase) });
       case 'vale': lock.waitLock(30000); return json_(vale_(body.vale));
+      case 'eans': lock.waitLock(30000); return json_(guardarEans_(body.eans, body.auth));
+      case 'fotoVale': lock.waitLock(30000); return json_(fotoVale_(body.foto));
       case 'vales': exigirAdmin_(body.auth); return json_({ ok: true, vales: listaVales_(body.filtros || {}) });
       case 'anularVale': exigirAdmin_(body.auth); lock.waitLock(30000); return json_(anularVale_(body.numero, body.motivo, body.auth));
       default: return json_({ ok: false, error: 'Acción desconocida' });
@@ -257,6 +267,14 @@ function rolDe_(t) {
   return String(t.codigo) === '999' ? 'admin' : (si_(t.encargado) ? 'encargado' : 'oficial');
 }
 // las acciones de admin llevan auth = {codigo, pin} y se comprueban aquí (ocultar botones no basta)
+// inventario y asociar EAN: solo quien tenga inventario = SI en TRABAJADORES (Mateo y Gregorio), con su PIN
+function exigirInventario_(auth) {
+  auth = auth || {};
+  var t = filas_('TRABAJADORES').filter(function (f) { return String(f.codigo) === String(auth.codigo) && si_(f.activo); })[0];
+  if (!t || String(t.pin).padStart(4, '0') !== String(auth.pin || '').padStart(4, '0')) throw new Error('Solo quien hace inventarios puede hacer esto (vuelve a entrar con tu PIN)');
+  if (!si_(t.inventario)) throw new Error('Solo quien hace inventarios puede hacer esto');
+  return t;
+}
 function exigirAdmin_(auth) {
   auth = auth || {};
   var t = filas_('TRABAJADORES').filter(function (f) { return String(f.codigo) === String(auth.codigo) && si_(f.activo); })[0];
@@ -269,11 +287,13 @@ function bootstrap_() {
   return {
     ok: true,
     trabajadores: filas_('TRABAJADORES').filter(function (f) { return si_(f.activo); })
-      .map(function (f) { return { codigo: f.codigo, nombre: f.nombre, categoria: f.categoria, rol: rolDe_(f) }; }),
+      .map(function (f) { return { codigo: f.codigo, nombre: f.nombre, categoria: f.categoria, rol: rolDe_(f), inventario: si_(f.inventario) }; }),
     obras: filas_('OBRAS').filter(function (f) { return si_(f.activa); })
       .map(function (f) { return { codigo: String(f.codigo), nombre: f.nombre, cliente: f.cliente }; }),
     materiales: materialesPorUso_(),
     almacenes: almacenes_(),
+    eans: filas_('EANS').filter(function (e) { return e.ean; }).map(function (e) {
+      return { ean: String(e.ean), material: String(e.material_codigo), marca: String(e.marca || ''), envase: String(e.nombre_envase || '') }; }),
     stock: stock_(),
     otros: otrosPendientes_(),
     herramientas: herrDonde_(false),
@@ -300,12 +320,13 @@ function materialesPorUso_() {
   });
   return filas_('MATERIALES').filter(function (f) { return si_(f.activo); }).map(function (f) {
     var k = String(f.codigo);
-    return { codigo: k, nombre: f.nombre, unidad: f.unidad, stock_min: Number(f.stock_min) || 0,
+    return { codigo: k, nombre: f.nombre, unidad: f.unidad, stock_min: Number(f.stock_min) || 0, categoria: String(f.categoria || ''),
       alias: String(f.alias || ''), en_almacen: enAlmacen_(f) ? 'SI' : 'NO',
       uso: (Number(f.uso_base) || 0) + (lineas[k] || 0), orden: Number(f.orden) || 9999 };
   }).sort(function (a, b) { return b.uso - a.uso || a.orden - b.orden; })
     .map(function (m) { delete m.orden; return m; });
 }
+function marca_(m) { return String(m || '').trim().toUpperCase(); }
 function enAlmacen_(f) { return String(f.en_almacen || '').trim().toUpperCase() !== 'NO'; }
 
 // stock total y por almacén (porAlmacen: { MAT: n, AGU: n }). Suman ENTRADA, DEVOLUCION, RECUPERADO, TRASPASO_ENTRA y AJUSTE
@@ -318,12 +339,15 @@ function stock_() {
     if (si_(m.anulado) || (TIPOS_SUMAN.indexOf(m.tipo) < 0 && TIPOS_RESTAN.indexOf(m.tipo) < 0)) return;
     var k = String(m.material_codigo), al = String(m.almacen || '') || (defecto = defecto || almacenPorDefecto_());
     var q = (Number(m.cantidad) || 0) * (TIPOS_RESTAN.indexOf(m.tipo) >= 0 ? -1 : 1);
-    acc[k] = acc[k] || { total: 0, por: {} };
+    var mc = marca_(m.marca);
+    acc[k] = acc[k] || { total: 0, por: {}, marcas: {} };
     acc[k].total += q; acc[k].por[al] = (acc[k].por[al] || 0) + q;
+    var pm = acc[k].marcas[al] = acc[k].marcas[al] || {}; pm[mc] = (pm[mc] || 0) + q;
   });
   return mats.map(function (f) {
-    var a = acc[String(f.codigo)] || { total: 0, por: {} };
-    return { codigo: String(f.codigo), nombre: f.nombre, unidad: f.unidad, stock: a.total, porAlmacen: a.por, stock_min: Number(f.stock_min) || 0 };
+    var a = acc[String(f.codigo)] || { total: 0, por: {}, marcas: {} };
+    // marcas: { MAT: { 'PANDA': 3, '': 2 } } ('' = sin marca)
+    return { codigo: String(f.codigo), nombre: f.nombre, unidad: f.unidad, stock: a.total, porAlmacen: a.por, marcas: a.marcas, stock_min: Number(f.stock_min) || 0 };
   });
 }
 
@@ -575,9 +599,9 @@ function porObra_(c) {
 
 // ---------------------------------------------------------------- vales de almacén (varias líneas, un número)
 // ENTRADA = COMPRA al almacén, COMPRA_OBRA = compra que va directa a una obra (no toca el stock), AJUSTE = inventario.
-// Solo admin: ENTRADA, COMPRA_OBRA, TRASPASO y AJUSTE.
+// Solo admin: ENTRADA, COMPRA_OBRA y TRASPASO. AJUSTE: solo quien tiene inventario = SI.
 var TIPOS_VALE = ['ENTRADA', 'COMPRA_OBRA', 'SALIDA', 'DEVOLUCION', 'RECUPERADO', 'TRASPASO', 'AJUSTE'];
-var SOLO_ADMIN = ['ENTRADA', 'COMPRA_OBRA', 'TRASPASO', 'AJUSTE'], SIN_PERSONA = ['ENTRADA', 'COMPRA_OBRA', 'TRASPASO', 'AJUSTE'];
+var SOLO_ADMIN = ['ENTRADA', 'COMPRA_OBRA', 'TRASPASO'], SIN_PERSONA = ['ENTRADA', 'COMPRA_OBRA', 'TRASPASO', 'AJUSTE'];
 function extension_(dataUrl) {
   var m = String(dataUrl).match(/^data:([^;]+);/), t = m ? m[1] : '';
   return t === 'application/pdf' ? '.pdf' : (t === 'image/png' ? '.png' : '.jpg');
@@ -590,6 +614,7 @@ function vale_(v) {
   var tipo = String(v.tipo || '');
   if (TIPOS_VALE.indexOf(tipo) < 0) throw new Error('Tipo de vale no válido: ' + tipo);
   if (SOLO_ADMIN.indexOf(tipo) >= 0) exigirAdmin_(v.auth);
+  if (tipo === 'AJUSTE') exigirInventario_(v.auth);
   var compra = tipo === 'ENTRADA' || tipo === 'COMPRA_OBRA';
   if (compra) {
     if (!String(v.proveedor || '').trim() || !String(v.albaran || '').trim()) throw new Error('La compra necesita proveedor y nº de albarán o ticket');
@@ -609,18 +634,43 @@ function vale_(v) {
   if (['ENTRADA', 'TRASPASO', 'AJUSTE'].indexOf(tipo) < 0 && !String(v.obra || '').trim()) throw new Error('Falta la obra');
   if (tipo === 'RECUPERADO' && !String(v.nota || '').trim()) throw new Error('Falta el comentario (dónde se encontró)');
   var mats = {}; filas_('MATERIALES').forEach(function (f) { mats[String(f.codigo)] = f; });
-  var lineas;
+  var lineas, cambios = [], maquinas = [];
   if (tipo === 'AJUSTE') {
-    // inventario: llega lo contado; la diferencia (contado − stock de ese almacén, puede ser negativa) se calcula aquí al guardar
-    var actual = {}; stock_().forEach(function (m) { actual[m.codigo] = (m.porAlmacen || {})[almacen] || 0; });
-    lineas = (v.lineas || []).filter(function (l) { return l && l.contado !== '' && l.contado != null && !isNaN(Number(l.contado)) && Number(l.contado) >= 0; })
-      .map(function (l) {
-        var cod = String(l.material);
-        if (!mats[cod] || !(cod in actual)) throw new Error('Material no válido para inventario: ' + cod);
-        return { material: cod, contado: Number(l.contado), cantidad: Math.round((Number(l.contado) - actual[cod]) * 1000) / 1000 };
+    // inventario: llega lo contado por material y marca. La diferencia (contado − stock) se calcula aquí, con el stock del
+    // SERVIDOR al recibirlo (si alguien hizo un vale mientras se contaba sin cobertura, manda el del servidor y se indica)
+    var actual = {};
+    stock_().forEach(function (m) { actual[m.codigo] = { total: (m.porAlmacen || {})[almacen] || 0, marcas: (m.marcas || {})[almacen] || {} }; });
+    var cont = {}, orden = [], movil = {}, otros = [];
+    lineas = [];
+    (v.lineas || []).forEach(function (l, i) {
+      if (!l || l.contado === '' || l.contado == null || isNaN(Number(l.contado)) || Number(l.contado) < 0) return;   // solo lo rellenado
+      var cod = String(l.material || 'OTRO');
+      if (cod === 'OTRO') {   // material que no está en la lista: queda como OTRO (pendiente de dar de alta)
+        otros.push({ material: 'OTRO', materialNombre: l.materialNombre, unidad: l.unidad || '', marca: marca_(l.marca), contado: Number(l.contado),
+          cantidad: Number(l.contado), stock_antes: '', clave: /^O\|/.test(String(l.clave || '')) ? String(l.clave) : 'O|' + (l.clave || i) });
+        return;
+      }
+      if (!mats[cod] || !actual[cod]) throw new Error('Material no válido para inventario: ' + cod);
+      if (!cont[cod]) { cont[cod] = {}; orden.push(cod); }
+      var mc = marca_(l.marca); cont[cod][mc] = (cont[cod][mc] || 0) + Number(l.contado);   // mismo material y marca varias veces: se suma
+      if (l.stockMovil !== '' && l.stockMovil != null && !isNaN(Number(l.stockMovil))) movil[cod] = Number(l.stockMovil);
+    });
+    orden.forEach(function (cod) {
+      var a = actual[cod], marcas = Object.keys(cont[cod]);
+      // una marca que había en el almacén y no se ha contado queda a 0 (el material contado es lo que hay)
+      Object.keys(a.marcas).forEach(function (mc) { if (marcas.indexOf(mc) < 0 && a.marcas[mc]) marcas.push(mc); });
+      marcas.forEach(function (mc) {
+        var c = cont[cod][mc] || 0, antes = a.marcas[mc] || 0;
+        lineas.push({ material: cod, marca: mc, contado: c, stock_antes: antes, cantidad: Math.round((c - antes) * 1000) / 1000, clave: 'M|' + cod + '|' + mc });
       });
+      if (cod in movil && Math.abs(movil[cod] - a.total) > 1e-9) cambios.push(mats[cod].nombre + ' (móvil ' + movil[cod] + ', servidor ' + a.total + ')');
+    });
+    lineas = lineas.concat(otros);   // primero los de la lista y al final los metidos a mano
+    maquinas = (v.maquinas || []).filter(function (m) { return m && m.prefijo && (Number(m.bien) || 0) + (Number(m.regular) || 0) + (Number(m.averiada) || 0) > 0; });
+    if (cambios.length) v.nota = (v.nota ? v.nota + ' · ' : '') + '⚠️ El stock cambió mientras se contaba (' + cambios.join('; ') + '): el ajuste se ha calculado con el stock del servidor.';
+    if (!lineas.length && !maquinas.length) throw new Error('El inventario no tiene nada contado');
   } else lineas = (v.lineas || []).filter(function (l) { return l && (l.material || l.materialNombre) && Number(l.cantidad) > 0; });
-  if (!lineas.length) throw new Error('El vale no tiene líneas');
+  if (!lineas.length && !maquinas.length) throw new Error('El vale no tiene líneas');
 
   var n = Number(config_('SIGUIENTE_MOV')) || 1;
   setConfig_('SIGUIENTE_MOV', n + 1);
@@ -643,10 +693,10 @@ function vale_(v) {
   var hora = v.hora ? "'" + v.hora : '';   // con ' para que la hoja no lo convierta en fecha
   lineas.forEach(function (l, i) {
     var mat = mats[String(l.material)] || { codigo: 'OTRO', nombre: String(l.materialNombre || l.material).trim().toUpperCase(), unidad: l.unidad || '' };
-    var fila = { id: v.id + '-' + (i + 1), fecha: fechaES_(fecha), tipo: tipo, material_codigo: String(mat.codigo), material: mat.nombre,
+    var fila = { id: v.id + (tipo === 'AJUSTE' ? '#' + l.clave : '-' + (i + 1)), fecha: fechaES_(fecha), tipo: tipo, material_codigo: String(mat.codigo), material: mat.nombre,
       cantidad: Number(l.cantidad), unidad: mat.unidad || '', obra: tipo === 'TRASPASO' ? '' : (v.obra || ''), parte_numero: '', usuario: v.usuario || '', nota: v.nota || '',
       creado_en: creadoEn, fotos: urls.join(' '), numero: numero, hora: hora, persona: persona, linea: i + 1, anulado: '', almacen: almacen,
-      contado: tipo === 'AJUSTE' ? l.contado : '' };
+      contado: tipo === 'AJUSTE' ? l.contado : '', marca: marca_(l.marca), stock_antes: tipo === 'AJUSTE' ? l.stock_antes : '' };
     if (tipo !== 'TRASPASO') return anadirFila_('MOVIMIENTOS', fila);
     // traspaso: sale de un almacén y entra en el otro (no es gasto de ninguna obra)
     anadirFila_('MOVIMIENTOS', Object.assign({}, fila, { id: fila.id + '-S', tipo: 'TRASPASO_SALE' }));
@@ -656,10 +706,72 @@ function vale_(v) {
     nota: v.nota || '', fotos: urls.join(' '), proveedor: v.proveedor || '', albaran: v.albaran || '', n_lineas: lineas.length,
     anulado: '', anulado_por: '', anulado_en: '', motivo_anulacion: '', creado_en: creadoEn, id: v.id,
     tipo_doc: compra ? (v.tipoDoc === 'TICKET' ? 'TICKET' : 'ALBARAN') : '', estado: compra ? 'CONFIRMADA' : '',
-    almacen: almacen, almacen_destino: destino });
+    almacen: almacen, almacen_destino: destino,
+    inicio: v.inicio ? "'" + v.inicio : '', cierre: v.cierre ? "'" + v.cierre : '' });
+  var altas = inventarioMaquinas_(maquinas, v, numero, fecha, almacen, hora, creadoEn);
   avisarStock_(lineas.map(function (l) { return String(l.material); }));
   if (['SALIDA', 'DEVOLUCION', 'RECUPERADO', 'COMPRA_OBRA'].indexOf(tipo) >= 0) try { porObra_(); } catch (err) { console.error('POR_OBRA: ' + err); }
-  return { ok: true, numero: numero, fotos: urls, n_lineas: lineas.length };
+  return { ok: true, numero: numero, fotos: urls, n_lineas: lineas.length, altas: altas, cambios: cambios.length };
+}
+// máquinas del inventario: se apuntan en INV_MAQUINAS y se dan de alta las que falten (contadas − las que el servidor tiene en
+// el almacén de ese tipo), con el número que propuso el móvil si está libre (si no, el siguiente: la app avisa del cambio)
+function inventarioMaquinas_(maquinas, v, numero, fecha, almacen, hora, creadoEn) {
+  if (!maquinas.length) return [];
+  var enAlm = {};
+  herrDonde_(false).forEach(function (h) { if (h.donde === 'ALMACÉN') { var p = h.codigo.split('-')[0]; enAlm[p] = (enAlm[p] || 0) + 1; } });
+  var altas = [];
+  maquinas.forEach(function (m) {
+    var bien = Number(m.bien) || 0, regular = Number(m.regular) || 0, averiada = Number(m.averiada) || 0, total = bien + regular + averiada;
+    var faltan = Math.max(0, total - (enAlm[m.prefijo] || 0)), propuestos = m.altas || [], codigos = [];
+    for (var i = 0; i < faltan; i++) {
+      var h = altaHerramienta_(m.prefijo, v.usuario, propuestos[i] || '');
+      anadirFila_('HERR_MOV', { id: v.id + '#H|' + h.codigo, fecha: fechaES_(fecha), tipo: 'ENTRADA', herramienta_codigo: h.codigo, herramienta: h.nombre,
+        cantidad: 1, unidad: 'ud', obra: '', usuario: v.usuario || '', nota: 'Alta en el inventario ' + numero, creado_en: creadoEn, fotos: '', numero: numero, hora: hora, persona: '' });
+      altas.push({ prefijo: m.prefijo, propuesto: propuestos[i] || '', codigo: h.codigo, cambiado: !!propuestos[i] && h.codigo !== propuestos[i] });
+      codigos.push(h.codigo);
+    }
+    anadirFila_('INV_MAQUINAS', { numero: numero, fecha: fechaES_(fecha), almacen: almacen, prefijo: m.prefijo, tipo: m.tipo || '', bien: bien, regular: regular,
+      averiada: averiada, total: total, en_almacen_antes: enAlm[m.prefijo] || 0, altas: codigos.join(' ') });
+  });
+  if (altas.length) try { herrDonde_(true); } catch (err) { console.error('HERR_DONDE: ' + err); }
+  return altas;
+}
+// EAN nuevos (pueden llegar con retraso, desde un móvil que estuvo sin cobertura). Si el EAN ya estaba, se deja el primero.
+function guardarEans_(lista, auth) {
+  var t = exigirInventario_(auth), ya = {}, mats = {};
+  filas_('EANS').forEach(function (e) { ya[String(e.ean)] = e; });
+  filas_('MATERIALES').forEach(function (f) { mats[String(f.codigo)] = f; });
+  var res = [];
+  (lista || []).forEach(function (e) {
+    var ean = String(e.ean || '').replace(/\D/g, '');
+    if (!ean) return;
+    if (ya[ean]) { res.push({ ean: ean, estado: String(ya[ean].material_codigo) === String(e.material) ? 'ya' : 'otro', material: String(ya[ean].material_codigo) }); return; }
+    if (!mats[String(e.material)]) throw new Error('Material no encontrado: ' + e.material);
+    anadirFila_('EANS', { ean: "'" + ean, material_codigo: String(e.material), marca: marca_(e.marca), nombre_envase: String(e.envase || '').trim(),
+      proveedor: String(e.proveedor || '').trim(), creado_por: t.nombre, creado_en: ahora_() });
+    ya[ean] = { material_codigo: e.material }; res.push({ ean: ean, estado: 'nuevo' });
+  });
+  return { ok: true, eans: res };
+}
+// fotos del inventario: llegan una a una después del vale (fotoId evita duplicados si se reintenta)
+function fotoVale_(f) {
+  f = f || {};
+  var vales = filas_('VALES'), i = vales.map(function (x) { return String(x.id); }).indexOf(String(f.valeId));
+  if (i < 0) throw new Error('El vale de esta foto aún no ha llegado');
+  var v = vales[i], idCarpeta = config_('CARPETA_PARTES_ID');
+  if (!idCarpeta) throw new Error('Falta CARPETA_PARTES_ID en CONFIG');
+  var d = txtFecha_(v.fecha, 'dd/MM/yyyy').split('/'), iso = d[2] + '-' + d[1] + '-' + d[0];
+  var carp = subcarpeta_(subcarpeta_(DriveApp.getFolderById(idCarpeta), 'ALMACEN'), mesDe_(iso));
+  var nombre = [fechaNombre_(iso), v.numero, 'INVENTARIO', v.almacen, String(f.clave || 'general').replace(/\|/g, ' '), f.fotoId].join(' ')
+    .replace(/[\\/:*?"<>|]/g, '-').replace(/\s+/g, ' ').trim() + '.jpg';
+  var it = carp.getFilesByName(nombre), url;
+  if (it.hasNext()) url = it.next().getUrl();
+  else { var b = blobDeDataUrl_(f.dato, nombre); if (!b) throw new Error('Foto no válida'); url = carp.createFile(b).getUrl(); }
+  var poner = function (hoja, fila, actual) { var l = String(actual || '').split(' ').filter(function (u) { return u; }); if (l.indexOf(url) < 0) { l.push(url); ponerEnFila_(hoja, fila, { fotos: l.join(' ') }); } };
+  var hecho = false;
+  if (f.clave) filas_('MOVIMIENTOS').forEach(function (m, j) { if (!hecho && String(m.id) === String(f.valeId) + '#' + f.clave) { poner('MOVIMIENTOS', j + 2, m.fotos); hecho = true; } });
+  if (!hecho) poner('VALES', i + 2, v.fotos);   // generales (estanterías) o de una línea que no generó movimiento
+  return { ok: true, url: url };
 }
 
 // lista de vales para el admin (el más nuevo primero), con sus líneas; filtros: desde, hasta (aaaa-mm-dd), trabajador, tipo, obra
@@ -669,8 +781,12 @@ function listaVales_(fl) {
   filas_('MOVIMIENTOS').forEach(function (m) {
     if (!m.numero || !m.linea || m.tipo === 'TRASPASO_ENTRA') return;   // el traspaso se enseña una vez por línea
     (lineas[m.numero] = lineas[m.numero] || []).push({ linea: Number(m.linea), material_codigo: String(m.material_codigo), material: m.material,
-      cantidad: m.cantidad, unidad: m.unidad, anulado: si_(m.anulado), contado: m.contado === '' || m.contado == null ? '' : m.contado });
+      cantidad: m.cantidad, unidad: m.unidad, anulado: si_(m.anulado), contado: m.contado === '' || m.contado == null ? '' : m.contado,
+      marca: String(m.marca || ''), stock_antes: m.stock_antes === '' || m.stock_antes == null ? '' : m.stock_antes,
+      fotos: String(m.fotos || '').split(' ').filter(function (u) { return u; }) });
   });
+  var maq = {};
+  filas_('INV_MAQUINAS').forEach(function (r) { (maq[r.numero] = maq[r.numero] || []).push({ tipo: r.tipo, bien: r.bien, regular: r.regular, averiada: r.averiada, total: r.total, altas: String(r.altas || '') }); });
   var q = normal_(fl.trabajador), o = normal_(fl.obra);
   return filas_('VALES').filter(function (v) {
     var f = iso(v.fecha);
@@ -683,7 +799,8 @@ function listaVales_(fl) {
     return true;
   }).reverse().slice(0, 300).map(function (v) {
     return { numero: v.numero, fecha: txtFecha_(v.fecha, 'dd/MM/yyyy'), hora: String(v.hora || ''), tipo: v.tipo, obra: v.obra, usuario: v.usuario,
-      persona: v.persona, nota: v.nota, proveedor: v.proveedor, almacen: String(v.almacen || ''), almacen_destino: String(v.almacen_destino || ''), albaran: v.albaran, tipo_doc: v.tipo_doc || '', estado: v.estado || '', n_lineas: v.n_lineas,
+      persona: v.persona, nota: v.nota, proveedor: v.proveedor, almacen: String(v.almacen || ''), almacen_destino: String(v.almacen_destino || ''),
+      inicio: String(v.inicio || ''), cierre: String(v.cierre || ''), maquinas: maq[v.numero] || [], albaran: v.albaran, tipo_doc: v.tipo_doc || '', estado: v.estado || '', n_lineas: v.n_lineas,
       fotos: String(v.fotos || '').split(' ').filter(function (u) { return u; }), anulado: si_(v.anulado), anulado_por: v.anulado_por,
       anulado_en: String(v.anulado_en || ''), motivo_anulacion: v.motivo_anulacion,
       lineas: (lineas[v.numero] || []).sort(function (a, b) { return a.linea - b.linea; }) };
@@ -724,7 +841,7 @@ function movimientosMaterial_(codigo, n, clase) {
   return movFilas_(clase_(clase)).filter(function (f) { return String(f.material_codigo) === String(codigo); })
     .slice(-n).reverse().map(function (f) {
       return { numero: f.numero || '', linea: f.linea || '', anulado: si_(f.anulado), hora: String(f.hora || ''), fecha: txtFecha_(f.fecha, 'dd/MM/yyyy'), tipo: f.tipo, cantidad: f.cantidad, unidad: f.unidad, obra: f.obra,
-        usuario: f.usuario, persona: f.persona || '', nota: f.nota, almacen: String(f.almacen || ''), fotos: String(f.fotos || '').split(' ').filter(function (u) { return u; }) };
+        usuario: f.usuario, persona: f.persona || '', nota: f.nota, almacen: String(f.almacen || ''), marca: String(f.marca || ''), fotos: String(f.fotos || '').split(' ').filter(function (u) { return u; }) };
     });
 }
 

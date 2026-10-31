@@ -93,6 +93,32 @@ body:not(.es-admin) .solo-admin{display:none!important}
 .otro-pend{background:#fff8e1}
 /* pantalla de vales en el ordenador: más ancha */
 body.ancho main{max-width:1100px}
+/* inventario (solo quien tenga inventario = SI) */
+body:not(.puede-inv) .solo-inv{display:none!important}
+.pestanas{display:flex;gap:6px;margin:10px 0}
+.pestanas button{flex:1;padding:10px;border:2px solid var(--azul);background:#fff;border-radius:8px;font-weight:600;color:var(--azul)}
+.pestanas button.activa{background:var(--azul);color:#fff}
+.inv-cat{font-weight:600;color:var(--azul);margin:16px 0 2px;border-bottom:2px solid var(--ambar);font-size:13px;text-transform:uppercase;letter-spacing:.5px}
+.inv-mat{padding:8px 0;border-bottom:1px solid var(--borde)}
+.inv-cab{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.inv-cab small{color:var(--gris);white-space:nowrap}
+.inv-ent{display:flex;gap:6px;margin-top:6px;align-items:center}
+.inv-ent .inv-marca{flex:2}.inv-ent .inv-c{flex:1;min-width:72px}
+.inv-ent button,.inv-ent .inv-mini{flex:0 0 44px;height:44px}
+.inv-ent button{border:1px solid var(--borde);background:#fff;border-radius:8px;font-size:18px}
+.inv-mini img{width:44px;height:44px;object-fit:cover;border-radius:6px;display:block}
+.inv-mas{border:0;background:none;color:var(--azul);font-size:13px;text-decoration:underline;padding:4px 0}
+.inv-lleno .inv-cab b{color:var(--verde)}
+.maq{display:grid;grid-template-columns:1fr repeat(3,72px);gap:6px;align-items:center;padding:8px 0;border-bottom:1px solid var(--borde)}
+.maq small{display:block;color:var(--gris)}
+.maq-cab{font-size:12px;color:var(--gris);border:0;padding-bottom:0}
+.numeros{font-size:20px;font-weight:600;letter-spacing:1px}
+.modal .caja{padding:14px;max-width:560px;width:100%;margin:0 auto;overflow:auto;flex:1}
+#scanVideo{width:100%;height:46vh;background:#000;border-radius:10px;object-fit:cover;display:block}
+.scan-marco{position:relative}
+.scan-marco:after{content:'';position:absolute;left:8%;right:8%;top:50%;border-top:2px solid var(--rojo);box-shadow:0 0 6px var(--rojo)}
+.v-marca{margin-top:4px;padding:7px 11px!important;font-size:14px!important}
+@media (min-width:900px){ #invLista{columns:2;column-gap:28px} .inv-mat,.inv-cat{break-inside:avoid} }
 @media (min-width:900px){ .filtros{grid-template-columns:repeat(5,1fr)} }
 .modo-almacen header h1{letter-spacing:1px;white-space:nowrap}
 .lista .item.toca{cursor:pointer}
@@ -237,20 +263,6 @@ a{color:var(--azul)}
     <button class="btn grande sec" id="btnRecuperado">🔎 ENCONTRÉ MATERIAL</button>
     <button class="btn grande sec solo-admin" id="btnEntrada">🧾 COMPRA (admin)</button>
     <button class="btn grande sec solo-admin" id="btnTraspaso">🔁 TRASPASO (admin)</button>
-    <button class="btn grande sec solo-admin" id="btnInventario">📋 INVENTARIO (admin)</button>
-  </div>
-  <!-- INVENTARIO (solo admin): se cuenta lo que hay; al terminar se crea un vale AJUSTE con contado − stock -->
-  <div class="tarjeta" id="invForm" style="display:none">
-    <h2>Inventario</h2>
-    <label>Almacén</label><select id="invAlmacen"></select>
-    <div class="ayuda" id="invInfo"></div>
-    <input type="text" id="invBuscar" placeholder="Buscar material…" autocomplete="off">
-    <div class="lista" id="invLista"></div>
-    <div class="fila">
-      <button class="btn peq sec" id="invBorrador">Guardar borrador</button>
-      <button class="btn peq verde" id="invGuardar">Terminar inventario</button>
-    </div>
-    <button class="btn peq sec" id="invCerrar" style="width:100%;margin-top:8px">Cerrar (el borrador se queda en el móvil)</button>
   </div>
   <div id="movSitioMAT"></div>
   <div class="tarjeta">
@@ -283,6 +295,7 @@ a{color:var(--azul)}
       <label>Materiales</label>
       <div id="valeLineas"></div>
       <button class="btn sec peq" id="valeOtraLinea">+ otra línea</button>
+      <button class="btn sec peq" id="valeEscanear">📷 Escanear</button>
     </div>
     <div id="numeroNuevo" class="aviso" style="display:none;font-size:16px"></div>
     <div id="movCantBloque"><label>Cantidad</label><input type="number" id="movCant" inputmode="decimal" step="any" min="0"></div>
@@ -319,6 +332,44 @@ a{color:var(--azul)}
   </div>
 </section>
 
+<!-- INVENTARIO (solo inventario = SI): se puede hacer entero sin cobertura -->
+<section class="pantalla" id="p-inventario">
+  <div class="tarjeta">
+    <h2>Inventario</h2>
+    <div class="aviso">⚠️ No borres los datos del navegador ni desinstales la app hasta que el inventario esté enviado.</div>
+    <div class="ayuda listasFecha"></div>
+    <button class="btn peq sec preparar">📥 Preparar para ir sin cobertura</button>
+    <label>Almacén</label><select id="invAlmacen"></select>
+    <div class="ayuda" id="invInfo"></div>
+  </div>
+  <div class="tarjeta">
+    <div class="fila">
+      <button class="btn peq" id="invEscanear">📷 Escanear</button>
+      <button class="btn peq sec" id="invOtro">+ material que no está en la lista</button>
+    </div>
+    <div class="pestanas"><button id="invTabMat" class="activa">MATERIALES</button><button id="invTabMaq">MÁQUINAS</button></div>
+    <div id="invBloqueMat">
+      <input type="text" id="invBuscar" placeholder="Buscar material (nombre o palabra de obra)…" autocomplete="off">
+      <div id="invOtros"></div>
+      <div id="invLista"></div>
+    </div>
+    <div id="invBloqueMaq" style="display:none">
+      <div class="ayuda">Cuenta las máquinas de cada tipo y su estado. Al cerrar, las que falten se dan de alta con su número.</div>
+      <div class="maq maq-cab"><span></span><span>Bien</span><span>Regular</span><span>Averiada</span></div>
+      <div id="invMaqLista"></div>
+    </div>
+    <input type="file" id="invFotoInput" accept="image/*" style="display:none">
+  </div>
+  <div class="tarjeta">
+    <label>Fotos generales (estanterías…)</label>
+    <button class="btn sec peq" id="invFotoGen">📷 Añadir foto</button>
+    <div class="fotos" id="invFotosGen"></div>
+    <label>Comentario</label><input type="text" id="invNota">
+    <button class="btn verde" id="invCerrar">Cerrar inventario</button>
+  </div>
+  <div class="tarjeta" id="invResultado" style="display:none"></div>
+</section>
+
 <!-- VALES (solo admin) -->
 <section class="pantalla" id="p-vales">
   <div class="tarjeta">
@@ -344,6 +395,10 @@ a{color:var(--azul)}
     <button class="btn peq" id="btnSync">Enviar ahora</button>
   </div>
   <div class="tarjeta">
+    <div class="ayuda listasFecha"></div>
+    <button class="btn peq sec preparar">📥 Preparar para ir sin cobertura</button>
+  </div>
+  <div class="tarjeta">
     <h2>Partes enviados</h2>
     <div class="lista" id="histLista"></div>
   </div>
@@ -354,11 +409,47 @@ a{color:var(--azul)}
   <button data-p="parte" class="activa"><svg viewBox="0 0 24 24"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h5"/></svg>Parte</button>
   <button data-p="almacen"><svg viewBox="0 0 24 24"><path d="M3 9l9-6 9 6v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/><path d="M8 21v-8h8v8"/></svg>Almacén</button>
   <button data-p="herramientas"><svg viewBox="0 0 24 24"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.4-.6-.6-2.4z"/></svg>Herramientas</button>
+  <button data-p="inventario" class="solo-inv"><svg viewBox="0 0 24 24"><path d="M9 4h6v3H9zM7 5H5v16h14V5h-2"/><path d="M8 12l2 2 4-4M8 17h8"/></svg>Inventario</button>
   <button data-p="vales" class="solo-admin"><svg viewBox="0 0 24 24"><path d="M6 2h12v20l-3-2-3 2-3-2-3 2z"/><path d="M9 7h6M9 11h6M9 15h4"/></svg>Vales</button>
   <button data-p="enviados"><svg viewBox="0 0 24 24"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4z"/></svg>Enviados<span class="punto" id="pendNum" style="display:none"></span></button>
 </nav>
 
 <!-- MODAL FIRMA -->
+<!-- lector de códigos de barras (BarcodeDetector o ZXing, dentro de la app) -->
+<div class="modal" id="modalScan">
+  <div class="cab"><b>Escanear código de barras</b></div>
+  <div class="caja">
+    <div class="scan-marco"><video id="scanVideo" playsinline muted autoplay></video></div>
+    <div class="ayuda" id="scanMsg">Apunta a las barras, con la línea roja cruzándolas.</div>
+    <label>O escribe el número que hay debajo de las barras</label>
+    <input type="text" id="scanManual" inputmode="numeric" autocomplete="off">
+  </div>
+  <div class="pie"><button class="btn sec" id="scanCancelar">Cancelar</button><button class="btn" id="scanOk">Usar el número</button></div>
+</div>
+<!-- EAN nuevo: qué material y qué marca (solo inventario = SI) -->
+<div class="modal" id="modalEan">
+  <div class="cab"><b>Código nuevo</b></div>
+  <div class="caja">
+    <div class="aviso" id="eanTxt"></div>
+    <label>¿Qué material es?</label>
+    <div style="position:relative"><input type="text" id="eanMatTxt" placeholder="Escribe el material…" autocomplete="off"><div class="sugs" id="eanMatSugs" style="display:none"></div></div>
+    <label>¿Qué marca?</label><input type="text" id="eanMarca" placeholder="PANDA, WEBER, SIKA…" autocomplete="off">
+    <label>Nombre del envase (opcional)</label><input type="text" id="eanEnvase" placeholder="Lo que pone en el saco o la caja">
+  </div>
+  <div class="pie"><button class="btn sec" id="eanCancelar">Cancelar</button><button class="btn verde" id="eanGuardar">Guardar</button></div>
+</div>
+<!-- inventario: material que no está en la lista (queda como OTRO) -->
+<div class="modal" id="modalOtro">
+  <div class="cab"><b>Material que no está en la lista</b></div>
+  <div class="caja">
+    <label>Nombre</label><input type="text" id="otroNombre" autocomplete="off">
+    <label>Unidad</label><select id="otroUnidad"><option>ud</option><option>saco</option><option>bolsa</option><option>rollo</option><option>bote</option><option>m</option><option>m2</option><option>m3</option></select>
+    <label>Cantidad</label><input type="number" id="otroCant" inputmode="decimal" step="any" min="0">
+    <label>Marca (opcional)</label><input type="text" id="otroMarca" autocomplete="off">
+    <div class="ayuda">Queda como OTRO y sale en "pendientes de dar de alta en MATERIALES".</div>
+  </div>
+  <div class="pie"><button class="btn sec" id="otroCancelar">Cancelar</button><button class="btn verde" id="otroGuardar">Añadir</button></div>
+</div>
 <div class="modal" id="modalFirma">
   <div class="cab"><b>Firme aquí el conforme</b><span id="firmaObra" style="font-size:13px;opacity:.85"></span></div>
   <canvas id="lienzo"></canvas>
@@ -452,8 +543,9 @@ function api(action, extra) {
 function cargarDatos(silencioso) {
   if (!silencioso) toast('Actualizando listas…');
   return api('bootstrap').then(function (j) {
+    j.cargadoEn = ahoraES();   // "Listas actualizadas el …" (y fecha del stock que enseña el inventario)
     S.datos = j; return DB.put('kv', j, 'datos');
-  }).then(function () { pintarListas(); if (!silencioso) toast('Listas actualizadas'); })
+  }).then(function () { pintarListas(); pintarListasFecha(); if (!silencioso) toast('Listas actualizadas'); })
     .catch(function (e) { if (!silencioso) toast('No se pudo actualizar: ' + e.message); });
 }
 
@@ -577,7 +669,9 @@ function rolActual() {
 function pintarRol() {
   var admin = rolActual() === 'admin';
   document.body.classList.toggle('es-admin', admin);
+  document.body.classList.toggle('puede-inv', puedeInventario());
   if (!admin && S.pantalla === 'vales') cambiar(MODO_ALMACEN ? 'almacen' : 'parte');
+  if (!puedeInventario() && S.pantalla === 'inventario') cambiar('almacen');
 }
 function mostrarApp() {
   pintarRol();
@@ -592,7 +686,8 @@ function cambiar(p) {
   document.querySelectorAll('nav button').forEach(function (b) { b.classList.toggle('activa', b.dataset.p === p); });
   if (p === 'almacen') pintarStock();
   if (p === 'herramientas') pintarHerr();
-  document.body.classList.toggle('ancho', p === 'vales');   // la pantalla de vales, más ancha en el ordenador
+  document.body.classList.toggle('ancho', p === 'vales' || p === 'inventario');
+  if (p === 'inventario') abrirInventario();   // la pantalla de vales, más ancha en el ordenador
   if (p === 'vales' && !S.vales) {   // al abrirla, los últimos 30 días sin pulsar Buscar
     var d = new Date(); d.setDate(d.getDate() - 30);
     $('fDesde').value = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
@@ -770,11 +865,11 @@ function pintarFotosEn(id, fotos) {
   $(id).querySelectorAll('b').forEach(function (b) { b.onclick = function () { fotos.splice(+b.dataset.i, 1); pintarFotosEn(id, fotos); }; });
 }
 function pintarFotos() { pintarFotosEn('fotos', S.fotos); }
-function comprimir(file) {
+function comprimir(file, max) {
   return new Promise(function (res) {
     var img = new Image(), url = URL.createObjectURL(file);
     img.onload = function () {
-      var MAX = 1280, w = img.width, h = img.height, k = Math.min(1, MAX / Math.max(w, h));
+      var MAX = max || 1280, w = img.width, h = img.height, k = Math.min(1, MAX / Math.max(w, h));
       var c = document.createElement('canvas'); c.width = Math.round(w * k); c.height = Math.round(h * k);
       c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
       URL.revokeObjectURL(url); res(c.toDataURL('image/jpeg', 0.72));
@@ -786,12 +881,12 @@ function comprimir(file) {
 $('btnFoto').onclick = function () { $('fotoInput').click(); };
 $('fotoInput').onchange = function () {
   var fs = Array.prototype.slice.call(this.files || []); this.value = '';
-  Promise.all(fs.map(comprimir)).then(function (r) { r.forEach(function (d) { if (d) S.fotos.push(d); }); pintarFotos(); });
+  Promise.all(fs.map(function (f) { return comprimir(f); })).then(function (r) { r.forEach(function (d) { if (d) S.fotos.push(d); }); pintarFotos(); });
 };
 $('movBtnFoto').onclick = function () { $('movFotoInput').click(); };
 $('movFotoInput').onchange = function () {
   var fs = Array.prototype.slice.call(this.files || []); this.value = '';
-  Promise.all(fs.map(comprimir)).then(function (r) { r.forEach(function (d) { if (d) S.movFotos.push(d); }); pintarFotosEn('movFotos', S.movFotos); });
+  Promise.all(fs.map(function (f) { return comprimir(f); })).then(function (r) { r.forEach(function (d) { if (d) S.movFotos.push(d); }); pintarFotosEn('movFotos', S.movFotos); });
 };
 
 // ---------------------------------------------------------------- firma
@@ -933,15 +1028,26 @@ function pintarHerr() {
 }
 $('buscarHerr').oninput = pintarHerr;
 // al tocar un material: sus últimos 10 movimientos (se piden al servidor)
+// "Ver stock" → al tocar un material: cuánto hay de cada marca (en el almacén elegido o en todos)
+function desgloseMarcas(cod) {
+  var m = stockLocal().filter(function (x) { return x.codigo === cod; })[0]; if (!m || !m.marcas) return '';
+  var alm = $('stockAlmacen').value, suma = {};
+  Object.keys(m.marcas).forEach(function (a) { if (alm && a !== alm) return; Object.keys(m.marcas[a]).forEach(function (mc) { suma[mc] = (suma[mc] || 0) + m.marcas[a][mc]; }); });
+  var ks = Object.keys(suma).filter(function (mc) { return suma[mc]; });
+  if (!ks.length || (ks.length === 1 && !ks[0])) return '';
+  return '<div><b>Por marca:</b> ' + ks.sort().map(function (mc) { return esc(mc || 'sin marca') + ' ' + suma[mc]; }).join(' · ') + '</div>';
+}
 function verHistorial(e) {
   var it = e.target.closest('.item.toca'); if (!it) return;
   var sig = it.nextElementSibling;
   if (sig && sig.classList.contains('historial')) { sig.remove(); return; }
   var h = document.createElement('div'); h.className = 'historial'; h.textContent = 'Cargando movimientos…';
   it.after(h);
+  var marcas = it.dataset.clase === 'HER' ? '' : desgloseMarcas(it.dataset.cod);
+  if (marcas) h.innerHTML = marcas + '<div>Cargando movimientos…</div>';
   if (!navigator.onLine) { h.textContent = 'Sin conexión: el historial se ve con cobertura.'; return; }
   api('movimientos', { material: it.dataset.cod, clase: it.dataset.clase || 'MAT' }).then(function (j) {
-    h.innerHTML = j.movimientos.length ? j.movimientos.map(function (m) {
+    h.innerHTML = marcas + (j.movimientos.length ? j.movimientos.map(function (m) {
       var etiqueta = it.dataset.clase === 'HER' ? m.tipo : (TIPO_VALE[m.tipo] || m.tipo);
       return '<div' + (m.anulado ? ' class="anulado"' : '') + '><b>' + (m.numero ? (m.linea ? 'Vale ' : '') + 'Nº ' + esc(m.numero) + ' · ' : '') + esc(m.fecha) + (m.hora ? ' ' + esc(m.hora) : '') + ' · ' + esc(etiqueta) + ' ' + esc(m.cantidad) + ' ' + esc(m.unidad || '') + '</b>' + (m.anulado ? ' · <span style="color:var(--rojo)">ANULADO</span>' : '') +
         (m.almacen && almacenes().length > 1 ? ' · ' + esc(nombreAlmacen(m.almacen).split(' · ')[0]) : '') +
@@ -949,8 +1055,8 @@ function verHistorial(e) {
         (m.persona ? ' · ' + (m.tipo === 'DEVOLUCION' ? 'lo devuelve ' : 'se lo lleva ') + esc(m.persona) : '') +
         (m.usuario ? ' · anotado por ' + esc(m.usuario) : '') + (m.nota ? ' · ' + esc(m.nota) : '') +
         (m.fotos || []).map(function (u, i) { return ' · <a href="' + esc(u) + '" target="_blank">📷 foto' + (m.fotos.length > 1 ? ' ' + (i + 1) : '') + '</a>'; }).join('') + '</div>';
-    }).join('') : 'Sin movimientos todavía.';
-  }).catch(function (e) { h.textContent = 'No se pudo cargar: ' + e.message; });
+    }).join('') : 'Sin movimientos todavía.');
+  }).catch(function (e) { h.innerHTML = marcas + '<div>No se pudo cargar: ' + esc(e.message) + '</div>'; });
 }
 $('stockLista').onclick = verHistorial;
 $('herrLista').onclick = verHistorial;
@@ -990,7 +1096,6 @@ function abrirMov(tipo, clase) {
   if (vale && tipo === 'TRASPASO') $('movObraBloque').style.display = 'none';
   $('movPersonaLabel').style.display = $('movPersonaTxt').style.display = '';
   $('valeDestino').value = '';
-  $('invForm').style.display = 'none';
   if (vale) {
     $('movCantBloque').style.display = 'none';
     $('valeLineas').innerHTML = ''; filaVale();
@@ -1024,7 +1129,8 @@ function pintarDestino() {
 $('valeDestino').onchange = pintarDestino;
 function filaVale() {
   var div = document.createElement('div'); div.className = 'fila vlin'; div.dataset.cod = '';
-  div.innerHTML = '<div><input type="text" class="v-txt" placeholder="Material…" autocomplete="off"><div class="sugs" style="display:none"></div></div>' +
+  div.innerHTML = '<div><div style="position:relative"><input type="text" class="v-txt" placeholder="Material…" autocomplete="off"><div class="sugs" style="display:none"></div></div>' +
+    '<input type="text" class="v-marca" placeholder="Marca (opcional)" autocomplete="off"></div>' +
     '<div class="corto"><input type="number" class="v-c" inputmode="decimal" step="any" min="0" placeholder="Cant."></div><button class="x">×</button>';
   buscador(div.querySelector('.v-txt'), div.querySelector('.sugs'), matsAlmacen, function (m, alEscribir) {
     div.dataset.cod = m ? m.codigo : '';
@@ -1053,7 +1159,8 @@ function leerLineasVale() {
     if (!nombre || !(q > 0)) { falta = true; return; }
     var m = mapa[f.dataset.cod];
     // si no se eligió de la lista, va como OTRO (no cuenta en el stock hasta darlo de alta en MATERIALES)
-    out.push({ material: m ? String(m.codigo) : 'OTRO', materialNombre: m ? m.nombre : nombre.toUpperCase(), unidad: m ? m.unidad : '', cantidad: q });
+    out.push({ material: m ? String(m.codigo) : 'OTRO', materialNombre: m ? m.nombre : nombre.toUpperCase(), unidad: m ? m.unidad : '', cantidad: q,
+      marca: f.querySelector('.v-marca').value.trim().toUpperCase() });
   });
   return falta ? null : out;
 }
@@ -1100,71 +1207,372 @@ function guardarVale() {
     });
   });
 }
-// ---------------------------------------------------------------- inventario (solo admin)
-// Se elige el almacén, se escribe lo contado (solo las líneas rellenas cuentan) y al terminar se crea un vale AJUSTE:
-// el servidor calcula contado − stock en ese momento. Mientras tanto, borrador en el móvil (por usuario y almacén).
-S.inv = { contados: {} };
-function claveInv() { return 'inv-' + (S.usuario ? S.usuario.codigo : '') + '-' + $('invAlmacen').value; }
-function cargarBorradorInv() {
-  return DB.get('kv', claveInv()).then(function (b) { S.inv = b && b.contados ? b : { contados: {} }; pintarInv(); });
+// ---------------------------------------------------------------- códigos de barras (EAN)
+// Lector: BarcodeDetector si el navegador lo trae (Android); si no (iPhone), ZXing, que va DENTRO de la app (lib/), para
+// que funcione sin conexión. También se puede escribir el número a mano.
+var Scan = { stream: null, timer: null };
+function eanValido(c) {
+  if (!/^(\d{8}|\d{12,14})$/.test(c)) return false;
+  var d = c.split('').map(Number), control = d.pop(), suma = 0;
+  d.reverse().forEach(function (n, i) { suma += n * (i % 2 === 0 ? 3 : 1); });
+  return (10 - suma % 10) % 10 === control;
 }
-function guardarBorradorInv(avisar) {
-  S.inv.guardado = ahoraES();
-  return DB.put('kv', S.inv, claveInv()).then(function () { infoInv(); if (avisar) toast('Borrador guardado en el móvil', 'ok'); });
+function cargarZXing() {
+  if (window.ZXing) return Promise.resolve();
+  return new Promise(function (res, rej) {
+    var s = document.createElement('script'); s.src = 'lib/zxing-0.21.3.min.js';
+    s.onload = function () { res(); }; s.onerror = function () { rej(new Error('No se pudo cargar el lector')); };
+    document.head.appendChild(s);
+  });
+}
+function lectorZXing() {
+  return cargarZXing().then(function () {
+    var Z = window.ZXing, hints = new Map();
+    hints.set(Z.DecodeHintType.POSSIBLE_FORMATS, [Z.BarcodeFormat.EAN_13, Z.BarcodeFormat.EAN_8, Z.BarcodeFormat.UPC_A, Z.BarcodeFormat.UPC_E]);
+    hints.set(Z.DecodeHintType.TRY_HARDER, true);
+    var r = new Z.MultiFormatReader(); r.setHints(hints);
+    return function (lienzo) {
+      try { return Promise.resolve(r.decodeWithState(new Z.BinaryBitmap(new Z.HybridBinarizer(new Z.HTMLCanvasElementLuminanceSource(lienzo)))).getText()); }
+      catch (e) { return Promise.resolve(null); }
+    };
+  });
+}
+function prepararLector() {
+  if (!('BarcodeDetector' in window)) return lectorZXing();
+  return BarcodeDetector.getSupportedFormats().then(function (sop) {
+    var f = ['ean_13', 'ean_8', 'upc_a', 'upc_e'].filter(function (x) { return sop.indexOf(x) >= 0; });
+    if (!f.length) return lectorZXing();
+    var d = new BarcodeDetector({ formats: f });
+    return function (lienzo) { return d.detect(lienzo).then(function (r) { return r.length ? r[0].rawValue : null; }, function () { return null; }); };
+  }).catch(function () { return lectorZXing(); });
+}
+function pararScan() {
+  clearInterval(Scan.timer); Scan.timer = null;
+  if (Scan.stream) Scan.stream.getTracks().forEach(function (t) { t.stop(); });
+  Scan.stream = null; $('scanVideo').srcObject = null;
+}
+// abre la cámara y devuelve el código leído (o null si se cancela)
+function escanear() {
+  return new Promise(function (res) {
+    var hecho = false;
+    var fin = function (c) { if (hecho) return; hecho = true; pararScan(); $('modalScan').classList.remove('activa'); res(c); };
+    $('scanManual').value = ''; $('scanMsg').textContent = 'Apunta a las barras, con la línea roja cruzándolas.';
+    $('modalScan').classList.add('activa');
+    $('scanCancelar').onclick = function () { fin(null); };
+    $('scanOk').onclick = function () {
+      var v = $('scanManual').value.replace(/\D/g, '');
+      if (!eanValido(v)) return toast('Ese número no es un código de barras válido: revísalo');
+      fin(v);
+    };
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { $('scanMsg').textContent = 'Aquí no se puede usar la cámara: escribe el número.'; return; }
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false }).then(function (st) {
+      if (hecho) { st.getTracks().forEach(function (t) { t.stop(); }); return null; }
+      Scan.stream = st; var v = $('scanVideo'); v.srcObject = st; return v.play().then(prepararLector);
+    }).then(function (leer) {
+      if (!leer || hecho) return;
+      var v = $('scanVideo'), c = document.createElement('canvas'), cx = c.getContext('2d', { willReadFrequently: true }), ocupado = false;
+      Scan.timer = setInterval(function () {
+        if (ocupado || !v.videoWidth) return; ocupado = true;
+        var w = v.videoWidth, h = v.videoHeight, alto = Math.round(h * 0.45);   // franja central, donde está la línea roja
+        c.width = w; c.height = alto; cx.drawImage(v, 0, (h - alto) / 2, w, alto, 0, 0, w, alto);
+        leer(c).then(function (cod) {
+          ocupado = false;
+          if (cod && eanValido(cod)) { if (navigator.vibrate) navigator.vibrate(80); fin(cod); }
+        });
+      }, 220);
+    }).catch(function (e) { $('scanMsg').textContent = 'No se pudo abrir la cámara (' + motivo(e) + '). Escribe el número.'; });
+  });
+}
+// EAN conocidos: los de la hoja EANS y los asociados en este móvil que aún no se han subido
+function eanConocido(c) {
+  return (S.eansLocal || []).concat((S.datos && S.datos.eans) || []).filter(function (e) { return e.ean === c; })[0] || null;
+}
+function puedeInventario() {
+  if (!S.usuario) return false;
+  var t = ((S.datos && S.datos.trabajadores) || []).filter(function (x) { return String(x.codigo) === String(S.usuario.codigo); })[0];
+  return !!(t && t.inventario);
+}
+function materialesActivos() { return (S.datos && S.datos.materiales) || []; }
+// escanea y devuelve { material, marca } (si el código es nuevo, quien hace inventarios lo asocia; los demás, a mano)
+function leerCodigo() {
+  return escanear().then(function (c) {
+    if (!c) return null;
+    var e = eanConocido(c);
+    if (e) return e;
+    if (!puedeInventario()) { toast('Código no conocido: elige el material a mano'); return null; }
+    return asociarEan(c);
+  });
+}
+function asociarEan(c) {
+  return new Promise(function (res) {
+    var elegido = null;
+    $('eanTxt').textContent = 'El código ' + c + ' no está en la lista. ¿Qué material es? ¿Qué marca?';
+    $('eanMatTxt').value = ''; $('eanMarca').value = ''; $('eanEnvase').value = '';
+    buscador($('eanMatTxt'), $('eanMatSugs'), materialesActivos, function (m) { elegido = m; });
+    $('modalEan').classList.add('activa');
+    $('eanCancelar').onclick = function () { $('modalEan').classList.remove('activa'); res(null); };
+    $('eanGuardar').onclick = function () {
+      if (!elegido) return toast('Elige el material de la lista');
+      DB.get('kv', 'pin-' + S.usuario.codigo).then(function (pin) {
+        if (!pin) return toast('Para asociar códigos, sal y vuelve a entrar con tu PIN');
+        var e = { ean: c, material: String(elegido.codigo), marca: $('eanMarca').value.trim().toUpperCase(), envase: $('eanEnvase').value.trim() };
+        S.eansLocal = (S.eansLocal || []).concat([e]);
+        // se guarda en el móvil y se sube cuando haya cobertura (lo primero de la cola)
+        return DB.put('kv', S.eansLocal, 'eansLocal').then(function () {
+          return DB.put('cola', { id: uid(), tipo: 'eans', eans: [e], auth: { codigo: S.usuario.codigo, pin: pin }, fecha: hoyISO(), hora: ahoraES().slice(11), creadoEn: new Date().toISOString() });
+        }).then(function () {
+          $('modalEan').classList.remove('activa'); actualizarPend(); toast('Código guardado', 'ok'); res(e);
+          if (navigator.onLine) sincronizar();
+        });
+      });
+    };
+  });
+}
+// vales y compras: escanear rellena el material y la marca y salta a la cantidad
+$('valeEscanear').onclick = function () {
+  leerCodigo().then(function (e) {
+    if (!e) return;
+    var m = matsAlmacen().filter(function (x) { return x.codigo === e.material; })[0];
+    if (!m) return toast('Ese material no va en este vale (va directo a obra o está dado de baja)');
+    var filas = document.querySelectorAll('#valeLineas .vlin'), f = filas[filas.length - 1];
+    if (!f || f.querySelector('.v-txt').value.trim()) { filaVale(); filas = document.querySelectorAll('#valeLineas .vlin'); f = filas[filas.length - 1]; }
+    f.querySelector('.v-txt').value = m.nombre; f.dataset.cod = m.codigo; f.querySelector('.v-marca').value = e.marca || '';
+    f.querySelector('.v-c').focus();
+  });
+};
+
+// ---------------------------------------------------------------- listas en el móvil (para ir sin cobertura)
+function pintarListasFecha() {
+  var t = S.datos && S.datos.cargadoEn ? 'Listas actualizadas el ' + S.datos.cargadoEn : 'Las listas aún no se han descargado en este móvil';
+  document.querySelectorAll('.listasFecha').forEach(function (d) { d.textContent = t; });
+}
+document.querySelectorAll('.preparar').forEach(function (b) {
+  b.onclick = function () {
+    if (!navigator.onLine) return toast('Sin conexión: hazlo antes de salir, con cobertura');
+    toast('Descargando todo…');
+    cargarDatos(true).then(function () {
+      // el lector de códigos se guarda también en el móvil
+      return fetch('lib/zxing-0.21.3.min.js').catch(function () {});
+    }).then(function () {
+      pintarListasFecha();
+      toast(S.datos && S.datos.cargadoEn ? 'Listo para ir sin cobertura (listas del ' + S.datos.cargadoEn + ')' : 'No se pudo descargar: inténtalo otra vez', S.datos && S.datos.cargadoEn ? 'ok' : 'err');
+    });
+  };
+});
+
+// ---------------------------------------------------------------- inventario (inventario = SI; entero sin cobertura)
+// Borrador en el móvil por usuario y almacén; se guarda cada vez que se toca algo:
+// { almacen, inicio, listas, mats: { COD: [ { marca, contado, foto } ] }, maq: { BAT: { bien, regular, averiada } },
+//   otros: [ { id, nombre, unidad, cantidad, marca, foto } ], fotos: [], nota }
+S.inv = null; S.invTab = 'MAT';
+function claveInv(alm) { return 'inv-' + (S.usuario ? S.usuario.codigo : '') + '-' + (alm || $('invAlmacen').value); }
+function nuevoInv(alm) { return { almacen: alm, inicio: '', listas: S.datos && S.datos.cargadoEn || '', mats: {}, maq: {}, otros: [], fotos: [], nota: '' }; }
+function abrirInventario() {
+  if (!puedeInventario()) return cambiar('almacen');
+  pintarListasFecha(); $('invResultado').style.display = 'none';
+  return almacenGuardado().then(function (c) { opcionesAlmacen('invAlmacen', c); return cargarInv(); });
+}
+function cargarInv() {
+  var alm = $('invAlmacen').value;
+  return DB.get('kv', claveInv(alm)).then(function (b) {
+    S.inv = b && b.mats ? b : nuevoInv(alm);
+    $('invNota').value = S.inv.nota || ''; $('invBuscar').value = '';
+    pintarInv(); pintarMaq(); pintarOtros(); pintarFotosEn('invFotosGen', S.inv.fotos); infoInv();
+  });
+}
+function tocarInv() {
+  if (!S.inv.inicio) { S.inv.inicio = ahoraES(); toast('Inventario empezado. No borres los datos del navegador hasta enviarlo.'); }
+  infoInv();
+  clearTimeout(S.invT); S.invT = setTimeout(guardarInv, 300);
+}
+function guardarInv() { return S.inv ? DB.put('kv', S.inv, claveInv(S.inv.almacen)) : Promise.resolve(); }
+function contadosInv() {
+  var n = 0; Object.keys(S.inv.mats).forEach(function (c) { if (S.inv.mats[c].some(function (e) { return e.contado !== '' && e.contado != null; })) n++; });
+  return n;
 }
 function infoInv() {
-  var n = Object.keys(S.inv.contados).length;
-  $('invInfo').textContent = n ? n + ' material(es) contado(s)' + (S.inv.guardado ? ' · borrador guardado ' + S.inv.guardado : '') : 'Escribe lo que cuentes. Lo que dejes en blanco no se toca.';
+  var i = S.inv, maq = Object.keys(i.maq).filter(function (p) { var m = i.maq[p]; return (+m.bien || 0) + (+m.regular || 0) + (+m.averiada || 0) > 0; }).length;
+  $('invInfo').textContent = i.inicio
+    ? 'Empezado el ' + i.inicio + ' · ' + contadosInv() + ' material(es), ' + maq + ' tipo(s) de máquina, ' + i.otros.length + ' a mano · borrador guardado en el móvil'
+    : 'Elige el almacén y empieza a contar. Lo que dejes en blanco no se toca.';
+}
+function stockApp(cod) { var m = stockLocal().filter(function (x) { return x.codigo === cod; })[0]; return m ? stockEn(m, S.inv.almacen) : 0; }
+function matsInv() { return materialesActivos().filter(function (m) { return m.en_almacen !== 'NO'; }); }
+function entradas(cod) { return S.inv.mats[cod] && S.inv.mats[cod].length ? S.inv.mats[cod] : [{ marca: '', contado: '' }]; }
+function htmlMat(m) {
+  var en = entradas(m.codigo), lleno = en.some(function (e) { return e.contado !== '' && e.contado != null; });
+  return '<div class="inv-mat' + (lleno ? ' inv-lleno' : '') + '" data-cod="' + esc(m.codigo) + '"><div class="inv-cab"><b>' + esc(m.nombre) + '</b><small>app: ' + stockApp(m.codigo) + ' ' + esc(m.unidad) + '</small></div>' +
+    en.map(function (e, i) {
+      return '<div class="inv-ent" data-i="' + i + '"><input type="text" class="inv-marca" placeholder="Marca (opcional)" value="' + esc(e.marca || '') + '" autocomplete="off">' +
+        '<input type="number" class="inv-c" inputmode="decimal" step="any" min="0" placeholder="Contado" value="' + esc(e.contado == null ? '' : e.contado) + '">' +
+        (e.foto ? '<span class="inv-mini"><img src="' + e.foto + '" data-quitar="1" title="Quitar foto"></span>' : '<button class="inv-foto" title="Foto">📷</button>') + '</div>';
+    }).join('') + '<button class="inv-mas">+ otra marca</button></div>';
 }
 function pintarInv() {
-  var q = normal($('invBuscar').value), alm = $('invAlmacen').value;
-  var lista = stockLocal().filter(function (m) {
-    var mat = ((S.datos && S.datos.materiales) || []).filter(function (x) { return x.codigo === m.codigo; })[0] || {};
-    return !q || encaja(q.split(/[^a-z0-9,]+/).filter(Boolean), m.nombre) || String(mat.alias || '').split(',').some(function (a) { return a.trim() && encaja(q.split(/[^a-z0-9,]+/).filter(Boolean), a); });
+  var q = normal($('invBuscar').value).split(/[^a-z0-9,]+/).filter(Boolean), cat = null, h = '';
+  matsInv().filter(function (m) {
+    return !q.length || encaja(q, m.nombre) || String(m.alias || '').split(',').some(function (a) { return a.trim() && encaja(q, a); });
+  }).slice().sort(function (a, b) { return (a.categoria || 'ZZ').localeCompare(b.categoria || 'ZZ') || a.nombre.localeCompare(b.nombre); }).forEach(function (m) {
+    if ((m.categoria || 'OTROS') !== cat) { cat = m.categoria || 'OTROS'; h += '<div class="inv-cat">' + esc(cat) + '</div>'; }
+    h += htmlMat(m);
   });
-  $('invLista').innerHTML = lista.map(function (m) {
-    var c = S.inv.contados[m.codigo];
-    return '<div class="item"><div><b>' + esc(m.nombre) + '</b><small>stock ' + stockEn(m, alm) + ' ' + esc(m.unidad) + '</small></div>' +
-      '<div class="corto"><input type="number" class="inv-c" data-cod="' + esc(m.codigo) + '" inputmode="decimal" step="any" min="0" placeholder="contado" value="' + (c == null ? '' : esc(c)) + '"></div></div>';
-  }).join('') || '<div class="aviso">Ningún material con ese nombre.</div>';
-  infoInv();
+  $('invLista').innerHTML = h || '<div class="aviso">Ningún material con ese nombre. Si no está en la lista, usa "+ material que no está en la lista".</div>';
 }
-$('invLista').oninput = function (e) {
-  var i = e.target.closest('.inv-c'); if (!i) return;
-  if (i.value === '') delete S.inv.contados[i.dataset.cod]; else S.inv.contados[i.dataset.cod] = i.value;
-  clearTimeout(S.invT); S.invT = setTimeout(function () { guardarBorradorInv(false); }, 600);   // borrador automático
-};
+function repintarMat(cod) {
+  var d = $('invLista').querySelector('.inv-mat[data-cod="' + cod + '"]'), m = matsInv().filter(function (x) { return x.codigo === cod; })[0];
+  if (d && m) d.outerHTML = htmlMat(m);
+}
 $('invBuscar').oninput = pintarInv;
-$('invAlmacen').onchange = function () { recordarAlmacen(this.value); cargarBorradorInv(); };
-$('btnInventario').onclick = function () {
-  $('movForm').style.display = 'none'; $('invForm').style.display = ''; $('invBuscar').value = '';
-  almacenGuardado().then(function (c) { opcionesAlmacen('invAlmacen', c); return cargarBorradorInv(); });
+$('invLista').oninput = function (e) {
+  var d = e.target.closest('.inv-mat'), ent = e.target.closest('.inv-ent'); if (!d || !ent) return;
+  var cod = d.dataset.cod, i = +ent.dataset.i;
+  S.inv.mats[cod] = entradas(cod).slice(); S.inv.mats[cod][i] = Object.assign({}, S.inv.mats[cod][i]);
+  if (e.target.classList.contains('inv-c')) S.inv.mats[cod][i].contado = e.target.value;
+  if (e.target.classList.contains('inv-marca')) S.inv.mats[cod][i].marca = e.target.value;
+  d.classList.toggle('inv-lleno', S.inv.mats[cod].some(function (x) { return x.contado !== '' && x.contado != null; }));
+  tocarInv();
 };
-$('invCerrar').onclick = function () { guardarBorradorInv(false).then(function () { $('invForm').style.display = 'none'; }); };
-$('invBorrador').onclick = function () { guardarBorradorInv(true); };
-$('invGuardar').onclick = function () {
-  var alm = $('invAlmacen').value, mapa = {};
-  stockLocal().forEach(function (m) { mapa[m.codigo] = m; });
-  var lineas = Object.keys(S.inv.contados).filter(function (c) { return mapa[c] && S.inv.contados[c] !== '' && Number(S.inv.contados[c]) >= 0; }).map(function (c) {
-    var m = mapa[c], contado = Number(S.inv.contados[c]);
-    return { material: c, materialNombre: m.nombre, unidad: m.unidad, contado: contado, cantidad: contado - stockEn(m, alm) };
+$('invLista').onclick = function (e) {
+  var d = e.target.closest('.inv-mat'); if (!d) return;
+  var cod = d.dataset.cod, ent = e.target.closest('.inv-ent');
+  if (e.target.classList.contains('inv-mas')) { S.inv.mats[cod] = entradas(cod).concat([{ marca: '', contado: '' }]); repintarMat(cod); tocarInv(); return; }
+  if (e.target.classList.contains('inv-foto')) { S.invFotoPara = { cod: cod, i: +ent.dataset.i }; $('invFotoInput').click(); return; }
+  if (e.target.dataset.quitar) preguntar('¿Quitar esta foto?', 'Quitar', 'Dejarla').then(function (ok) {
+    if (!ok) return; S.inv.mats[cod] = entradas(cod).slice(); S.inv.mats[cod][+ent.dataset.i].foto = null; repintarMat(cod); tocarInv();
   });
-  if (!lineas.length) return toast('No has contado ningún material');
-  var cambian = lineas.filter(function (l) { return l.cantidad !== 0; }).length;
-  preguntar('¿Terminar el inventario de ' + nombreAlmacen(alm).split(' · ')[0] + '?\n' + lineas.length + ' material(es) contado(s), ' + cambian + ' con diferencia. Se creará un vale AJUSTE.', 'Terminar', 'Seguir contando').then(function (ok) {
+};
+// fotos: una por línea y generales, comprimidas a ~1600 px
+$('invFotoInput').onchange = function () {
+  var f = this.files && this.files[0], para = S.invFotoPara; this.value = ''; if (!f || !para) return;
+  comprimir(f, 1600).then(function (d) {
+    if (!d) return toast('No se pudo leer la foto');
+    if (para.otro) { S.inv.otros.forEach(function (o) { if (o.id === para.otro) o.foto = d; }); pintarOtros(); }
+    else if (para.general) { S.inv.fotos.push(d); pintarFotosEn('invFotosGen', S.inv.fotos); }
+    else { S.inv.mats[para.cod] = entradas(para.cod).slice(); S.inv.mats[para.cod][para.i] = Object.assign({}, S.inv.mats[para.cod][para.i], { foto: d }); repintarMat(para.cod); }
+    tocarInv();
+  });
+};
+$('invFotoGen').onclick = function () { S.invFotoPara = { general: true }; $('invFotoInput').click(); };
+$('invFotosGen').onclick = function () { setTimeout(tocarInv, 0); };   // al quitar una foto general
+$('invNota').oninput = function () { S.inv.nota = this.value; tocarInv(); };
+$('invAlmacen').onchange = function () { guardarInv().then(function () { recordarAlmacen($('invAlmacen').value); cargarInv(); }); };
+$('invTabMat').onclick = function () { S.invTab = 'MAT'; this.classList.add('activa'); $('invTabMaq').classList.remove('activa'); $('invBloqueMat').style.display = ''; $('invBloqueMaq').style.display = 'none'; };
+$('invTabMaq').onclick = function () { S.invTab = 'MAQ'; this.classList.add('activa'); $('invTabMat').classList.remove('activa'); $('invBloqueMat').style.display = 'none'; $('invBloqueMaq').style.display = ''; };
+// escanear en el inventario: va al material, a la línea de esa marca, y salta al contado
+$('invEscanear').onclick = function () {
+  leerCodigo().then(function (e) {
+    if (!e) return;
+    var m = matsInv().filter(function (x) { return x.codigo === e.material; })[0];
+    if (!m) return toast('Ese material no se cuenta en el almacén (va directo a obra o está dado de baja)');
+    var en = entradas(m.codigo).slice(), mc = (e.marca || '').toUpperCase(), i = -1;
+    en.forEach(function (x, j) { if (i < 0 && String(x.marca || '').trim().toUpperCase() === mc) i = j; });
+    if (i < 0) { var vacia = en.length === 1 && !en[0].marca && (en[0].contado === '' || en[0].contado == null); if (vacia) { en[0] = { marca: mc, contado: '' }; i = 0; } else { en.push({ marca: mc, contado: '' }); i = en.length - 1; } }
+    S.inv.mats[m.codigo] = en; tocarInv();
+    $('invTabMat').onclick(); $('invBuscar').value = m.nombre; pintarInv();
+    var inp = $('invLista').querySelector('.inv-mat[data-cod="' + m.codigo + '"] .inv-ent[data-i="' + i + '"] .inv-c');
+    if (inp) { inp.focus(); inp.select && inp.select(); }
+  });
+};
+// máquinas: por tipo, cuántas bien / regular / averiadas
+function enAlmacenTipo(prefijo) { return herrLocal().filter(function (h) { return h.codigo.split('-')[0] === prefijo && h.donde === 'ALMACÉN'; }).length; }
+function pintarMaq() {
+  var tipos = (S.datos && S.datos.herrTipos) || [];
+  $('invMaqLista').innerHTML = tipos.map(function (t) {
+    var m = S.inv.maq[t.prefijo] || {};
+    var c = function (k) { return '<input type="number" inputmode="numeric" min="0" step="1" data-p="' + esc(t.prefijo) + '" data-k="' + k + '" value="' + esc(m[k] == null ? '' : m[k]) + '">'; };
+    return '<div class="maq"><div><b>' + esc(t.nombre) + '</b><small>' + esc(t.prefijo) + ' · en la app: ' + enAlmacenTipo(t.prefijo) + ' en almacén</small></div>' + c('bien') + c('regular') + c('averiada') + '</div>';
+  }).join('') || '<div class="aviso">No hay tipos de máquina en HERR_TIPOS.</div>';
+}
+$('invMaqLista').oninput = function (e) {
+  var p = e.target.dataset.p; if (!p) return;
+  S.inv.maq[p] = Object.assign({}, S.inv.maq[p]); S.inv.maq[p][e.target.dataset.k] = e.target.value; tocarInv();
+};
+// a mano: material que no está en la lista (queda como OTRO)
+function pintarOtros() {
+  $('invOtros').innerHTML = S.inv.otros.length ? '<div class="inv-cat">A mano (no están en la lista)</div>' + S.inv.otros.map(function (o) {
+    return '<div class="inv-mat" data-otro="' + esc(o.id) + '"><div class="inv-cab"><b>' + esc(o.nombre) + '</b><small>' + esc(o.cantidad) + ' ' + esc(o.unidad) + (o.marca ? ' · ' + esc(o.marca) : '') + '</small></div>' +
+      '<div class="inv-ent">' + (o.foto ? '<span class="inv-mini"><img src="' + o.foto + '"></span>' : '<button class="otro-foto">📷</button>') + '<button class="otro-quitar" style="color:var(--rojo)">×</button></div></div>';
+  }).join('') : '';
+}
+$('invOtros').onclick = function (e) {
+  var d = e.target.closest('[data-otro]'); if (!d) return;
+  if (e.target.classList.contains('otro-foto')) { S.invFotoPara = { otro: d.dataset.otro }; $('invFotoInput').click(); }
+  if (e.target.classList.contains('otro-quitar')) preguntar('¿Quitar este material?', 'Quitar', 'Dejarlo').then(function (ok) {
+    if (ok) { S.inv.otros = S.inv.otros.filter(function (o) { return o.id !== d.dataset.otro; }); pintarOtros(); tocarInv(); }
+  });
+};
+$('invOtro').onclick = function () {
+  $('otroNombre').value = ''; $('otroCant').value = ''; $('otroMarca').value = ''; $('otroUnidad').value = 'ud';
+  $('modalOtro').classList.add('activa'); $('otroNombre').focus();
+};
+$('otroCancelar').onclick = function () { $('modalOtro').classList.remove('activa'); };
+$('otroGuardar').onclick = function () {
+  var n = $('otroNombre').value.trim(), q = $('otroCant').value;
+  if (!n) return toast('Escribe el nombre'); if (q === '' || !(+q >= 0)) return toast('Escribe la cantidad');
+  S.inv.otros.push({ id: uid(), nombre: n.toUpperCase(), unidad: $('otroUnidad').value, cantidad: +q, marca: $('otroMarca').value.trim().toUpperCase(), foto: null });
+  $('modalOtro').classList.remove('activa'); pintarOtros(); tocarInv();
+};
+// cerrar: vale AJUSTE (diferencias con el stock del SERVIDOR al recibirlo) + fotos aparte, una a una
+$('invCerrar').onclick = function () {
+  var i = S.inv, alm = i.almacen, lineas = [], fotos = [];
+  var mats = {}; matsInv().forEach(function (m) { mats[m.codigo] = m; });
+  Object.keys(i.mats).forEach(function (cod) {
+    if (!mats[cod]) return;
+    i.mats[cod].forEach(function (e) {
+      if (e.contado === '' || e.contado == null || !(+e.contado >= 0)) return;
+      var mc = String(e.marca || '').trim().toUpperCase(), clave = 'M|' + cod + '|' + mc;
+      lineas.push({ material: cod, materialNombre: mats[cod].nombre, unidad: mats[cod].unidad, marca: mc, contado: +e.contado, stockMovil: stockApp(cod), clave: clave });
+      if (e.foto) fotos.push({ clave: clave, dato: e.foto });
+    });
+  });
+  i.otros.forEach(function (o) {
+    lineas.push({ material: 'OTRO', materialNombre: o.nombre, unidad: o.unidad, marca: o.marca, contado: o.cantidad, clave: 'O|' + o.id });
+    if (o.foto) fotos.push({ clave: 'O|' + o.id, dato: o.foto });
+  });
+  i.fotos.forEach(function (d) { fotos.push({ clave: '', dato: d }); });
+  // máquinas: las que falten (contadas − las que la app tiene en el almacén) se dan de alta con número nuevo
+  S.numerosPendientes = S.numerosPendientes || [];
+  var tipos = {}; ((S.datos && S.datos.herrTipos) || []).forEach(function (t) { tipos[t.prefijo] = t.nombre; });
+  var maquinas = Object.keys(i.maq).map(function (p) {
+    var m = i.maq[p], bien = +m.bien || 0, regular = +m.regular || 0, averiada = +m.averiada || 0, total = bien + regular + averiada;
+    if (!total) return null;
+    var en = enAlmacenTipo(p), altas = [];
+    for (var k = 0; k < total - en; k++) { var c = siguienteNumero(p); S.numerosPendientes.push(c); altas.push(c); }
+    return { prefijo: p, tipo: tipos[p] || p, bien: bien, regular: regular, averiada: averiada, enAlmacen: en, altas: altas };
+  }).filter(Boolean);
+  if (!lineas.length && !maquinas.length) return toast('No has contado nada todavía');
+  var nAltas = maquinas.reduce(function (s, m) { return s + m.altas.length; }, 0);
+  preguntar('¿Cerrar el inventario de ' + nombreAlmacen(alm).split(' · ')[0] + '?\n' + contadosInv() + ' material(es) contado(s), ' + i.otros.length + ' a mano, ' +
+    maquinas.length + ' tipo(s) de máquina (' + nAltas + ' alta(s) nueva(s)) y ' + fotos.length + ' foto(s).\nSe enviará solo cuando haya cobertura.', 'Cerrar inventario', 'Seguir contando').then(function (ok) {
     if (!ok) return;
     return DB.get('kv', 'pin-' + S.usuario.codigo).then(function (pin) {
-      if (!pin) return toast('Para el inventario, sal y vuelve a entrar con tu PIN');
-      var vale = { id: uid(), tipo: 'vale', valeTipo: 'AJUSTE', obra: '', persona: '', nota: 'Inventario', fotos: [], lineas: lineas, fecha: hoyISO(), hora: ahoraES().slice(11),
-        usuario: S.usuario.nombre, creadoEn: new Date().toISOString(), almacen: alm, almacenDestino: '', auth: { codigo: S.usuario.codigo, pin: pin } };
+      if (!pin) return toast('Para cerrar el inventario, sal y vuelve a entrar con tu PIN (con cobertura)');
+      var ahora = new Date().toISOString(), vale = { id: uid(), tipo: 'vale', valeTipo: 'AJUSTE', obra: '', persona: '', nota: i.nota || 'Inventario', fotos: [],
+        lineas: lineas, maquinas: maquinas, inicio: i.inicio || ahoraES(), cierre: ahoraES(), fecha: hoyISO(), hora: ahoraES().slice(11),
+        usuario: S.usuario.nombre, creadoEn: ahora, almacen: alm, almacenDestino: '', nFotos: fotos.length, auth: { codigo: S.usuario.codigo, pin: pin } };
+      var items = [vale].concat(fotos.map(function (f, n) {
+        return { id: uid(), tipo: 'foto', valeId: vale.id, clave: f.clave, dato: f.dato, fotoId: uid(), n: n + 1, total: fotos.length, fecha: vale.fecha, creadoEn: ahora };
+      }));
       // el stock del móvil pasa a ser lo contado (el servidor lo recalcula al recibirlo)
-      lineas.forEach(function (l) { var m = mapa[l.material]; m.porAlmacen = m.porAlmacen || {}; m.porAlmacen[alm] = l.contado; m.stock += l.cantidad; });
-      DB.put('kv', S.datos, 'datos');
-      return DB.put('cola', vale).then(function () { return DB.del('kv', claveInv()); }).then(function () {
-        S.inv = { contados: {} }; $('invForm').style.display = 'none'; actualizarPend();
-        if (!navigator.onLine) return toast('Inventario guardado en el móvil, se enviará solo', 'ok');
-        toast('Enviando inventario…'); sincronizar();
+      var suma = {}; lineas.forEach(function (l) { if (l.material !== 'OTRO') suma[l.material] = (suma[l.material] || 0) + l.contado; });
+      stockLocal().forEach(function (m) {
+        if (!(m.codigo in suma)) return;
+        m.porAlmacen = m.porAlmacen || {}; m.stock += suma[m.codigo] - (m.porAlmacen[alm] || 0); m.porAlmacen[alm] = suma[m.codigo];
+        m.marcas = m.marcas || {}; m.marcas[alm] = {}; lineas.forEach(function (l) { if (l.material === m.codigo) m.marcas[alm][l.marca] = (m.marcas[alm][l.marca] || 0) + l.contado; });
       });
+      return items.reduce(function (p, it) { return p.then(function () { return DB.put('cola', it); }); }, Promise.resolve())
+        .then(function () { return DB.put('kv', S.datos, 'datos'); })
+        .then(function () { return DB.del('kv', claveInv(alm)); })
+        .then(function () {
+          var r = $('invResultado');
+          r.innerHTML = '<h2>Inventario cerrado</h2><div class="aviso ok">Guardado en el móvil. Se envía solo cuando haya cobertura: primero los códigos nuevos, luego el inventario y después las fotos, una a una. El progreso se ve en Enviados.</div>' +
+            (nAltas ? '<label>Números para rotular en las máquinas nuevas</label>' + maquinas.filter(function (m) { return m.altas.length; }).map(function (m) {
+              return '<div><b>' + esc(m.tipo) + ':</b> <span class="numeros">' + m.altas.map(esc).join(', ') + '</span></div>';
+            }).join('') + '<div class="ayuda">✍️ Escríbelos con el rotulador. Si al enviarse alguno cambia (otro móvil usó ese número), se avisa en Enviados.</div>' : '');
+          r.style.display = ''; r.scrollIntoView();
+          S.inv = nuevoInv(alm); pintarInv(); pintarMaq(); pintarOtros(); pintarFotosEn('invFotosGen', S.inv.fotos); $('invNota').value = ''; infoInv();
+          actualizarPend(); if (navigator.onLine) sincronizar();
+        });
     });
   });
 };
@@ -1242,8 +1650,11 @@ $('valesLista').onclick = function (e) {
   if (sig && sig.classList.contains('det')) { sig.remove(); return; }
   var x = S.vales[+it.dataset.i], d = document.createElement('div'); d.className = 'det vale-item';
   d.innerHTML = '<table>' + x.lineas.map(function (l) {
-      return '<tr' + (l.anulado ? ' class="anulado"' : '') + '><td>' + l.linea + '</td><td><b>' + esc(l.material) + '</b>' + (l.material_codigo === 'OTRO' ? ' <span class="chip pend">OTRO</span>' : '') + '</td><td>' + (l.contado !== '' && l.contado != null ? 'contado ' + esc(l.contado) + ' · dif. ' + (l.cantidad > 0 ? '+' : '') + esc(l.cantidad) : esc(l.cantidad)) + ' ' + esc(l.unidad || '') + '</td></tr>';
+      return '<tr' + (l.anulado ? ' class="anulado"' : '') + '><td>' + l.linea + '</td><td><b>' + esc(l.material) + '</b>' + (l.material_codigo === 'OTRO' ? ' <span class="chip pend">OTRO</span>' : '') + (l.marca ? ' · ' + esc(l.marca) : '') + (l.fotos || []).map(function (u) { return ' <a href="' + esc(u) + '" target="_blank">📷</a>'; }).join('') +
+        '</td><td>' + (l.contado !== '' && l.contado != null ? 'contado ' + esc(l.contado) + (l.stock_antes !== '' && l.stock_antes != null ? ' · había ' + esc(l.stock_antes) : '') + ' · dif. ' + (l.cantidad > 0 ? '+' : '') + esc(l.cantidad) : esc(l.cantidad)) + ' ' + esc(l.unidad || '') + '</td></tr>';
     }).join('') + '</table>' +
+    (x.tipo === 'AJUSTE' ? '<div>Inventario de <b>' + esc(nombreAlmacen(x.almacen).split(' · ')[0]) + '</b> por ' + esc(x.usuario) + (x.inicio ? ' · empezado ' + esc(x.inicio) : '') + (x.cierre ? ' · cerrado ' + esc(x.cierre) : '') + '</div>' : '') +
+    ((x.maquinas || []).length ? '<div>Máquinas: ' + x.maquinas.map(function (m) { return esc(m.tipo) + ' ' + m.total + ' (bien ' + m.bien + ', regular ' + m.regular + ', averiada ' + m.averiada + ')' + (m.altas ? ' · altas ' + esc(m.altas) : ''); }).join(' · ') + '</div>' : '') +
     (x.proveedor ? '<div>Proveedor: <b>' + esc(x.proveedor) + '</b> · ' + (x.tipo_doc === 'TICKET' ? 'Ticket' : 'Albarán') + ': <b>' + esc(x.albaran) + '</b>' + (x.estado ? ' · ' + esc(x.estado) : '') + '</div>' : '') +
     (x.nota ? '<div>Comentario: ' + esc(x.nota) + '</div>' : '') +
     (x.fotos.length ? '<div>' + x.fotos.map(function (u, i) { return '<a href="' + esc(u) + '" target="_blank">📎 adjunto ' + (i + 1) + '</a>'; }).join(' · ') + '</div>' : '') +
@@ -1276,22 +1687,41 @@ function sincronizar() {
   if (sincronizando || !navigator.onLine) return Promise.resolve();
   sincronizando = true;
   return DB.all('cola').then(function (cola) {
-    cola.sort(function (a, b) { return a.creadoEn < b.creadoEn ? -1 : 1; });
-    var p = Promise.resolve(), enviados = 0;
+    // orden: EAN nuevos, luego partes y vales (el inventario), y al final las fotos, una a una
+    var prio = function (it) { return it.tipo === 'eans' ? 0 : it.tipo === 'foto' ? 2 : 1; };
+    cola.sort(function (a, b) { return prio(a) - prio(b) || (a.creadoEn < b.creadoEn ? -1 : a.creadoEn > b.creadoEn ? 1 : (a.n || 0) - (b.n || 0)); });
+    var p = Promise.resolve(), enviados = 0, pendientes = {};
+    cola.forEach(function (it) { if (it.tipo === 'vale') pendientes[it.id] = true; });
     cola.forEach(function (it) {
       p = p.then(function () {
+        if (it.tipo === 'foto' && pendientes[it.valeId]) return;   // la foto espera a que llegue su inventario
+        if (it.tipo === 'eans') return api('eans', { eans: it.eans, auth: it.auth }).then(function (j) {
+          var subidos = it.eans.map(function (e) { return e.ean; });
+          S.eansLocal = (S.eansLocal || []).filter(function (e) { return subidos.indexOf(e.ean) < 0; });
+          (j.eans || []).forEach(function (r) { if (r.estado === 'otro') toast('El código ' + r.ean + ' ya estaba asociado a otro material: se deja el primero', 'err'); });
+          return DB.put('kv', S.eansLocal, 'eansLocal').then(function () { return DB.del('cola', it.id); });
+        }).catch(function (e) { it.error = e.message; it.intentos = (it.intentos || 0) + 1; return DB.put('cola', it); });
+        if (it.tipo === 'foto') return api('fotoVale', { foto: { valeId: it.valeId, clave: it.clave, fotoId: it.fotoId, dato: it.dato } })
+          .then(function () { return DB.del('cola', it.id).then(function () { if (S.pantalla === 'enviados') pintarEnviados(); }); })
+          .catch(function (e) { it.error = e.message; it.intentos = (it.intentos || 0) + 1; return DB.put('cola', it); });   // se reintenta en la siguiente vuelta
         var llamada = it.tipo === 'parte'
           ? api('crearParte', { parte: it })
           : it.tipo === 'vale'
           ? api('vale', { vale: { id: it.id, tipo: it.valeTipo, obra: it.obra, persona: it.persona, nota: it.nota, fotos: it.fotos || [], albaranArchivo: it.albaranArchivo || null,
-              proveedor: it.proveedor, albaran: it.albaran, tipoDoc: it.tipoDoc || '', lineas: it.lineas, fecha: it.fecha, hora: it.hora, usuario: it.usuario, auth: it.auth || null, almacen: it.almacen || '', almacenDestino: it.almacenDestino || '' } })
+              proveedor: it.proveedor, albaran: it.albaran, tipoDoc: it.tipoDoc || '', lineas: it.lineas, fecha: it.fecha, hora: it.hora, usuario: it.usuario, auth: it.auth || null, almacen: it.almacen || '', almacenDestino: it.almacenDestino || '',
+              maquinas: it.maquinas || [], inicio: it.inicio || '', cierre: it.cierre || '' } })
           : api('movimiento', { mov: { id: it.id, tipo: it.movTipo, material: it.material, cantidad: it.cantidad, obra: it.obra, nota: it.nota, fotos: it.fotos || [], fecha: it.fecha, usuario: it.usuario, materialNombre: it.materialNombre, hora: it.hora, clase: it.clase || 'MAT', persona: it.persona || '', tipoHer: it.tipoHer || '', codigoNuevo: it.codigoNuevo || '' } });
         return llamada.then(function (j) {
           enviados++;
           // confirmación clara con el número
-          if (it.tipo === 'vale') toast('Vale ' + j.numero + ' guardado', 'ok');
+          if (it.tipo === 'vale') toast((it.valeTipo === 'AJUSTE' ? 'Inventario ' : 'Vale ') + j.numero + ' guardado', 'ok');
           else if (it.tipo === 'parte') toast('Parte Nº ' + j.numero + ' guardado', 'ok');
-          var h = { id: it.id, tipo: it.tipo, fecha: it.fecha, obra: it.obraNombre || it.obra, numero: j.numero || '', pdf_url: j.pdf_url || '', firmado: !!it.firma, enviadoEn: new Date().toISOString(), copia: j.copia_enviada_a || '', copiaError: j.copia_error || '', resumen: it.tipo === 'vale' ? 'Vale · ' + TIPO_VALE[it.valeTipo] + ' · ' + it.lineas.length + (it.lineas.length === 1 ? ' línea' : ' líneas') + (it.obra ? ' · ' + it.obra : (it.proveedor ? ' · ' + it.proveedor : ''))
+          if (it.tipo === 'vale') delete pendientes[it.id];
+          var cambiadas = (j.altas || []).filter(function (a) { return a.cambiado; });
+          var h = { id: it.id, tipo: it.tipo, fecha: it.fecha, obra: it.obraNombre || it.obra, numero: j.numero || '', pdf_url: j.pdf_url || '', firmado: !!it.firma, enviadoEn: new Date().toISOString(), copia: j.copia_enviada_a || '', copiaError: j.copia_error || '', nFotos: it.nFotos || 0, resumen: it.tipo === 'vale' ? 'Vale · ' + TIPO_VALE[it.valeTipo] + ' · ' + it.lineas.length + (it.lineas.length === 1 ? ' línea' : ' líneas') + (it.obra ? ' · ' + it.obra : (it.proveedor ? ' · ' + it.proveedor : ''))
+              + ((j.altas || []).length ? ' · altas: ' + j.altas.map(function (a) { return a.codigo; }).join(', ') : '')
+              + (cambiadas.length ? ' · ⚠️ CAMBIADO: ' + cambiadas.map(function (a) { return a.propuesto + ' → ' + a.codigo; }).join(', ') + ' (corrige el número en la máquina)' : '')
+              + (j.cambios ? ' · ⚠️ el stock había cambiado: ajuste calculado con el del servidor' : '')
             : it.tipo === 'mov' ? (it.clase === 'HER'
             ? '🔧 ' + (it.movTipo === 'ENTRADA' ? 'ALTA ' : it.movTipo + ' ') + it.materialNombre + (it.tipoHer ? ' → número ' + (j.herramienta || '?') + (j.cambiado ? ' ⚠️ CAMBIADO: tenía ' + it.codigoNuevo + ', corrige el número en la máquina' : '') : '')
             : it.movTipo + ' ' + it.cantidad + ' ' + (it.materialNombre || it.material)) + (it.persona ? ' · ' + it.persona : '') : '', hora: it.hora || '' };
@@ -1311,13 +1741,29 @@ function sincronizar() {
 $('colaLista').onclick = function (e) {
   var b = e.target.closest('.descartar'); if (!b) return;
   preguntar('¿Quitar este pendiente del móvil?\nNo se enviará. Úsalo solo si el servidor lo rechaza (por ejemplo, albarán ya registrado).', 'Quitar', 'Cancelar').then(function (ok) {
-    if (ok) DB.del('cola', b.dataset.id).then(function () { actualizarPend(); pintarEnviados(); toast('Pendiente quitado'); });
+    if (!ok) return;
+    DB.all('cola').then(function (c) {
+      var fuera = [b.dataset.id].concat(c.filter(function (it) { return it.tipo === 'foto' && it.valeId === b.dataset.id; }).map(function (it) { return it.id; }));
+      return Promise.all(fuera.map(function (id) { return DB.del('cola', id); }));
+    }).then(function () { actualizarPend(); pintarEnviados(); toast('Pendiente quitado'); });
   });
 };
 function pintarEnviados() {
-  DB.all('cola').then(function (c) {
-    $('colaLista').innerHTML = c.length ? c.map(function (it) {
-      return '<div class="item"><div><b>' + (it.tipo === 'parte' ? 'Parte · ' + esc(it.obraNombre) : it.tipo === 'vale' ? 'Vale · ' + TIPO_VALE[it.valeTipo] + ' · ' + it.lineas.length + ' línea(s)' + (it.obra ? ' · ' + esc(it.obra) : '') : (it.clase === 'HER' ? 'Herramientas · ' : 'Almacén · ') + esc(it.movTipo) + ' ' + it.cantidad + ' ' + esc(it.materialNombre || it.material)) + '</b><small>' + fechaES(it.fecha) + (it.hora ? ' ' + esc(it.hora) : '') + (it.error ? ' · <span style="color:var(--rojo)">' + esc(it.error) + '</span>' : '') + '</small></div>' + (it.error ? '<button class="chip err descartar" data-id="' + esc(it.id) + '">quitar</button>' : '<span class="chip pend">pendiente</span>') + '</div>';
+  pintarListasFecha();
+  Promise.all([DB.all('cola'), DB.all('hist')]).then(function (r) {
+    var c = r[0], hist = {}; r[1].forEach(function (h) { hist[h.id] = h; });
+    // las fotos van agrupadas por inventario: "Inventario A0012: 12 de 30 fotos subidas"
+    var grupos = {}, fotos = c.filter(function (it) { return it.tipo === 'foto'; });
+    fotos.forEach(function (f) { (grupos[f.valeId] = grupos[f.valeId] || []).push(f); });
+    var htmlFotos = Object.keys(grupos).map(function (id) {
+      var g = grupos[id], total = g[0].total, h = hist[id], err = g.filter(function (f) { return f.error; })[0];
+      return '<div class="item"><div><b>Inventario ' + (h && h.numero ? esc(h.numero) : '(aún sin enviar)') + ': ' + (total - g.length) + ' de ' + total + ' fotos subidas</b><small>' +
+        (err ? '<span style="color:var(--rojo)">' + esc(err.error) + ' · se reintenta sola</span>' : 'se suben una a una cuando hay cobertura') + '</small></div><span class="chip pend">fotos</span></div>';
+    }).join('');
+    c = c.filter(function (it) { return it.tipo !== 'foto'; });
+    $('colaLista').innerHTML = (c.length || htmlFotos) ? htmlFotos + c.map(function (it) {
+      if (it.tipo === 'eans') return '<div class="item"><div><b>Código de barras nuevo · ' + esc(it.eans.map(function (e) { return e.ean + (e.marca ? ' (' + e.marca + ')' : ''); }).join(', ')) + '</b><small>' + fechaES(it.fecha) + (it.error ? ' · <span style="color:var(--rojo)">' + esc(it.error) + '</span>' : '') + '</small></div><span class="chip pend">pendiente</span></div>';
+      return '<div class="item"><div><b>' + (it.tipo === 'parte' ? 'Parte · ' + esc(it.obraNombre) : it.tipo === 'vale' ? (it.valeTipo === 'AJUSTE' ? 'Inventario · ' + esc(nombreAlmacen(it.almacen).split(' · ')[0]) + ' · ' + (it.nFotos || 0) + ' foto(s)' : 'Vale · ' + TIPO_VALE[it.valeTipo]) + ' · ' + it.lineas.length + ' línea(s)' + (it.obra ? ' · ' + esc(it.obra) : '') : (it.clase === 'HER' ? 'Herramientas · ' : 'Almacén · ') + esc(it.movTipo) + ' ' + it.cantidad + ' ' + esc(it.materialNombre || it.material)) + '</b><small>' + fechaES(it.fecha) + (it.hora ? ' ' + esc(it.hora) : '') + (it.error ? ' · <span style="color:var(--rojo)">' + esc(it.error) + '</span>' : '') + '</small></div>' + (it.error ? '<button class="chip err descartar" data-id="' + esc(it.id) + '">quitar</button>' : '<span class="chip pend">pendiente</span>') + '</div>';
     }).join('') : '<div class="aviso ok">Todo enviado.</div>';
   });
   DB.all('hist').then(function (h) {
@@ -1363,9 +1809,10 @@ mirarVersion();
 if (MODO_ALMACEN) { document.body.classList.add('modo-almacen'); document.querySelector('header h1').textContent = 'SOLERA · ALMACÉN'; }
 
 DB.abrir().then(function () {
-  return Promise.all([DB.get('kv', 'datos'), DB.get('kv', 'usuario')]);
+  return Promise.all([DB.get('kv', 'datos'), DB.get('kv', 'usuario'), DB.get('kv', 'eansLocal')]);
 }).then(function (r) {
-  S.datos = r[0] || null; S.usuario = r[1] || null;
+  S.datos = r[0] || null; S.usuario = r[1] || null; S.eansLocal = r[2] || [];
+  pintarListasFecha();
   montarPinpad(); estadoRed(); pintarListas(); actualizarPend();
   // con la huella activada, cada vez que se abre la app se pide la huella (o el PIN)
   DB.get('kv', 'huella').then(function (h) {
@@ -1375,6 +1822,8 @@ DB.abrir().then(function () {
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(function () {});
   setInterval(function () { if (navigator.onLine) sincronizar(); }, 60000);
 });
+// acceso para las pruebas automáticas (no cambia nada de la app)
+window.SOLERA_TEST = { S: S, DB: DB, salir: salir, lectorZXing: lectorZXing };
 })();
 </script>
 </body>

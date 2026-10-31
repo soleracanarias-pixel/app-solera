@@ -9,7 +9,7 @@ Cosas pedidas que todavía NO se han hecho. Se borran de aquí cuando estén hec
 - **A la vez: elegir la categoría de cada trabajador en el parte (PEÓN / OFICIAL).** Depende del día o del
   trabajo: a veces un peón hace de oficial y al revés. Por defecto, la de la hoja TRABAJADORES. Es solo para
   el cliente (PDF y facturación), NO cuenta para nóminas ni cambia TRABAJADORES. *(Pedido 30/10/2026, esperar OK.)*
-- PASO 6 a 7b (almacenes, compra a obra e inventario) publicados (versión 11, 31/10/2026). Pendiente: permisos propios para encargado (hoy = oficial).
+- Publicado hasta el inventario con códigos de barras (versión 12, 31/10/2026). Pendiente: permisos propios para encargado (hoy = oficial).
 - Compras: estado PENDIENTE_LEER (albaranes que se meten sin líneas para leerlos después); hoy todo CONFIRMADA.
 - Probar la huella en los móviles reales (si da error, la app enseña el motivo: pasárselo a Claude).
 - Foto para reconocer el material (propuesta; decidir con Fable si se hace y con qué servicio).
@@ -20,7 +20,8 @@ Cosas pedidas que todavía NO se han hecho. Se borran de aquí cuando estén hec
   como algo aparte (de momento, pasándole la foto a Claude; más adelante, quizá una app de escritorio
   ligada al sistema). *(30/10/2026)*
 
-- **Hacer el primer inventario** de cada almacén (Mateo, desde la app: botón INVENTARIO).
+- **Hacer el primer inventario** de cada almacén (Mateo o Gregorio, pestaña Inventario). Probar antes el escáner en un Android y un iPhone.
+- Códigos de barras: se dan de alta al escanear (los artículos de proveedor no traen EAN).
 - Herramientas: de momento sin almacén (dónde está = ALMACÉN u obra).
 
 ## Hoja APP SOLERA (lo hace Mateo)
