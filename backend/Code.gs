@@ -23,7 +23,7 @@
 var MESES = ['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
 var HOJAS = {
   CONFIG: ['clave','valor'],
-  TRABAJADORES: ['codigo','nombre','categoria','pin','activo','encargado','rol','inventario','herramientas','historial'],   // historial SI = ve el historial de cada herramienta   // rol: admin / encargado / trabajador (la categoría OFICIAL/PEÓN es solo para el parte); inventario SI = hace inventarios y asocia EAN
+  TRABAJADORES: ['codigo','nombre','categoria','pin','activo','encargado','rol','inventario','herramientas','historial','ver_stock'],   // ver_stock SI = "Ver stock" (además del admin)   // historial SI = ve el historial de cada herramienta   // rol: admin / encargado / trabajador (la categoría OFICIAL/PEÓN es solo para el parte); inventario SI = hace inventarios y asocia EAN
   OBRAS: ['codigo','nombre','cliente','activa'],
   MATERIALES: ['codigo','nombre','unidad','stock_min','activo','orden','categoria','codigo_mercadona','en_almacen','alias','uso_base'],   // en_almacen NO = va directo a obra: sale en partes, no en stock ni vales
   PARTES: ['id','numero','fecha','obra_codigo','obra','cliente','creado_por','trabajadores','total_horas','trabajos','materiales','medios','observaciones','firmado','firmante','pdf_url','fotos','creado_en','origen','firmado_en','copia_enviada_a','copia_enviada_en','copia_error'],
@@ -64,9 +64,9 @@ function clase_(c) { return CLASES[c === 'HER' ? 'HER' : 'MAT']; }
 function movFilas_(c) {
   return filas_(c.mov).map(function (f) { f.material_codigo = f[c.cod]; f.material = f[c.nom]; return f; });
 }
-var ESQUEMA = '19';
+var ESQUEMA = '20';
 // número de la versión publicada en Apps Script (subirlo en cada publicación, igual que VERSION_WEB de index.html)
-var VERSION_SERVIDOR = 20;            // subir cuando cambien las columnas de HOJAS
+var VERSION_SERVIDOR = 21;            // subir cuando cambien las columnas de HOJAS
 var EMAIL_COPIA = 'soleracanarias@gmail.com';
 var CSV_NOMBRE = 'PARTES APP 2026.csv';  // se crea en la carpeta CARPETA_CSV_ID de CONFIG (CLIENTES\PARTES\APP)
 var CSV_COLUMNAS = ['N_PARTE','FECHA','DIA_SEMANA','CLIENTE','OBRA','COD_OBRA_APP','RESP_CLIENTE','RESP_CERT','RESP_SOLERA','MATRICULA',
@@ -173,6 +173,10 @@ function migrarAlmacenes_() {
     tr.forEach(function (t, i) { if (['999', '998', '997'].indexOf(String(t.codigo)) >= 0) ponerEnFila_('TRABAJADORES', i + 2, { herramientas: 'SI' }); });
   if (!tr.some(function (t) { return String(t.historial || '').trim(); }))
     tr.forEach(function (t, i) { if (['999', '998', '997'].indexOf(String(t.codigo)) >= 0) ponerEnFila_('TRABAJADORES', i + 2, { historial: 'SI' }); });
+  if (!tr.some(function (t) { return String(t.ver_stock || '').trim(); }))
+    tr.forEach(function (t, i) { if (['999', '998', '997'].indexOf(String(t.codigo)) >= 0) ponerEnFila_('TRABAJADORES', i + 2, { ver_stock: 'SI' }); });
+  // interruptores de la app (NO por defecto): HUELLA (ofrecer y usar la huella) y PARTES_ACTIVOS (pestaña Parte para todos)
+  ['HUELLA', 'PARTES_ACTIVOS'].forEach(function (k) { if (!filas_('CONFIG').some(function (f) { return f.clave === k; })) setConfig_(k, 'NO'); });
   if (hoja_('REPARADORES').getLastRow() < 2) hoja_('REPARADORES').appendRow(['Bernabé', '', '']);
   var ha = hoja_('ALMACENES');
   // los almacenes que falten (por código); los que ya están no se tocan
@@ -257,10 +261,10 @@ function doPost(e) {
     if (body.token !== config_('TOKEN')) return json_({ ok: false, error: 'Token incorrecto' });
     switch (body.action) {
       case 'login': return json_(login_(body));
-      case 'bootstrap': return json_(bootstrap_());
+      case 'bootstrap': return json_(bootstrap_(body.auth));
       case 'crearParte': lock.waitLock(30000); return json_(crearParte_(body.parte));
       case 'movimiento': lock.waitLock(30000); return json_(movimiento_(body.mov));
-      case 'stock': return json_({ ok: true, stock: stock_() });
+      case 'stock': if (!puedeVerStock_(body.auth)) throw new Error('El stock solo lo ven el administrador y quien tenga ver_stock = SI'); return json_({ ok: true, stock: stock_() });
       case 'partes': return json_({ ok: true, partes: ultimosPartes_(body.limite || 30) });
       case 'movimientos': if (body.clase === 'HER') exigirHistorial_(body.auth); return json_({ ok: true, movimientos: movimientosMaterial_(body.material, 10, body.clase) });
       case 'vale': lock.waitLock(30000); return json_(vale_(body.vale));
@@ -322,11 +326,20 @@ function exigirAdmin_(auth) {
   return t;
 }
 
-function bootstrap_() {
+// "Ver stock": admin y quien tenga ver_stock = SI (con su PIN). El rol encargado ya no lo da.
+function puedeVerStock_(auth) {
+  auth = auth || {};
+  var t = filas_('TRABAJADORES').filter(function (f) { return String(f.codigo) === String(auth.codigo) && si_(f.activo); })[0];
+  if (!t || String(t.pin).padStart(4, '0') !== String(auth.pin || '').padStart(4, '0')) return false;
+  return rolDe_(t) === 'admin' || si_(t.ver_stock);
+}
+// auth (opcional): con el código y PIN de quien puede ver el stock, el stock va dentro; si no, vacío
+function bootstrap_(auth) {
+  var conStock = puedeVerStock_(auth);
   return {
     ok: true,
     trabajadores: filas_('TRABAJADORES').filter(function (f) { return si_(f.activo); })
-      .map(function (f) { return { codigo: f.codigo, nombre: f.nombre, categoria: f.categoria, rol: rolDe_(f), inventario: si_(f.inventario), herramientas: si_(f.herramientas), historial: si_(f.historial) }; }),
+      .map(function (f) { return { codigo: f.codigo, nombre: f.nombre, categoria: f.categoria, rol: rolDe_(f), inventario: si_(f.inventario), herramientas: si_(f.herramientas), historial: si_(f.historial), ver_stock: si_(f.ver_stock) }; }),
     obras: filas_('OBRAS').filter(function (f) { return si_(f.activa); })
       .map(function (f) { return { codigo: String(f.codigo), nombre: f.nombre, cliente: f.cliente }; }),
     materiales: materialesPorUso_(),
@@ -337,8 +350,11 @@ function bootstrap_() {
       return { ean: String(e.ean), material: String(e.material_codigo), marca: String(e.marca || ''), envase: String(e.nombre_envase || ''), ref: String(e.ref_fabricante || '') }; }),
     eansPendientes: filas_('EANS').filter(function (e) { return e.ean && String(e.estado) === 'PENDIENTE'; }).map(function (e) {
       return { ean: String(e.ean), sugerido: String(e.sugerido || ''), visto_en: String(e.visto_en || '') }; }),
-    stock: stock_(),
-    otros: otrosPendientes_(),
+    stock: conStock ? stock_() : [],
+    otros: conStock ? otrosPendientes_() : [],
+    con_stock: conStock,
+    huella: si_(config_('HUELLA')),
+    partes_activos: si_(config_('PARTES_ACTIVOS')),
     herramientas: herrDonde_(false),
     herrTipos: filas_('HERR_TIPOS').filter(function (f) { return f.prefijo; })
       .sort(function (a, b) { return (Number(a.orden) || 9999) - (Number(b.orden) || 9999); })

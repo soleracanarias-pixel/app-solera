@@ -8,14 +8,11 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600;700&family=Source+Sans+3:wght@400;600&display=swap" rel="stylesheet">
 <script>
-// la app SOLERA tiene como ámbito index.html (así no se mezcla con "SOLERA Almacén", que vive en almacen/)
+// un solo icono instalable: "SOLERA" (ámbito index.html)
 if (/\/$/.test(location.pathname)) location.replace('index.html' + location.search);
-// ?modo=almacen (acceso directo "SOLERA Almacén", almacen.html): misma app, arranca en Almacén y sin la pestaña Parte
+// ?modo=almacen (compatibilidad con el antiguo "SOLERA Almacén", almacen/): misma app, arranca en Almacén y sin la pestaña Parte
 var MODO_ALMACEN = /[?&]modo=almacen(&|$)/.test(location.search);
-if (MODO_ALMACEN) {
-  document.write('<link rel="manifest" href="manifest-almacen.json"><link rel="apple-touch-icon" href="icon-almacen-192.png">');
-  document.title = 'SOLERA Almacén';
-} else document.write('<link rel="manifest" href="manifest.json"><link rel="apple-touch-icon" href="icon-192.png">');
+document.write('<link rel="manifest" href="manifest.json"><link rel="apple-touch-icon" href="icon-192.png">');
 </script>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -77,7 +74,30 @@ textarea{min-height:80px;resize:vertical}
 .lista .item{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--borde);gap:8px}
 .lista .item:last-child{border:0}
 #nuevaVersion{position:sticky;top:0;z-index:30;background:var(--ambar);color:#343434;text-align:center;padding:10px;font-size:14px;cursor:pointer}
-.modo-almacen nav button[data-p="parte"]{display:none}
+.modo-almacen nav button[data-p="parte"],.sin-partes nav button[data-p="parte"]{display:none}
+/* todo lo pulsable, mínimo 48 px de alto */
+button,.btn,.btn.peq,select,input[type=text],input[type=number],input[type=date],input[type=email],input[type=password]{min-height:48px}
+nav button{min-height:56px}
+details>summary{min-height:48px;padding-top:12px;padding-bottom:12px;box-sizing:border-box}
+a[href="#"],a.ayuda,.enlace,.hist{display:inline-flex;align-items:center;min-height:48px}
+.sugs div{min-height:48px;display:flex;flex-direction:column;justify-content:center}
+#repMaquinas label,label.interruptor{min-height:48px}
+label.interruptor{display:flex;align-items:center;gap:10px;font-size:16px;color:var(--texto);margin:0}
+label.interruptor input{width:26px;height:26px}
+.x,.vlin .x,.vlin .cam{height:48px;width:48px;flex:0 0 48px}
+/* cantidad con − y + a los lados */
+.paso{display:flex;gap:4px;align-items:stretch;flex:1 1 auto;min-width:0}
+.paso button{flex:0 0 48px;width:48px;height:48px;border:1px solid var(--borde);background:#fff;border-radius:8px;font-size:24px;font-weight:700;color:var(--azul);padding:0}
+.paso input{flex:1 1 60px;min-width:56px;width:60px;text-align:center}
+.vlin,.fila.mat{flex-wrap:wrap;align-items:flex-start}
+.fila.vlin>div:first-child{flex:1 1 calc(100% - 56px)}
+div.fila.mat>div:first-child{flex:1 1 100%}
+.and-fila .paso{flex:0 0 auto}.and-fila .paso input{flex:0 0 64px;width:64px}
+/* almacén: letra más grande; "Letra grande" (Enviados) lo sube todo un 15 % */
+body.letra-almacen{font-size:18px}
+body.letra-almacen label{font-size:15px}
+body.letra-almacen .ayuda{font-size:14px}
+body.letra-grande{zoom:1.15}
 body:not(.es-admin) .solo-admin{display:none!important}
 .botones-alm .btn.grande{font-size:19px;padding:16px;margin-top:8px}
 .botones-alm .btn.grande:first-child{margin-top:0}
@@ -113,6 +133,7 @@ body.ancho main{max-width:1100px}
 /* inventario (solo quien tenga inventario = SI) */
 body:not(.puede-inv) .solo-inv{display:none!important}
 body.es-trabajador .no-trabajador{display:none!important}
+body:not(.ver-stock) .solo-stock{display:none!important}
 body:not(.es-mateo) .solo-mateo{display:none!important}
 html,body{overflow-x:hidden}
 .lista .item>div:first-child{min-width:0;flex:1}
@@ -150,7 +171,6 @@ details#movMas summary{color:var(--azul);font-size:14px;cursor:pointer;padding:6
 #movGuardar,#andGuardar{font-size:19px;padding:16px}
 .and-fila{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--borde)}
 .and-fila span{flex:1;min-width:0;overflow-wrap:anywhere}.and-fila small{color:var(--gris)}
-.and-fila input{flex:0 0 84px;width:84px}
 .pestanas{display:flex;gap:6px;margin:10px 0}
 .pestanas button{flex:1;padding:10px;border:2px solid var(--azul);background:#fff;border-radius:8px;font-weight:600;color:var(--azul)}
 .pestanas button.activa{background:var(--azul);color:#fff}
@@ -322,7 +342,7 @@ a{color:var(--azul)}
   </div>
   <div class="tarjeta" id="eanPendientes" style="display:none"></div>
   <div id="movSitioMAT"></div>
-  <div class="tarjeta no-trabajador">
+  <div class="tarjeta solo-stock">
     <button class="btn peq sec" id="verStock" style="width:100%">📦 Ver stock</button>
     <div id="stockBloque" style="display:none">
       <div class="fila" style="margin-top:10px">
@@ -554,6 +574,9 @@ a{color:var(--azul)}
     <button class="btn peq sec preparar">📥 Preparar para ir sin cobertura</button>
   </div>
   <div class="tarjeta">
+    <label class="interruptor"><input type="checkbox" id="letraGrande"> Letra grande (todo un 15 % más grande)</label>
+  </div>
+  <div class="tarjeta">
     <h2>Partes enviados</h2>
     <div class="lista" id="histLista"></div>
   </div>
@@ -638,7 +661,7 @@ a{color:var(--azul)}
 'use strict';
 var CFG = window.SOLERA_CONFIG || {};
 // número de esta versión de la app (el mismo que VERSION_SERVIDOR de Code.gs: se sube a la vez en cada publicación)
-var VERSION_WEB = 20;
+var VERSION_WEB = 21;
 var $ = function (id) { return document.getElementById(id); };
 
 // ---------------------------------------------------------------- almacenamiento local (IndexedDB)
@@ -688,6 +711,7 @@ function preguntar(texto, si, no) {
   });
 }
 // la huella solo en móviles, no en el ordenador
+function huellaActiva() { return !!(S.datos && S.datos.huella); }   // CONFIG HUELLA = SI
 function esMovil() { return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && /Macintosh/.test(navigator.userAgent)); }
 // errores de validación junto al campo: en rojo, aviso debajo y scroll hasta él (el toast queda para avisos del servidor)
 function limpiarErrores(caja) {
@@ -771,10 +795,12 @@ function api(action, extra) {
 
 function cargarDatos(silencioso) {
   if (!silencioso) toast('Actualizando listas…');
-  return api('bootstrap').then(function (j) {
+  return (S.usuario ? DB.get('kv', 'pin-' + S.usuario.codigo) : Promise.resolve(null)).then(function (pin) {
+    return api('bootstrap', pin ? { auth: { codigo: S.usuario.codigo, pin: pin } } : {});
+  }).then(function (j) {
     j.cargadoEn = ahoraES();   // "Listas actualizadas el …" (y fecha del stock que enseña el inventario)
     S.datos = j; return DB.put('kv', j, 'datos');
-  }).then(function () { pintarListas(); pintarListasFecha(); if (!silencioso) toast('Listas actualizadas'); })
+  }).then(function () { pintarListas(); pintarListasFecha(); if (S.usuario) pintarRol(); else pintarModo(); if (!silencioso) toast('Listas actualizadas'); })
     .catch(function (e) { if (!silencioso) toast('No se pudo actualizar: ' + e.message); });
 }
 
@@ -800,7 +826,7 @@ function entrar() {
   var terminar = function (u) {
     S.usuario = u; S.dueno = u; S.cambiandoPersona = false; pin = ''; pintarPin();
     // el móvil queda asociado a quien entra; se ofrece la huella si el móvil la tiene y aún no está puesta
-    DB.put('kv', u, 'dueno').then(function () { return DB.put('kv', u, 'usuario'); }).then(function () { mostrarApp(); ofrecerHuella(u); });
+    DB.put('kv', u, 'dueno').then(function () { return DB.put('kv', u, 'usuario'); }).then(function () { mostrarApp(); ofrecerHuella(u); if (navigator.onLine) cargarDatos(true); });
   };
   var pinIntento = pin;
   api('login', { codigo: codigo, pin: pin }).then(function (j) { DB.put('kv', pinIntento, 'pin-' + codigo); terminar(j.trabajador); })
@@ -814,7 +840,11 @@ function entrar() {
       });
     }).finally(function () { btn.disabled = false; });
 }
-function salir() { S.usuario = null; DB.del('kv', 'usuario'); mostrarLogin(); }
+function salir() {
+  S.usuario = null; DB.del('kv', 'usuario');
+  if (S.datos) { S.datos.stock = []; S.datos.otros = []; DB.put('kv', S.datos, 'datos'); }   // el stock no se queda en el móvil para el siguiente
+  mostrarLogin();
+}
 
 // ---------------------------------------------------------------- dueño del móvil y huella
 // La huella (o cara/patrón) la comprueba el propio móvil (WebAuthn); aquí solo se guarda el id de esa llave.
@@ -840,7 +870,7 @@ function ofrecerHuella(u) {
   Promise.all([DB.get('kv', 'huella'), DB.get('kv', 'huellaNo')]).then(function (r) {
     var h = r[0];
     if ((h && String(h.codigo) === String(u.codigo)) || r[1] === String(u.codigo)) return;   // ya puesta, o dijo que no
-    if (!esMovil()) return;
+    if (!esMovil() || !huellaActiva()) return;
     return huella.disponible().then(function (si) {
       if (!si) return;
       return preguntar('¿Activar la huella?\nA partir de ahora entrarás como desbloqueas tu móvil (huella, cara o su PIN), sin el PIN de la app.', 'Activar', 'Ahora no').then(function (ok) {
@@ -859,7 +889,7 @@ function mostrarLogin() {
     S.dueno = d || null;
     $('duenoBloque').style.display = d ? '' : 'none'; $('loginLista').style.display = d ? 'none' : '';
     if (d) { $('duenoNombre').textContent = d.nombre; $('loginTrab').value = String(d.codigo); }
-    var conHuella = !!(d && h && String(h.codigo) === String(d.codigo)) && esMovil();
+    var conHuella = !!(d && h && String(h.codigo) === String(d.codigo)) && esMovil() && huellaActiva();
     // con huella: se entra con la huella o el PIN del propio móvil; el PIN de la app queda como plan B
     $('huellaBloque').style.display = conHuella ? '' : 'none';
     $('pinBloque').style.display = conHuella ? 'none' : '';
@@ -896,22 +926,38 @@ function rolActual() {
   var r = (t && t.rol) || S.usuario.rol || 'trabajador';
   return r === 'oficial' ? 'trabajador' : r;   // 'oficial' es el nombre antiguo del rol
 }
+// pestaña Parte: si CONFIG PARTES_ACTIVOS = NO, solo el admin (y nunca con ?modo=almacen)
+function verPartes() { return !MODO_ALMACEN && (!!(S.datos && S.datos.partes_activos) || rolActual() === 'admin'); }
+function pantallaInicio() { return verPartes() ? 'parte' : 'almacen'; }
+// "Ver stock": admin y quien tenga ver_stock = SI
+function puedeVerStock() {
+  if (!S.usuario) return false;
+  var t = ((S.datos && S.datos.trabajadores) || []).filter(function (x) { return String(x.codigo) === String(S.usuario.codigo); })[0];
+  return rolActual() === 'admin' || !!(t && t.ver_stock);
+}
+function pintarModo() {
+  document.body.classList.toggle('sin-partes', !verPartes());
+  document.body.classList.toggle('letra-almacen', MODO_ALMACEN || !(S.datos && S.datos.partes_activos));
+}
 function pintarRol() {
   var admin = rolActual() === 'admin';
+  pintarModo();
+  document.body.classList.toggle('ver-stock', puedeVerStock());
+  if (!verPartes() && S.pantalla === 'parte') cambiar('almacen');
   document.body.classList.toggle('es-admin', admin);
   document.body.classList.toggle('puede-inv', verPestanaInventario());   // pestaña Inventario: Mateo, o quien participe en uno abierto
   document.body.classList.toggle('es-mateo', esMateo());
   document.body.classList.toggle('puede-herr', puedeHerr());
   document.body.classList.toggle('es-trabajador', rolActual() === 'trabajador');
   pintarPendientesEan();
-  if (!admin && S.pantalla === 'vales') cambiar(MODO_ALMACEN ? 'almacen' : 'parte');
+  if (!admin && S.pantalla === 'vales') cambiar(pantallaInicio());
   if (!verPestanaInventario() && S.pantalla === 'inventario') cambiar('almacen');
 }
 function mostrarApp() {
   pintarRol();
   $('btnSalir').style.display = ''; $('nav').style.display = '';
   $('quien').textContent = S.usuario.nombre;
-  cambiar(MODO_ALMACEN ? 'almacen' : 'parte');
+  cambiar(pantallaInicio());
   nuevoParte();
 }
 function cambiar(p) {
@@ -1017,7 +1063,7 @@ buscador($('movPersonaTxt'), $('movPersonaSugs'), function () { return (S.datos 
 function filaMat() {
   var div = document.createElement('div'); div.className = 'fila mat'; div.dataset.cod = '';
   div.innerHTML = '<div><input type="text" class="m-txt" placeholder="Escribe el material…" autocomplete="off"><div class="sugs" style="display:none"></div></div>' +
-    '<div class="corto"><input type="number" class="m-c" inputmode="decimal" step="any" min="0" placeholder="Cant."></div><button class="x">×</button>';
+    '<div class="paso"><button type="button" class="menos" aria-label="menos">−</button><input type="number" class="m-c" inputmode="decimal" step="any" min="0" placeholder="Cant."><button type="button" class="mas" aria-label="más">+</button></div><button class="x">×</button>';
   buscador(div.querySelector('.m-txt'), div.querySelector('.sugs'), function () { return (S.datos && S.datos.materiales) || []; }, function (m, alEscribir) {
     div.dataset.cod = m ? m.codigo : '';
     if (m && !alEscribir) div.querySelector('.m-c').focus();
@@ -1444,7 +1490,7 @@ function filaVale() {
   div.innerHTML = '<div><div style="position:relative"><input type="text" class="v-txt" placeholder="Material…" autocomplete="off"><div class="sugs" style="display:none"></div></div>' +
     '<input type="text" class="v-marca" placeholder="Marca (opcional)" autocomplete="off"><small class="v-info"></small><div class="nolista"></div></div>' +
     '<button class="cam" title="Escanear el código de barras">📷</button>' +
-    '<div class="corto"><input type="number" class="v-c" inputmode="decimal" step="any" min="0" placeholder="Cant."></div><button class="x">×</button>';
+    '<div class="paso"><button type="button" class="menos" aria-label="menos">−</button><input type="number" class="v-c" inputmode="decimal" step="any" min="0" placeholder="Cant."><button type="button" class="mas" aria-label="más">+</button></div><button class="x">×</button>';
   div.querySelector('.cam').onclick = function () { escanearLinea(div); };
   var txt = div.querySelector('.v-txt'), nl = div.querySelector('.nolista');
   buscador(txt, div.querySelector('.sugs'), matsAlmacen, function (m, alEscribir) {
@@ -2205,7 +2251,7 @@ function pintarAndLista() {
   $('andLista').innerHTML = tipos.map(function (t) {
     var a = andamiosLocal().filter(function (x) { return x.prefijo === t.prefijo; })[0] || { porObra: {}, porAlmacen: {} };
     var hay = modo === 'DEVOLUCION' ? (obra ? 'en la obra: ' + (a.porObra[obra] || 0) : '') : modo === 'SALIDA' ? 'en el almacén: ' + (a.porAlmacen[alm] || 0) : '';
-    return '<div class="and-fila"><span>' + esc(t.nombre) + (hay ? ' <small>· ' + hay + '</small>' : '') + '</span><input type="number" inputmode="numeric" min="0" step="1" data-p="' + esc(t.prefijo) + '" value="' + esc(antes[t.prefijo] || '') + '" placeholder="0"></div>';
+    return '<div class="and-fila"><span>' + esc(t.nombre) + (hay ? ' <small>· ' + hay + '</small>' : '') + '</span><div class="paso"><button type="button" class="menos" aria-label="menos">−</button><input type="number" inputmode="numeric" min="0" step="1" data-p="' + esc(t.prefijo) + '" value="' + esc(antes[t.prefijo] || '') + '" placeholder="0"><button type="button" class="mas" aria-label="más">+</button></div></div>';
   }).join('') || '<div class="ayuda">No hay tipos de pieza: pulsa "+ Tipo de pieza nuevo".</div>';
 }
 function pintarAndModo() {
@@ -2689,15 +2735,24 @@ DB.abrir().then(function () {
 }).then(function (r) {
   S.datos = r[0] || null; S.usuario = r[1] || null; S.eansLocal = r[2] || [];
   pintarListasFecha();
-  montarPinpad(); estadoRed(); pintarListas(); actualizarPend();
+  montarPinpad(); estadoRed(); pintarListas(); actualizarPend(); pintarModo();
+  DB.get('kv', 'letraGrande').then(function (v) { $('letraGrande').checked = !!v; document.body.classList.toggle('letra-grande', !!v); });
   // con la huella activada, cada vez que se abre la app se pide la huella (o el PIN)
   DB.get('kv', 'huella').then(function (h) {
-    if (S.usuario && S.datos && !(h && String(h.codigo) === String(S.usuario.codigo))) mostrarApp(); else mostrarLogin();
+    if (S.usuario && S.datos && !(huellaActiva() && h && String(h.codigo) === String(S.usuario.codigo))) mostrarApp(); else mostrarLogin();
   });
   if (navigator.onLine) cargarDatos(true).then(sincronizar);
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(function () {});
   if (navigator.onLine) setTimeout(guardarLector, 3000);
   setInterval(function () { if (navigator.onLine) sincronizar(); }, 60000);
+});
+$('letraGrande').onchange = function () { document.body.classList.toggle('letra-grande', this.checked); DB.put('kv', this.checked, 'letraGrande'); };
+// − y + de las cantidades (vales, materiales del parte y andamios)
+document.addEventListener('click', function (e) {
+  var b = e.target.closest('.paso .menos, .paso .mas'); if (!b) return;
+  var i = b.parentNode.querySelector('input'), v = +i.value || 0;
+  v = b.classList.contains('mas') ? Math.floor(v) + 1 : Math.max(0, Math.ceil(v) - 1);
+  i.value = v || (b.classList.contains('mas') ? 1 : ''); i.dispatchEvent(new Event('input', { bubbles: true })); i.dispatchEvent(new Event('change', { bubbles: true }));
 });
 // acceso para las pruebas automáticas (no cambia nada de la app)
 window.SOLERA_TEST = { S: S, DB: DB, salir: salir, lectorZXing: lectorZXing };

@@ -5,17 +5,28 @@ La app está **EN PRUEBAS** (ver `CLAUDE.md`). Lo pendiente está en `PENDIENTES
 > ⚠️ **Stock ficticio de prueba en LA MATANZA:** AJUSTE **A0004** ("FICTICIO – ANULAR ANTES DEL INVENTARIO REAL", del inventario "INVENTARIO FICTICIO PRUEBAS 31/10/2026", contado por el 990 PRUEBA) y ME LLEVO **A0005** del 990 (CEM-425 en −3). **Hay que anular los dos en Vales antes del primer inventario real.** AGÜIMES y QUIQUIRÁ, sin tocar.
 
 ## Ficheros
-- `index.html`: la app entera (SOLERA). Con `?modo=almacen` es **SOLERA Almacén** (`almacen/index.html`, sin la pestaña Parte).
+- `index.html`: la app entera. **Un solo icono instalable: "SOLERA"** (`manifest.json`). `?modo=almacen` sigue funcionando por compatibilidad (arranca en Almacén, sin Parte); `almacen/` ya no se ofrece para instalar, pero sigue abriendo la app para quien lo tenga instalado.
 - `sw.js`: guarda la app en el móvil para abrirla sin cobertura (incluye `lib/`).
 - `lib/zxing-0.21.3.min.js`: lector de códigos de barras para iPhone (Apache 2.0), dentro de la app.
-- `backend/Code.gs`: servidor (Apps Script de la hoja "APP SOLERA"). Publicado en la **versión 20**, igual que el repositorio (`ESQUEMA = '19'`).
-- **Versión a la vista:** abajo, en pequeño, en la entrada y en la app: "web v20 · servidor 20 · esquema 19". `VERSION_WEB` (index.html) y `VERSION_SERVIDOR` (Code.gs) = nº de versión publicada en Apps Script; se suben a la vez en cada publicación. Si no coinciden, sale "⚠️ actualiza la app" (al tocarlo, recarga).
+- `backend/Code.gs`: servidor (Apps Script de la hoja "APP SOLERA"). Publicado en la **versión 21**, igual que el repositorio (`ESQUEMA = '20'`).
+- **Versión a la vista:** abajo, en pequeño, en la entrada y en la app: "web v21 · servidor 21 · esquema 20". `VERSION_WEB` (index.html) y `VERSION_SERVIDOR` (Code.gs) = nº de versión publicada en Apps Script; se suben a la vez en cada publicación. Si no coinciden, sale "⚠️ actualiza la app" (al tocarlo, recarga).
 - `docs/MATERIALES_PROPUESTA.csv`: lista de materiales aprobada (sin precios).
+
+## Interruptores (pestaña CONFIG; se crean a NO)
+- **PARTES_ACTIVOS:** con NO, la pestaña Parte solo la ve el admin y la app arranca en Almacén (para todos). Con SI, todos ven Parte y la app arranca en Parte.
+- **HUELLA:** con NO, ni se ofrece ni se usa la huella (se entra con el PIN). El código sigue ahí; con SI vuelve a funcionar como antes.
+
+## Pantalla
+- Todo lo pulsable mide al menos 48 px de alto (botones, desplegables, campos, enlaces, la barra inferior 56 px).
+- Cuando la app va como almacén (PARTES_ACTIVOS = NO o `?modo=almacen`): letra base 18 px, títulos de campo 15 px y ayudas 14 px.
+- Cantidades (vales, materiales del parte y andamios) con botones − y + de 48 px a los lados.
+- **"Letra grande"** en Enviados: lo sube todo un 15 % (se guarda en el móvil).
 
 ## Quién puede qué (columna `rol` de TRABAJADORES)
 - **trabajador** (todos los compañeros, oficiales o peones; la categoría OFICIAL/PEÓN solo se usa en el parte): parte; en Almacén, solo ME LLEVO, DEVUELVO y ENCONTRÉ; en Herramientas, "¿Dónde queda una máquina?" (incluye avería y alta) y Andamios.
-- **encargado:** lo mismo, más "Ver stock".
-- **admin:** además COMPRA (a almacén o a obra), TRASPASO, Ver stock, pestaña Vales y anular.
+- **encargado:** de momento, lo mismo que trabajador (ya no da "Ver stock").
+- **admin:** además COMPRA (a almacén o a obra), TRASPASO, Ver stock, pestaña Vales y anular, y la pestaña Parte aunque PARTES_ACTIVOS = NO.
+- **Columna `ver_stock` = SI** (Mateo, Gregorio y Sergio): "Ver stock". El stock solo llega al móvil (bootstrap, con código + PIN) de admin y de quien tenga ver_stock = SI; al salir se borra del móvil.
 - **Inventarios:** los abre, revisa y cierra solo **Mateo (999)**. Cualquiera puede participar si Mateo le asigna categorías.
 - **Columna `inventario` = SI** (Mateo y Gregorio): asociar códigos de barras (también fuera de un inventario).
 - **Columna `herramientas` = SI** (Mateo, Gregorio y Sergio): entregar al reparador, recibir de reparación, dar el OK a las altas de máquinas y dar de alta o aprobar tipos de pieza de andamio.
@@ -30,7 +41,7 @@ La app está **EN PRUEBAS** (ver `CLAUDE.md`). Lo pendiente está en `PENDIENTES
   Toques para un ME LLEVO de 2 materiales: 7 la primera vez (uno escaneado y otro escrito, eligiendo la obra), 5 con la obra ya puesta, 4 si se escanean los dos (más escribir el material y la cantidad).
 - Tipos: SALIDA (ME LLEVO), DEVOLUCION, RECUPERADO, ENTRADA (compra a almacén), COMPRA_OBRA (no toca el stock), TRASPASO (sale de uno y entra en otro) y AJUSTE (solo al cerrar un inventario).
 - **Stock** por almacén, por marca y total: entradas + devoluciones + recuperado + traspasos que entran + ajustes − salidas − traspasos que salen. Sin anulados.
-- **"Ver stock"** (admin y encargados): arriba el almacén (LA MATANZA por defecto, AGÜIMES, QUIQUIRÁ o Todos) y un buscador (nombre, alias, referencia o código de barras). Por categoría, plegadas, con cuántos tienen stock (y cuántos en negativo). Dentro: primero en rojo los negativos, luego los que tienen stock y al final "A cero (n)" plegado. Cada material en una línea (nombre y cantidad); al tocarlo, sus marcas y sus últimos movimientos. Sin scroll lateral en móvil ni ordenador.
+- **"Ver stock"** (admin y ver_stock = SI): arriba el almacén (LA MATANZA por defecto, AGÜIMES, QUIQUIRÁ o Todos) y un buscador (nombre, alias, referencia o código de barras). Por categoría, plegadas, con cuántos tienen stock (y cuántos en negativo). Dentro: primero en rojo los negativos, luego los que tienen stock y al final "A cero (n)" plegado. Cada material en una línea (nombre y cantidad); al tocarlo, sus marcas y sus últimos movimientos. Sin scroll lateral en móvil ni ordenador.
 - **Pestaña STOCK:** el mismo orden (negativos arriba, luego con stock y a cero al final), con total y una columna por almacén.
 - Solo cuentan los materiales activos con `en_almacen = SI`; agua, hormigón, zahorra y áridos a granel van directo a obra (solo en partes y compras a obra).
 - **POR_OBRA:** gastado = salido + comprado − devuelto − recuperado.
@@ -70,14 +81,14 @@ La app está **EN PRUEBAS** (ver `CLAUDE.md`). Lo pendiente está en `PENDIENTES
 - Los artículos de proveedor (`MATERIALES APP.csv` y las tablas de precios) **no traen EAN**; `ref_fabricante` se puede rellenar a mano en EANS.
 
 ## Pestañas de la hoja
-CONFIG, TRABAJADORES (+ `rol`, `inventario`, `herramientas`, `historial`), OBRAS, MATERIALES (+ `codigo_mercadona`, `en_almacen`, `alias`, `uso_base`), PARTES, PARTES_LINEAS, MOVIMIENTOS (+ `almacen`, `contado`, `marca`, `stock_antes`), VALES (+ `almacen`, `almacen_destino`, `inicio`, `cierre`, `inventario`), STOCK (fórmulas, con `stock_MAT`, `stock_AGU` y `stock_QUI`), POR_OBRA, ALMACENES, EANS, INVENTARIOS (id, almacen, nombre, fecha, abierto/cerrado por y en, estado ABIERTO/CERRADO/ANULADO, participantes, asignacion, terminados, fotos, vale), INV_LINEAS (lo contado: quién, cuándo, corregido), INV_MAQUINAS, FIRMANTES, HERR_TIPOS (+ `va_con`, `control`, `estado`, `material`, `definicion`, `foto`, `propuesto_por`, `creado_en`), HERRAMIENTAS (+ `ok`, `ok_por`, `ok_en`, `motivo_rechazo`, `marca`, `modelo`, `n_serie`, `foto_placa`), HERR_MOV (+ `almacen`, `recibo`), HERR_DONDE (+ `estado`, `almacen`, `ok`, `averia`), REPARADORES, REPARACIONES, MATERIALES_ANTES_6D (copia de seguridad) y "Hoja 1" (vacía, no se usa).
+CONFIG (+ `HUELLA`, `PARTES_ACTIVOS`), TRABAJADORES (+ `rol`, `inventario`, `herramientas`, `historial`, `ver_stock`), OBRAS, MATERIALES (+ `codigo_mercadona`, `en_almacen`, `alias`, `uso_base`), PARTES, PARTES_LINEAS, MOVIMIENTOS (+ `almacen`, `contado`, `marca`, `stock_antes`), VALES (+ `almacen`, `almacen_destino`, `inicio`, `cierre`, `inventario`), STOCK (fórmulas, con `stock_MAT`, `stock_AGU` y `stock_QUI`), POR_OBRA, ALMACENES, EANS, INVENTARIOS (id, almacen, nombre, fecha, abierto/cerrado por y en, estado ABIERTO/CERRADO/ANULADO, participantes, asignacion, terminados, fotos, vale), INV_LINEAS (lo contado: quién, cuándo, corregido), INV_MAQUINAS, FIRMANTES, HERR_TIPOS (+ `va_con`, `control`, `estado`, `material`, `definicion`, `foto`, `propuesto_por`, `creado_en`), HERRAMIENTAS (+ `ok`, `ok_por`, `ok_en`, `motivo_rechazo`, `marca`, `modelo`, `n_serie`, `foto_placa`), HERR_MOV (+ `almacen`, `recibo`), HERR_DONDE (+ `estado`, `almacen`, `ok`, `averia`), REPARADORES, REPARACIONES, MATERIALES_ANTES_6D (copia de seguridad) y "Hoja 1" (vacía, no se usa).
 Las pestañas y columnas nuevas se crean solas en la primera llamada. `instalar()` solo hace falta si se añade un almacén (columna en STOCK).
 
 ## Publicar
 clasp desde Claude Code (necesita que Mateo inicie sesión en cada sesión nueva) o a mano: Implementar → Gestionar implementaciones → ✎ → Versión nueva, siempre en la implementación de `config.js`.
 
 ## Fallos conocidos
-- Huella: en el móvil de Mateo da error; falta ver el motivo en un móvil real.
+- Huella: en el móvil de Mateo da error; falta ver el motivo en un móvil real. Desactivada (HUELLA = NO).
 - La cámara para escanear necesita permiso del navegador la primera vez (en iPhone, desde la app instalada o Safari). Sin cámara se puede escribir el número.
 - Herramientas: si dos móviles numeran a la vez, el servidor da otro número y avisa "⚠️ CAMBIADO".
 - Entregar al reparador, la vuelta y el OK necesitan cobertura (se hacen desde la oficina).

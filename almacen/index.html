@@ -5,15 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
 <title>SOLERA Almacén</title>
 <meta name="theme-color" content="#343434">
-<link rel="manifest" href="../manifest-almacen.json">
-<link rel="apple-touch-icon" href="../icon-almacen-192.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="SOLERA Almacén">
 <style>html,body{margin:0;height:100%;background:#f4f4f4}iframe{border:0;width:100%;height:100%;display:block}</style>
 </head>
 <body>
-<!-- App "SOLERA Almacén": tiene su propia carpeta (y su propio ámbito) para poder instalarse aparte
-     de la app de partes; dentro carga la misma app en modo almacén, sin duplicar código. -->
+<!-- Antiguo "SOLERA Almacén": ya no se ofrece para instalar (un solo icono, "SOLERA"). Se mantiene para quien
+     lo tenga instalado: carga la misma app en modo almacén. -->
 <iframe src="../index.html?modo=almacen" title="SOLERA Almacén" allow="camera; publickey-credentials-get; publickey-credentials-create"></iframe>
 <script>if ('serviceWorker' in navigator) navigator.serviceWorker.register('../sw.js').catch(function () {});</script>
 </body>
