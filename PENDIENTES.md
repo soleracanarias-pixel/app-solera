@@ -2,6 +2,13 @@
 
 Cosas pedidas que todavía NO se han hecho. Se borran de aquí cuando estén hechas.
 
+## ⚠️ ANTES DEL PRIMER INVENTARIO REAL (datos ficticios de prueba en LA MATANZA)
+- Anular en Vales el **AJUSTE A0004** ("FICTICIO – ANULAR ANTES DEL INVENTARIO REAL"), del inventario
+  "INVENTARIO FICTICIO PRUEBAS 31/10/2026" (INV-27f53f6b, contado por el 990 PRUEBA): da stock inventado a 56 materiales.
+- Anular en Vales el **ME LLEVO A0005** del 990 PRUEBA (5 sacos de CEM-425 a MERCADONA 2184 LOS MAJUELOS,
+  "PRUEBA – ANULAR ANTES DEL INVENTARIO REAL"), que deja CEM-425 en −3 y una línea en POR_OBRA.
+- Con los dos anulados, el stock de LA MATANZA vuelve a 0 (AGÜIMES y QUIQUIRÁ no se tocaron).
+
 ## App
 - **Quitar las horas extra del parte.** Solo horas en bruto (una casilla de horas por trabajador).
   Las extras las calcula la oficina; el parte es para el cliente. Afecta a la pantalla del parte,

@@ -2,6 +2,8 @@
 
 La app está **EN PRUEBAS** (ver `CLAUDE.md`). Lo pendiente está en `PENDIENTES.md`.
 
+> ⚠️ **Stock ficticio de prueba en LA MATANZA:** AJUSTE **A0004** ("FICTICIO – ANULAR ANTES DEL INVENTARIO REAL", del inventario "INVENTARIO FICTICIO PRUEBAS 31/10/2026", contado por el 990 PRUEBA) y ME LLEVO **A0005** del 990 (CEM-425 en −3). **Hay que anular los dos en Vales antes del primer inventario real.** AGÜIMES y QUIQUIRÁ, sin tocar.
+
 ## Ficheros
 - `index.html`: la app entera (SOLERA). Con `?modo=almacen` es **SOLERA Almacén** (`almacen/index.html`, sin la pestaña Parte).
 - `sw.js`: guarda la app en el móvil para abrirla sin cobertura (incluye `lib/`).
