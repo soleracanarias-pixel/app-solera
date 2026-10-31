@@ -25,7 +25,7 @@ var HOJAS = {
   CONFIG: ['clave','valor'],
   TRABAJADORES: ['codigo','nombre','categoria','pin','activo','encargado','rol'],   // rol: admin / encargado / oficial
   OBRAS: ['codigo','nombre','cliente','activa'],
-  MATERIALES: ['codigo','nombre','unidad','stock_min','activo','orden','categoria'],
+  MATERIALES: ['codigo','nombre','unidad','stock_min','activo','orden','categoria','codigo_mercadona','almacen','alias','uso_base'],   // almacen NO = va directo a obra: sale en partes, no en stock ni vales
   PARTES: ['id','numero','fecha','obra_codigo','obra','cliente','creado_por','trabajadores','total_horas','trabajos','materiales','medios','observaciones','firmado','firmante','pdf_url','fotos','creado_en','origen','firmado_en','copia_enviada_a','copia_enviada_en','copia_error'],
   PARTES_LINEAS: ['id','numero','fecha','obra','trabajador_codigo','trabajador','categoria','horas','horas_extra','firmado'],
   MOVIMIENTOS: ['id','fecha','tipo','material_codigo','material','cantidad','unidad','obra','parte_numero','usuario','nota','creado_en','fotos','numero','hora','persona','linea','anulado'],
@@ -50,7 +50,7 @@ function clase_(c) { return CLASES[c === 'HER' ? 'HER' : 'MAT']; }
 function movFilas_(c) {
   return filas_(c.mov).map(function (f) { f.material_codigo = f[c.cod]; f.material = f[c.nom]; return f; });
 }
-var ESQUEMA = '10';            // subir cuando cambien las columnas de HOJAS
+var ESQUEMA = '11';            // subir cuando cambien las columnas de HOJAS
 var EMAIL_COPIA = 'soleracanarias@gmail.com';
 var CSV_NOMBRE = 'PARTES APP 2026.csv';  // se crea en la carpeta CARPETA_CSV_ID de CONFIG (CLIENTES\PARTES\APP)
 var CSV_COLUMNAS = ['N_PARTE','FECHA','DIA_SEMANA','CLIENTE','OBRA','COD_OBRA_APP','RESP_CLIENTE','RESP_CERT','RESP_SOLERA','MATRICULA',
@@ -80,15 +80,21 @@ function instalar() {
   if (ma.getLastRow() < 2) ma.appendRow(['CEM25', 'Cemento gris saco 25 kg', 'saco', 10, 'SI']);
   // STOCK por fórmulas (se rehacen siempre): entradas = ENTRADA + DEVOLUCION + RECUPERADO, salidas = SALIDA, sin anulados
   var st = ss.getSheetByName('STOCK'), cm = hoja_('MOVIMIENTOS').getRange(1, 1, 1, hoja_('MOVIMIENTOS').getLastColumn()).getValues()[0];
-  var col = function (n) { var i = cm.indexOf(n) + 1, s = ''; while (i > 0) { s = String.fromCharCode(65 + (i - 1) % 26) + s; i = Math.floor((i - 1) / 26); } return 'MOVIMIENTOS!' + s + ':' + s; };
-  var suma = function (tipo) { return 'SUMIFS(' + col('cantidad') + ';' + col('material_codigo') + ';A2:A;' + col('tipo') + ';"' + tipo + '";' + col('anulado') + ';"<>SI")'; };
-  st.getRange('A2').setFormula('=ARRAYFORMULA(IF(MATERIALES!A2:A="";;MATERIALES!A2:A))');
-  st.getRange('B2').setFormula('=ARRAYFORMULA(IF(MATERIALES!A2:A="";;MATERIALES!B2:B))');
-  st.getRange('C2').setFormula('=ARRAYFORMULA(IF(MATERIALES!A2:A="";;MATERIALES!C2:C))');
+  var col = function (n) { var i = cm.indexOf(n) + 1, s = ''; while (i > 0) { s = String.fromCharCode(65 + (i - 1) % 26) + s; i = Math.floor((i - 1) / 26); } return 'MOVIMIENTOS!' + s + '2:' + s; };
+  // SUMIFS no calcula fila a fila dentro de ARRAYFORMULA (daba la misma cifra en todas): SUMIF con clave código|tipo|anulado
+  var clave = col('material_codigo') + '&"|"&' + col('tipo') + '&"|"&' + col('anulado');
+  var suma = function (tipo) { return 'SUMIF(' + clave + ';A2:A&"|' + tipo + '|";' + col('cantidad') + ')'; };
+  // en STOCK solo lo que pasa por el almacén (almacen <> NO); lo que va directo a obra no sale
+  var cma = ma.getRange(1, 1, 1, ma.getLastColumn()).getValues()[0];
+  var colM = function (n) { var i = cma.indexOf(n) + 1, s = ''; while (i > 0) { s = String.fromCharCode(65 + (i - 1) % 26) + s; i = Math.floor((i - 1) / 26); } return 'MATERIALES!' + s + '2:' + s; };
+  st.getRange('A2:C').clearContent(); st.getRange('G2:G').clearContent();
+  st.getRange('A2').setFormula('=IFERROR(FILTER(MATERIALES!A2:A;MATERIALES!A2:A<>"";' + colM('almacen') + '<>"NO"))');
+  st.getRange('B2').setFormula('=ARRAYFORMULA(IF(A2:A="";;VLOOKUP(A2:A;MATERIALES!A2:C;2;FALSE)))');
+  st.getRange('C2').setFormula('=ARRAYFORMULA(IF(A2:A="";;VLOOKUP(A2:A;MATERIALES!A2:C;3;FALSE)))');
   st.getRange('D2').setFormula('=ARRAYFORMULA(IF(A2:A="";;' + suma('ENTRADA') + '+' + suma('DEVOLUCION') + '+' + suma('RECUPERADO') + '))');
   st.getRange('E2').setFormula('=ARRAYFORMULA(IF(A2:A="";;' + suma('SALIDA') + '))');
   st.getRange('F2').setFormula('=ARRAYFORMULA(IF(A2:A="";;D2:D-E2:E))');
-  st.getRange('G2').setFormula('=ARRAYFORMULA(IF(MATERIALES!A2:A="";;MATERIALES!D2:D))');
+  st.getRange('G2').setFormula('=ARRAYFORMULA(IF(A2:A="";;VLOOKUP(A2:A;MATERIALES!A2:D;4;FALSE)))');
   st.getRange('H2').setFormula('=ARRAYFORMULA(IF(A2:A="";;IF((G2:G>0)*(F2:F<=G2:G);"PEDIR";"")))');
   try { porObra_(); } catch (e) {}
   SpreadsheetApp.getUi().alert('APP SOLERA instalada. Rellena TRABAJADORES, OBRAS, MATERIALES y CARPETA_PARTES_ID en CONFIG; luego publica como aplicación web.');
@@ -222,9 +228,7 @@ function bootstrap_() {
       .map(function (f) { return { codigo: f.codigo, nombre: f.nombre, categoria: f.categoria, rol: rolDe_(f) }; }),
     obras: filas_('OBRAS').filter(function (f) { return si_(f.activa); })
       .map(function (f) { return { codigo: String(f.codigo), nombre: f.nombre, cliente: f.cliente }; }),
-    materiales: filas_('MATERIALES').filter(function (f) { return si_(f.activo); })
-      .sort(function (a, b) { return (Number(a.orden) || 9999) - (Number(b.orden) || 9999); })   // lo más usado primero
-      .map(function (f) { return { codigo: String(f.codigo), nombre: f.nombre, unidad: f.unidad, stock_min: Number(f.stock_min) || 0 }; }),
+    materiales: materialesPorUso_(),
     stock: stock_(),
     otros: otrosPendientes_(),
     herramientas: herrDonde_(false),
@@ -238,8 +242,29 @@ function bootstrap_() {
   };
 }
 
+// lo más usado primero: uso = uso_base (partes y compras de 2026) + líneas de vales de los últimos 90 días.
+// Se recalcula en cada bootstrap, sin tocar la hoja.
+function materialesPorUso_() {
+  var lineas = {}, desde = new Date(); desde.setDate(desde.getDate() - 90);
+  var d0 = Utilities.formatDate(desde, 'Atlantic/Canary', 'yyyy-MM-dd');
+  filas_('MOVIMIENTOS').forEach(function (m) {
+    if (si_(m.anulado) || !String(m.numero || '').trim()) return;   // solo líneas de vale
+    var t = txtFecha_(m.fecha, 'dd/MM/yyyy').split('/');
+    if (t.length !== 3 || t[2] + '-' + t[1] + '-' + t[0] < d0) return;
+    var k = String(m.material_codigo); lineas[k] = (lineas[k] || 0) + 1;
+  });
+  return filas_('MATERIALES').filter(function (f) { return si_(f.activo); }).map(function (f) {
+    var k = String(f.codigo);
+    return { codigo: k, nombre: f.nombre, unidad: f.unidad, stock_min: Number(f.stock_min) || 0,
+      alias: String(f.alias || ''), almacen: String(f.almacen || '').trim().toUpperCase() === 'NO' ? 'NO' : 'SI',
+      uso: (Number(f.uso_base) || 0) + (lineas[k] || 0), orden: Number(f.orden) || 9999 };
+  }).sort(function (a, b) { return b.uso - a.uso || a.orden - b.orden; })
+    .map(function (m) { delete m.orden; return m; });
+}
+function enAlmacen_(f) { return String(f.almacen || '').trim().toUpperCase() !== 'NO'; }
+
 function stock_() {
-  var mats = filas_('MATERIALES').filter(function (f) { return si_(f.activo); });
+  var mats = filas_('MATERIALES').filter(function (f) { return si_(f.activo) && enAlmacen_(f); });
   var acc = {};
   filas_('MOVIMIENTOS').forEach(function (m) {
     if (si_(m.anulado)) return;
@@ -648,8 +673,8 @@ function avisarStock_(codigos) {
 // NO se ejecuta sola. Cuando Mateo dé el OK a docs/MATERIALES_PROPUESTA.csv, se lanza A MANO desde el editor:
 // aplicarMaterialesPropuesta(). Lee el CSV del repositorio (o el texto que se le pase) y, en la pestaña MATERIALES:
 //  - antes de tocar nada guarda una copia en la pestaña MATERIALES_ANTES_6D (si ya existe, no la pisa);
-//  - añade al final la columna codigo_mercadona si no está;
-//  - por cada código del CSV: si existe, cambia nombre, unidad, activo, categoria y codigo_mercadona;
+//  - añade al final las columnas del CSV que falten (codigo_mercadona, almacen, alias, uso_base);
+//  - por cada código del CSV: si existe, cambia sus columnas (todas menos cambio y nota);
 //    si no existe (NUEVO), lo añade al final con el siguiente "orden";
 //  - NO borra filas ni toca stock_min, orden ni otras columnas (veces_partes, compras_2026...).
 //    Lo que sobra queda con activo = NO. Los movimientos y partes antiguos no cambian.
@@ -659,7 +684,7 @@ function aplicarMaterialesPropuesta(texto) {
   var datos = Utilities.parseCsv(texto.replace(/^\uFEFF/, ''));
   var cabCsv = datos.shift().map(function (c) { return String(c).trim(); });
   var ic = function (n) { var i = cabCsv.indexOf(n); if (i < 0) throw new Error('Falta la columna ' + n + ' en el CSV'); return i; };
-  var CAMPOS = ['nombre', 'unidad', 'activo', 'categoria', 'codigo_mercadona'];
+  var CAMPOS = cabCsv.filter(function (c) { return c && ['codigo', 'cambio', 'nota'].indexOf(c) < 0; });   // nombre, unidad, activo, categoria, codigo_mercadona, almacen, alias, uso_base
   var idx = { codigo: ic('codigo') }; CAMPOS.forEach(function (c) { idx[c] = ic(c); });
   var lock = LockService.getScriptLock(); lock.waitLock(30000);
   try {
@@ -669,10 +694,11 @@ function aplicarMaterialesPropuesta(texto) {
       copia.getRange(1, 1, todo.length, todo[0].length).setValues(todo);
     }
     var cab = todo[0].map(String);
-    if (cab.indexOf('codigo_mercadona') < 0) {
-      h.getRange(1, cab.length + 1).setValue('codigo_mercadona').setFontWeight('bold').setBackground('#fde9b8');
-      cab.push('codigo_mercadona');
-    }
+    CAMPOS.forEach(function (c) {
+      if (cab.indexOf(c) >= 0) return;
+      h.getRange(1, cab.length + 1).setValue(c).setFontWeight('bold').setBackground('#fde9b8');
+      cab.push(c);
+    });
     var iCod = cab.indexOf('codigo'), iOrden = cab.indexOf('orden'), filaDe = {}, maxOrden = 0;
     for (var r = 1; r < todo.length; r++) {
       var cod = String(todo[r][iCod]).trim();

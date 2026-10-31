@@ -9,7 +9,7 @@ Cosas pedidas que todavía NO se han hecho. Se borran de aquí cuando estén hec
 - **A la vez: elegir la categoría de cada trabajador en el parte (PEÓN / OFICIAL).** Depende del día o del
   trabajo: a veces un peón hace de oficial y al revés. Por defecto, la de la hoja TRABAJADORES. Es solo para
   el cliente (PDF y facturación), NO cuenta para nóminas ni cambia TRABAJADORES. *(Pedido 30/10/2026, esperar OK.)*
-- PASO 6 y 6b publicados (versión 8, 31/10/2026). Pendiente: permisos propios para encargado (hoy = oficial).
+- PASO 6, 6b, 6d y 6e publicados (versión 9, 01/11/2026). Pendiente: permisos propios para encargado (hoy = oficial).
 - Borrar en la hoja los datos de prueba de otra sesión: trabajador 990 "PRUEBA (Claude)" y vale A0003 (anulado).
 - Compras: estado PENDIENTE_LEER (albaranes que se meten sin líneas para leerlos después); hoy todo CONFIRMADA.
 - Varios almacenes: de momento hay UNO. Si un día hay más, añadir columna "almacen" a MOVIMIENTOS
@@ -23,8 +23,7 @@ Cosas pedidas que todavía NO se han hecho. Se borran de aquí cuando estén hec
   como algo aparte (de momento, pasándole la foto a Claude; más adelante, quizá una app de escritorio
   ligada al sistema). *(30/10/2026)*
 
-- **PASO 6d, lista de materiales:** propuesta en `docs/MATERIALES_PROPUESTA.csv` y dudas en `docs/ESTADO.md` (sección 8).
-  Esperando OK de Mateo; luego publicar y ejecutar `aplicarMaterialesPropuesta()`. Después, el inventario.
+- **Siguiente: inventario** (lista de MATERIALES del 6d ya aplicada; solo cuenta lo que tiene almacen = SI).
 
 ## Hoja APP SOLERA (lo hace Mateo: el sistema no deja a Claude borrar filas)
 - Borrar el parte de prueba nº 90001: 1 fila en PARTES, 2 en PARTES_LINEAS y 1 en MOVIMIENTOS

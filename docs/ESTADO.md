@@ -217,7 +217,7 @@ Radiografía sacada del código del repositorio (`main`, PASO 6) y de una lectur
 
 ## 6) VERSIONES
 
-- **Publicado en Apps Script (comprobado con clasp el 31/10/2026):** la implementación de la app (`AKfycbxon542…`, la de `config.js`) está en la **versión 8** ("PASO 6b"), que es **exactamente el `backend/Code.gs` del repositorio** (`ESQUEMA = '10'`). La versión 7 era el PASO 6 (commit `c54c066`).
+- **Publicado en Apps Script (comprobado con clasp el 31/10/2026):** la implementación de la app (`AKfycbxon542…`, la de `config.js`) está en la **versión 9** ("PASO 6d+6e", 01/11/2026), que es **exactamente el `backend/Code.gs` del repositorio** (`ESQUEMA = '11'`). La 8 era el PASO 6b y la 7 el PASO 6.
 - **`instalar` ya se ejecutó** con el PASO 6: roles en TRABAJADORES, fórmulas nuevas de STOCK y pestaña VALES (ya con `tipo_doc` y `estado`). No hace falta repetirlo para el 6b.
 - **Cómo se publica a partir de ahora:** con clasp desde Claude Code (`clasp push`, `clasp create-version`, `clasp update-deployment AKfycbxon542… -V <n>`), o a mano como hasta ahora (pegar, guardar y luego Implementar → Gestionar implementaciones → ✎ → Versión nueva). clasp necesita el inicio de sesión de Mateo, que se guarda en el entorno de la sesión y se pierde al cerrarla.
 - **En la hoja hay datos de prueba de otra sesión:** el trabajador 990 "PRUEBA (Claude)" y el vale A0003 (anulado).
@@ -267,40 +267,26 @@ Radiografía sacada del código del repositorio (`main`, PASO 6) y de una lectur
 
 ---
 
-## 8) PASO 6d — PROPUESTA DE LISTA DE MATERIALES (31/10/2026, sin aplicar)
+## 8) PASO 6d y 6e — LISTA DE MATERIALES Y BÚSQUEDA (aplicado y publicado, versión 9)
 
-Propuesta en `docs/MATERIALES_PROPUESTA.csv` (sin precios). **No se ha escrito nada en la hoja.**
-Revisada con las respuestas de Mateo del 31/10/2026.
+**6d, lista de materiales** (`docs/MATERIALES_PROPUESTA.csv`, sin precios), ya en la pestaña MATERIALES:
+- 65 filas, **62 activas**; 43 con partida de Mercadona (columna `codigo_mercadona`). No se ha borrado nada:
+  PANDA, CUBO y MOR-ENL (juntado con MOR-BLA) quedan con activo = NO. Copia de antes en la pestaña **MATERIALES_ANTES_6D**.
+- Nuevos: COL-POR (MB9885), YES-RAP, YES-PRO, MAS-PU, MALL-6 y CRUCETAS (M48042; las cuñas siguen en CUNAS, MC0287).
+- Columna **`almacen`**: NO en AGUA, HORMIGON, ZAHORRA, PIC-M3, ARE-M3 y REV-M3 (van directo a obra). Salen en los partes,
+  pero no en los vales, ni en el stock de la app, ni en la pestaña STOCK (ni saldrán en el inventario).
+- Lo nuevo que no esté en la lista entra como OTRO (no se añaden más materiales de Mercadona).
 
-- **Quedan 62 activos** de 65 filas: los 59 actuales + 6 nuevos − 3 desactivados.
-- **Cambios:** 39 renombrados, 17 sin cambio, 6 nuevos, 2 desactivados y 1 juntado. 43 llevan partida de Mercadona; el resto, vacía.
-- **Colas:** COL-POR "CEMENTO COLA PORCELÁNICO NORMAL 25 KG" (NUEVO, MB9885), COL-FLX "CEMENTO COLA FLEX 25 KG" (ME1458),
-  COL-RAP "CEMENTO COLA RÁPIDO 25 KG" (M98069, el "especial" de Mercadona). Confirmado por Mateo.
-- **Rejuntes** blanco, gris y perla: bolsa de 5 kg, M95248. **Arena** en bolsa 25 kg: M00172. **Revuelto** en bolsa 20 kg: M03523.
-- **Discos:** DIS-DIA "DISCO DIAMANTE / BORDE CONTINUO" (MB9691) para todo disco de diamante o de borde continuo;
-  DIS-HIE "DISCO CORTE HIERRO / INOX" (MC0288) solo para cortar hierro o inox.
-- **Unidades:** en el almacén se cuenta como se compra (saco, bolsa, rollo, ud, bote; el cable, en metros). No se convierte a kg ni a metros
-  aunque Mercadona cobre así (clavos, puente de unión, plástico, esquinero). Caja → ud (TORN, CLAVOS, TACOS), paquete → bolsa (CUNAS).
-- **Nuevos:** COL-POR, CEM-BLA cemento blanco 25 kg (M00163), YES-RAP yeso rápido (MD9362) y YES-PRO yeso proyectar (MK93RC)
-  (antes dentro de YESO), MAS-PU masilla poliuretano (MB9887, antes dentro de SILIC), MALL-6 mallazo 15x15x6 (MC7619).
-- **Desactivar:** PANDA (es una marca), CUBO (material de trabajo, 0 partes). **Juntar:** MOR-ENL con MOR-BLA.
-- **Decidido por Claude (encargado por Mateo):**
-  - CEM-425 (gris 42,5 SR / marino) se queda aparte, por calidad y precio distintos; usa la partida del gris (M21198).
-  - MOR-GRI usa MD7194 (mortero para enfoscado), que es el uso del multiusos.
-  - Fontanería y electricidad (ACC-FON, TUBO-PVC, COLA-PVC, CABLE) siguen activos, genéricos y sin partida; la medida va en la nota.
-  - Otros: SACA = M34817 (saca de escombros); CAPAZO se queda (se compra a menudo); HORMIGON un solo código (el tipo va en el parte);
-    PERF-CAN genérico.
-- **Directo a obra (no pasa por almacén):** AGUA, HORMIGON, ZAHORRA, PIC-M3, ARE-M3, REV-M3. Marcados en la nota; siguen activos.
-- **Para aplicarlo** (cuando Mateo dé el OK): publicar Code.gs y ejecutar a mano `aplicarMaterialesPropuesta()` en el editor.
-  Guarda antes una copia en la pestaña MATERIALES_ANTES_6D, añade la columna `codigo_mercadona`, actualiza por código
-  nombre/unidad/activo/categoría/partida, añade los nuevos al final y no borra nada (stock_min, orden y demás columnas se quedan).
-  Se puede repetir sin duplicar. Probada en el entorno de pruebas.
+**6e, búsqueda fácil:**
+- Columna **`alias`** (palabras de obra separadas por comas, sacadas también de los partes: "mortero cola", "wober", "pandola"…).
+  La búsqueda mira nombre y alias, sin mayúsculas ni tildes, y enseña siempre el nombre oficial.
+- **Más usados primero:** uso = `uso_base` (veces en partes + compras de 2026; COL-POR empieza con 30, por encima de la rápida)
+  + líneas de vales de los últimos 90 días (sin anulados). Se recalcula en cada bootstrap, sin tocar la hoja.
+  Con el campo vacío salen los 10 más usados.
 
-**Dudas que quedan (decide Mateo):**
-1. ¿Vale partir YESO, SILIC y MALLAZO (yeso rápido y de proyectar, masilla de poliuretano y mallazo de 6 aparte)?
-2. CUNAS: ¿partida MC0287 (bolsa separadores) o M48042 (crucetas 1,5 mm)? ¿Un código para cuñas y otro para crucetas?
-3. PLACOSTIL: ¿qué producto es exactamente? Hoy no lleva partida.
-4. Lo que se pide directo a obra (agua, hormigón, zahorra, y picón, arena y revuelto a granel): ¿sigue activo para los partes o se desactiva?
-5. ¿Añadimos otros de Mercadona? Candidatos: escayola (M00171), autonivelante (MB1534), monocapa (M21197), cemento cola blanco (M00168),
-   varilla 6 y 10 mm (MB9687, MB9689), cinta americana (MB9886), guardavivo PVC (M85229), saco de hormigón seco (MC2350),
-   ladrillo hueco del 11 (M00145), bloque de 12 (M34804).
+**Arreglado de paso:** la pestaña STOCK daba la misma cifra en todas las filas (SUMIFS no calcula fila a fila dentro
+de ARRAYFORMULA). Ahora usa SUMIF con clave código|tipo|anulado; comprobado en la hoja (arena 5, mortero gris 25, disco −8).
+
+**No hay que ejecutar nada:** la lista y las fórmulas de STOCK las escribió Claude directamente en la hoja APP SOLERA,
+y `instalar()` ya genera las fórmulas nuevas si algún día se vuelve a ejecutar. `aplicarMaterialesPropuesta()` se queda en
+Code.gs para futuras versiones del CSV (lee el CSV de GitHub; la primera vez pedirá permiso para conectarse a internet).

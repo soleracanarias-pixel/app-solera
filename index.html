@@ -619,14 +619,19 @@ function filaTrab(datos) {
   $('trabs').appendChild(div); totalHoras();
 }
 // campo de texto con sugerencias al escribir ("maj" -> MERCADONA 2184 LOS MAJUELOS); la lista ya viene ordenada por uso.
+// Busca en el nombre y en los alias (materiales: "panda" -> CEMENTO COLA…), sin mayúsculas ni tildes; enseña siempre el nombre.
+// Con el campo vacío enseña los 10 primeros (los más usados).
 // elegir(item, alEscribir) recibe el elemento elegido, o null si lo escrito no coincide con ninguno
+function encaja(palabras, texto) {
+  var ws = normal(texto).split(/[^a-z0-9,]+/);
+  return palabras.every(function (p) { return ws.some(function (w) { return w.indexOf(p) === 0; }); });
+}
 function buscador(txt, caja, lista, elegir) {
   var mostrar = function () {
     var palabras = normal(txt.value).split(/[^a-z0-9,]+/).filter(Boolean);   // "bat-02", "bat 02" o "02"
     var res = lista().filter(function (x) {
-      var ws = normal(x.nombre).split(/[^a-z0-9,]+/);
-      return palabras.every(function (p) { return ws.some(function (w) { return w.indexOf(p) === 0; }); });
-    }).slice(0, 8);
+      return encaja(palabras, x.nombre) || String(x.alias || '').split(',').some(function (a) { return a.trim() && encaja(palabras, a); });
+    }).slice(0, palabras.length ? 8 : 10);
     var exacto = res.filter(function (x) { return normal(x.nombre) === normal(txt.value); })[0];
     elegir(exacto || null, true);
     caja.innerHTML = res.map(function (x, i) { return '<div data-i="' + i + '">' + esc(x.nombre) + '</div>'; }).join('');
@@ -645,7 +650,7 @@ buscador($('obraTxt'), $('obraSugs'), obras, function (o) { $('obra').value = o 
 buscador($('movObraTxt'), $('movObraSugs'), obras, function (o) { $('movObra').value = o ? String(o.codigo) : ''; });
 buscador($('movMatTxt'), $('movMatSugs'), function () {
   if (!S.datos) return [];
-  if (S.movClase !== 'HER') return S.datos.materiales || [];
+  if (S.movClase !== 'HER') return matsAlmacen();
   var tipos = S.datos.herrTipos || [];
   if (S.movTipo === 'ENTRADA') return tipos;
   // las que ya tienen número y, detrás, cada tipo "sin número" para numerarla en ese momento
@@ -935,11 +940,13 @@ function abrirMov(tipo, clase) {
   } else { $('movObraLabel').textContent = 'Obra'; $('movNotaLabel').textContent = 'Comentario'; }
 }
 var TIPO_VALE = { SALIDA: 'ME LLEVO', DEVOLUCION: 'DEVUELVO', RECUPERADO: 'ENCONTRÉ MATERIAL', ENTRADA: 'COMPRA' };
+// en los vales solo lo que pasa por el almacén (almacen = NO va directo a obra y solo sale en los partes)
+function matsAlmacen() { return ((S.datos && S.datos.materiales) || []).filter(function (m) { return m.almacen !== 'NO'; }); }
 function filaVale() {
   var div = document.createElement('div'); div.className = 'fila vlin'; div.dataset.cod = '';
   div.innerHTML = '<div><input type="text" class="v-txt" placeholder="Material…" autocomplete="off"><div class="sugs" style="display:none"></div></div>' +
     '<div class="corto"><input type="number" class="v-c" inputmode="decimal" step="any" min="0" placeholder="Cant."></div><button class="x">×</button>';
-  buscador(div.querySelector('.v-txt'), div.querySelector('.sugs'), function () { return (S.datos && S.datos.materiales) || []; }, function (m, alEscribir) {
+  buscador(div.querySelector('.v-txt'), div.querySelector('.sugs'), matsAlmacen, function (m, alEscribir) {
     div.dataset.cod = m ? m.codigo : '';
     if (m && !alEscribir) div.querySelector('.v-c').focus();
   });
