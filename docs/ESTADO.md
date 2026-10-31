@@ -217,7 +217,7 @@ Radiografía sacada del código del repositorio (`main`, PASO 6) y de una lectur
 
 ## 6) VERSIONES
 
-- **Publicado en Apps Script (comprobado con clasp el 31/10/2026):** la implementación de la app (`AKfycbxon542…`, la de `config.js`) está en la **versión 10** ("PASO 7: almacenes", 31/10/2026), que es **exactamente el `backend/Code.gs` del repositorio** (`ESQUEMA = '12'`). La 9 era el PASO 6d+6e, la 8 el 6b y la 7 el 6.
+- **Publicado en Apps Script (comprobado con clasp el 31/10/2026):** la implementación de la app (`AKfycbxon542…`, la de `config.js`) está en la **versión 11** ("PASO 7b: compra a obra e inventario", 31/10/2026), que es **exactamente el `backend/Code.gs` del repositorio** (`ESQUEMA = '13'`). La 10 era el PASO 7 (almacenes), la 9 el 6d+6e, la 8 el 6b y la 7 el 6.
 - **`instalar` ya se ejecutó** con el PASO 6: roles en TRABAJADORES, fórmulas nuevas de STOCK y pestaña VALES (ya con `tipo_doc` y `estado`). No hace falta repetirlo para el 6b.
 - **Cómo se publica a partir de ahora:** con clasp desde Claude Code (`clasp push`, `clasp create-version`, `clasp update-deployment AKfycbxon542… -V <n>`), o a mano como hasta ahora (pegar, guardar y luego Implementar → Gestionar implementaciones → ✎ → Versión nueva). clasp necesita el inicio de sesión de Mateo, que se guarda en el entorno de la sesión y se pierde al cerrarla.
 - **En la hoja hay datos de prueba de otra sesión:** el trabajador 990 "PRUEBA (Claude)" y el vale A0003 (anulado).
@@ -307,4 +307,21 @@ Code.gs para futuras versiones del CSV (lee el CSV de GitHub; la primera vez ped
 - La columna `almacen` (SI/NO) de MATERIALES se llama ahora **`en_almacen`**.
 - **Hecho ya en la hoja por Claude** (no hay que ejecutar nada): pestaña ALMACENES, columnas nuevas, vales antiguos a MAT y fórmulas
   de STOCK. Si se añade un almacén, ejecutar `instalar()` para que STOCK tenga su columna.
-- **Pendiente:** el AJUSTE de inventario llegará con el inventario (también guardará su almacén). Las herramientas siguen sin almacén.
+- Las herramientas siguen sin almacén.
+
+---
+
+## 10) PASO 7b — LIMPIEZA, COMPRA CON DESTINO E INVENTARIO (publicado, versión 11)
+
+- **Limpieza hecha** (con permiso de Mateo): borrados el parte 90001 (PARTES y PARTES_LINEAS), las 6 filas de prueba de
+  MOVIMIENTOS (incluido el A0003) y el vale A0003; trabajador 990 PRUEBA con activo = NO. STOCK y POR_OBRA, a cero.
+  La numeración de vales sigue donde iba (el próximo es A0004).
+- **Compra con destino** (solo admin): campo obligatorio Destino = ALMACÉN (selector de almacén → ENTRADA, suma stock)
+  u OBRA (buscador de obra → **COMPRA_OBRA**: no suma stock; vale para cualquier material activo, aunque tenga en_almacen = NO).
+  En POR_OBRA, columna **comprado**; gastado = salido + comprado − devuelto − recuperado. Lo que sobre vuelve con DEVUELVO
+  al almacén que se elija. En Vales se ve "Destino: …". El albarán repetido se detecta también entre compras a obra.
+- **Inventario** (solo admin, botón INVENTARIO): se elige el almacén; lista de materiales activos con en_almacen = SI, con buscador
+  (nombre y alias), stock actual y casilla "contado". Borrador automático en el móvil (por usuario y almacén), se puede cerrar y seguir.
+  Al terminar se crea un vale **AJUSTE** (misma serie A000n) solo con las líneas rellenas; el servidor calcula contado − stock en ese
+  momento (puede ser negativo) y guarda lo contado en MOVIMIENTOS (columna `contado`). El stock suma los AJUSTE. Se anula como cualquier vale.
+- **STOCK** ahora solo enseña materiales activos (antes salían también PANDA, CUBO y MOR-ENL) y suma los AJUSTE.

@@ -237,6 +237,20 @@ a{color:var(--azul)}
     <button class="btn grande sec" id="btnRecuperado">🔎 ENCONTRÉ MATERIAL</button>
     <button class="btn grande sec solo-admin" id="btnEntrada">🧾 COMPRA (admin)</button>
     <button class="btn grande sec solo-admin" id="btnTraspaso">🔁 TRASPASO (admin)</button>
+    <button class="btn grande sec solo-admin" id="btnInventario">📋 INVENTARIO (admin)</button>
+  </div>
+  <!-- INVENTARIO (solo admin): se cuenta lo que hay; al terminar se crea un vale AJUSTE con contado − stock -->
+  <div class="tarjeta" id="invForm" style="display:none">
+    <h2>Inventario</h2>
+    <label>Almacén</label><select id="invAlmacen"></select>
+    <div class="ayuda" id="invInfo"></div>
+    <input type="text" id="invBuscar" placeholder="Buscar material…" autocomplete="off">
+    <div class="lista" id="invLista"></div>
+    <div class="fila">
+      <button class="btn peq sec" id="invBorrador">Guardar borrador</button>
+      <button class="btn peq verde" id="invGuardar">Terminar inventario</button>
+    </div>
+    <button class="btn peq sec" id="invCerrar" style="width:100%;margin-top:8px">Cerrar (el borrador se queda en el móvil)</button>
   </div>
   <div id="movSitioMAT"></div>
   <div class="tarjeta">
@@ -255,6 +269,7 @@ a{color:var(--azul)}
       <div id="destinoBloque" style="display:none"><label>Llevar al almacén</label><select id="valeAlmDestino"></select></div>
     </div>
     <div id="compraBloque" style="display:none">
+      <label>Destino</label><select id="valeDestino"><option value="">Elige: almacén u obra…</option><option value="ALMACEN">ALMACÉN</option><option value="OBRA">OBRA (directo, no entra en el almacén)</option></select>
       <label>Proveedor</label><input type="text" id="valeProveedor" placeholder="Sobradillo, Rosalesa…">
       <label>Documento</label><select id="valeTipoDoc"><option value="ALBARAN">Albarán</option><option value="TICKET">Ticket</option></select>
       <label>Nº de albarán o ticket</label><input type="text" id="valeAlbaran">
@@ -312,7 +327,7 @@ a{color:var(--azul)}
       <div><label>Desde</label><input type="date" id="fDesde"></div>
       <div><label>Hasta</label><input type="date" id="fHasta"></div>
       <div><label>Trabajador</label><input type="text" id="fTrab" placeholder="Nombre…"></div>
-      <div><label>Tipo</label><select id="fTipo"><option value="">Todos</option><option value="SALIDA">ME LLEVO</option><option value="DEVOLUCION">DEVUELVO</option><option value="RECUPERADO">ENCONTRÉ MATERIAL</option><option value="ENTRADA">COMPRA</option><option value="TRASPASO">TRASPASO</option></select></div>
+      <div><label>Tipo</label><select id="fTipo"><option value="">Todos</option><option value="SALIDA">ME LLEVO</option><option value="DEVOLUCION">DEVUELVO</option><option value="RECUPERADO">ENCONTRÉ MATERIAL</option><option value="ENTRADA">COMPRA</option><option value="COMPRA_OBRA">COMPRA A OBRA</option><option value="TRASPASO">TRASPASO</option><option value="AJUSTE">AJUSTE (inventario)</option></select></div>
       <div><label>Almacén</label><select id="fAlm"><option value="">Todos</option></select></div>
       <div><label>Obra</label><input type="text" id="fObra" placeholder="maj, merc…"></div>
     </div>
@@ -973,6 +988,9 @@ function abrirMov(tipo, clase) {
     var otro = almacenes().filter(function (a) { return a.codigo !== c; })[0]; if (otro) $('valeAlmDestino').value = otro.codigo;
   });
   if (vale && tipo === 'TRASPASO') $('movObraBloque').style.display = 'none';
+  $('movPersonaLabel').style.display = $('movPersonaTxt').style.display = '';
+  $('valeDestino').value = '';
+  $('invForm').style.display = 'none';
   if (vale) {
     $('movCantBloque').style.display = 'none';
     $('valeLineas').innerHTML = ''; filaVale();
@@ -982,12 +1000,28 @@ function abrirMov(tipo, clase) {
     $('movPersonaLabel').textContent = { SALIDA: '¿Quién se lo lleva?', DEVOLUCION: '¿Quién lo devuelve?', RECUPERADO: '¿Quién lo encontró?' }[tipo] || '';
     $('movNotaLabel').textContent = tipo === 'RECUPERADO' ? 'Comentario: dónde y cómo se encontró (obligatorio)' : 'Comentario';
     $('movBtnFoto').textContent = '📷 Foto (opcional)';
+    if (tipo === 'ENTRADA') pintarDestino();
   } else { $('movObraLabel').textContent = 'Obra'; $('movNotaLabel').textContent = 'Comentario'; }
 }
-var TIPO_VALE = { SALIDA: 'ME LLEVO', DEVOLUCION: 'DEVUELVO', RECUPERADO: 'ENCONTRÉ MATERIAL', ENTRADA: 'COMPRA', TRASPASO: 'TRASPASO', TRASPASO_SALE: 'TRASPASO (sale)', TRASPASO_ENTRA: 'TRASPASO (entra)' };
+var TIPO_VALE = { SALIDA: 'ME LLEVO', DEVOLUCION: 'DEVUELVO', RECUPERADO: 'ENCONTRÉ MATERIAL', ENTRADA: 'COMPRA', COMPRA_OBRA: 'COMPRA A OBRA', AJUSTE: 'AJUSTE (inventario)', TRASPASO: 'TRASPASO', TRASPASO_SALE: 'TRASPASO (sale)', TRASPASO_ENTRA: 'TRASPASO (entra)' };
 $('valeAlmacen').onchange = function () { recordarAlmacen(this.value); };
 // en los vales solo lo que pasa por el almacén (en_almacen = NO va directo a obra y solo sale en los partes)
-function matsAlmacen() { return ((S.datos && S.datos.materiales) || []).filter(function (m) { return m.en_almacen !== 'NO'; }); }
+function matsAlmacen() {
+  var todos = (S.datos && S.datos.materiales) || [];
+  if (compraAObra()) return todos;   // la compra que va directa a obra puede llevar cualquier material activo
+  return todos.filter(function (m) { return m.en_almacen !== 'NO'; });
+}
+function compraAObra() { return S.movTipo === 'ENTRADA' && $('valeDestino').value === 'OBRA'; }
+// compra: destino ALMACÉN (selector de almacén) u OBRA (buscador de obra)
+function pintarDestino() {
+  if (S.movTipo !== 'ENTRADA' || S.movClase === 'HER') return;
+  var d = $('valeDestino').value;
+  $('almBloque').style.display = d === 'ALMACEN' ? '' : 'none';
+  $('movObraBloque').style.display = d === 'OBRA' ? '' : 'none';
+  $('movPersonaLabel').style.display = $('movPersonaTxt').style.display = 'none';
+  $('movTitulo').textContent = d === 'OBRA' ? 'COMPRA A OBRA (no entra en el almacén)' : 'COMPRA (entrada con albarán o ticket)';
+}
+$('valeDestino').onchange = pintarDestino;
 function filaVale() {
   var div = document.createElement('div'); div.className = 'fila vlin'; div.dataset.cod = '';
   div.innerHTML = '<div><input type="text" class="v-txt" placeholder="Material…" autocomplete="off"><div class="sugs" style="display:none"></div></div>' +
@@ -1024,25 +1058,26 @@ function leerLineasVale() {
   return falta ? null : out;
 }
 function guardarVale() {
-  var tipo = S.movTipo, lineas = leerLineasVale();
+  if (S.movTipo === 'ENTRADA' && !$('valeDestino').value) return toast('Elige el destino de la compra: almacén u obra');
+  var tipo = compraAObra() ? 'COMPRA_OBRA' : S.movTipo, lineas = leerLineasVale();
   if (!lineas) return toast('Cada línea necesita material y cantidad');
   if (!lineas.length) return toast('Añade al menos un material con su cantidad');
   var conObra = tipo !== 'ENTRADA' && tipo !== 'TRASPASO', nota = $('movNota').value.trim();
-  var almacen = $('valeAlmacen').value, destino = tipo === 'TRASPASO' ? $('valeAlmDestino').value : '';
-  if (!almacen) return toast('Elige el almacén');
+  var almacen = tipo === 'COMPRA_OBRA' ? '' : $('valeAlmacen').value, destino = tipo === 'TRASPASO' ? $('valeAlmDestino').value : '';
+  if (!almacen && tipo !== 'COMPRA_OBRA') return toast('Elige el almacén');
   if (tipo === 'TRASPASO' && (!destino || destino === almacen)) return toast('Elige otro almacén de destino');
   if (conObra && !$('movObra').value) return toast('Elige la obra');
   if (tipo === 'RECUPERADO' && !nota) return toast('Escribe dónde y cómo se encontró');
-  var proveedor = $('valeProveedor').value.trim(), albaran = $('valeAlbaran').value.trim();
-  if (tipo === 'ENTRADA' && (!proveedor || !albaran)) return toast('La compra necesita proveedor y nº de albarán o ticket');
+  var proveedor = $('valeProveedor').value.trim(), albaran = $('valeAlbaran').value.trim(), compra = tipo === 'ENTRADA' || tipo === 'COMPRA_OBRA';
+  if (compra && (!proveedor || !albaran)) return toast('La compra necesita proveedor y nº de albarán o ticket');
   var obraSel = $('movObra'), obraTxt = conObra ? obraSel.options[obraSel.selectedIndex].text : '';
-  var vale = { id: uid(), tipo: 'vale', valeTipo: tipo, obra: obraTxt, persona: conObra ? ($('movPersonaTxt').value.trim() || S.usuario.nombre) : '',
-    nota: nota, fotos: S.movFotos.slice(), albaranArchivo: tipo === 'ENTRADA' ? S.albaranArchivo : null, proveedor: tipo === 'ENTRADA' ? proveedor : '',
-    albaran: tipo === 'ENTRADA' ? albaran : '', tipoDoc: tipo === 'ENTRADA' ? $('valeTipoDoc').value : '', lineas: lineas, fecha: hoyISO(), hora: S.movCuando.slice(11), usuario: S.usuario.nombre, creadoEn: new Date().toISOString(),
+  var vale = { id: uid(), tipo: 'vale', valeTipo: tipo, obra: obraTxt, persona: conObra && !compra ? ($('movPersonaTxt').value.trim() || S.usuario.nombre) : '',
+    nota: nota, fotos: S.movFotos.slice(), albaranArchivo: compra ? S.albaranArchivo : null, proveedor: compra ? proveedor : '',
+    albaran: compra ? albaran : '', tipoDoc: compra ? $('valeTipoDoc').value : '', lineas: lineas, fecha: hoyISO(), hora: S.movCuando.slice(11), usuario: S.usuario.nombre, creadoEn: new Date().toISOString(),
     almacen: almacen, almacenDestino: destino };
-  recordarAlmacen(almacen);
+  if (almacen) recordarAlmacen(almacen);
   // la compra y el traspaso van con el código y PIN de quien los hace: el servidor comprueba que es admin
-  var conPin = tipo === 'ENTRADA' || tipo === 'TRASPASO';
+  var conPin = compra || tipo === 'TRASPASO';
   (conPin ? DB.get('kv', 'pin-' + S.usuario.codigo) : Promise.resolve(null)).then(function (pin) {
     if (conPin) {
       if (!pin) return toast('Para registrar compras o traspasos, sal y vuelve a entrar con tu PIN');
@@ -1052,7 +1087,7 @@ function guardarVale() {
     var suma = function (m, alm, q) { m.porAlmacen = m.porAlmacen || {}; m.porAlmacen[alm] = (m.porAlmacen[alm] || 0) + q; };
     stockLocal().forEach(function (m) {
       lineas.forEach(function (l) {
-        if (l.material !== m.codigo) return;
+        if (l.material !== m.codigo || tipo === 'COMPRA_OBRA') return;
         if (tipo === 'TRASPASO') { suma(m, almacen, -l.cantidad); suma(m, destino, l.cantidad); return; }
         var q = tipo === 'SALIDA' ? -l.cantidad : l.cantidad; m.stock += q; suma(m, almacen, q);
       });
@@ -1065,6 +1100,74 @@ function guardarVale() {
     });
   });
 }
+// ---------------------------------------------------------------- inventario (solo admin)
+// Se elige el almacén, se escribe lo contado (solo las líneas rellenas cuentan) y al terminar se crea un vale AJUSTE:
+// el servidor calcula contado − stock en ese momento. Mientras tanto, borrador en el móvil (por usuario y almacén).
+S.inv = { contados: {} };
+function claveInv() { return 'inv-' + (S.usuario ? S.usuario.codigo : '') + '-' + $('invAlmacen').value; }
+function cargarBorradorInv() {
+  return DB.get('kv', claveInv()).then(function (b) { S.inv = b && b.contados ? b : { contados: {} }; pintarInv(); });
+}
+function guardarBorradorInv(avisar) {
+  S.inv.guardado = ahoraES();
+  return DB.put('kv', S.inv, claveInv()).then(function () { infoInv(); if (avisar) toast('Borrador guardado en el móvil', 'ok'); });
+}
+function infoInv() {
+  var n = Object.keys(S.inv.contados).length;
+  $('invInfo').textContent = n ? n + ' material(es) contado(s)' + (S.inv.guardado ? ' · borrador guardado ' + S.inv.guardado : '') : 'Escribe lo que cuentes. Lo que dejes en blanco no se toca.';
+}
+function pintarInv() {
+  var q = normal($('invBuscar').value), alm = $('invAlmacen').value;
+  var lista = stockLocal().filter(function (m) {
+    var mat = ((S.datos && S.datos.materiales) || []).filter(function (x) { return x.codigo === m.codigo; })[0] || {};
+    return !q || encaja(q.split(/[^a-z0-9,]+/).filter(Boolean), m.nombre) || String(mat.alias || '').split(',').some(function (a) { return a.trim() && encaja(q.split(/[^a-z0-9,]+/).filter(Boolean), a); });
+  });
+  $('invLista').innerHTML = lista.map(function (m) {
+    var c = S.inv.contados[m.codigo];
+    return '<div class="item"><div><b>' + esc(m.nombre) + '</b><small>stock ' + stockEn(m, alm) + ' ' + esc(m.unidad) + '</small></div>' +
+      '<div class="corto"><input type="number" class="inv-c" data-cod="' + esc(m.codigo) + '" inputmode="decimal" step="any" min="0" placeholder="contado" value="' + (c == null ? '' : esc(c)) + '"></div></div>';
+  }).join('') || '<div class="aviso">Ningún material con ese nombre.</div>';
+  infoInv();
+}
+$('invLista').oninput = function (e) {
+  var i = e.target.closest('.inv-c'); if (!i) return;
+  if (i.value === '') delete S.inv.contados[i.dataset.cod]; else S.inv.contados[i.dataset.cod] = i.value;
+  clearTimeout(S.invT); S.invT = setTimeout(function () { guardarBorradorInv(false); }, 600);   // borrador automático
+};
+$('invBuscar').oninput = pintarInv;
+$('invAlmacen').onchange = function () { recordarAlmacen(this.value); cargarBorradorInv(); };
+$('btnInventario').onclick = function () {
+  $('movForm').style.display = 'none'; $('invForm').style.display = ''; $('invBuscar').value = '';
+  almacenGuardado().then(function (c) { opcionesAlmacen('invAlmacen', c); return cargarBorradorInv(); });
+};
+$('invCerrar').onclick = function () { guardarBorradorInv(false).then(function () { $('invForm').style.display = 'none'; }); };
+$('invBorrador').onclick = function () { guardarBorradorInv(true); };
+$('invGuardar').onclick = function () {
+  var alm = $('invAlmacen').value, mapa = {};
+  stockLocal().forEach(function (m) { mapa[m.codigo] = m; });
+  var lineas = Object.keys(S.inv.contados).filter(function (c) { return mapa[c] && S.inv.contados[c] !== '' && Number(S.inv.contados[c]) >= 0; }).map(function (c) {
+    var m = mapa[c], contado = Number(S.inv.contados[c]);
+    return { material: c, materialNombre: m.nombre, unidad: m.unidad, contado: contado, cantidad: contado - stockEn(m, alm) };
+  });
+  if (!lineas.length) return toast('No has contado ningún material');
+  var cambian = lineas.filter(function (l) { return l.cantidad !== 0; }).length;
+  preguntar('¿Terminar el inventario de ' + nombreAlmacen(alm).split(' · ')[0] + '?\n' + lineas.length + ' material(es) contado(s), ' + cambian + ' con diferencia. Se creará un vale AJUSTE.', 'Terminar', 'Seguir contando').then(function (ok) {
+    if (!ok) return;
+    return DB.get('kv', 'pin-' + S.usuario.codigo).then(function (pin) {
+      if (!pin) return toast('Para el inventario, sal y vuelve a entrar con tu PIN');
+      var vale = { id: uid(), tipo: 'vale', valeTipo: 'AJUSTE', obra: '', persona: '', nota: 'Inventario', fotos: [], lineas: lineas, fecha: hoyISO(), hora: ahoraES().slice(11),
+        usuario: S.usuario.nombre, creadoEn: new Date().toISOString(), almacen: alm, almacenDestino: '', auth: { codigo: S.usuario.codigo, pin: pin } };
+      // el stock del móvil pasa a ser lo contado (el servidor lo recalcula al recibirlo)
+      lineas.forEach(function (l) { var m = mapa[l.material]; m.porAlmacen = m.porAlmacen || {}; m.porAlmacen[alm] = l.contado; m.stock += l.cantidad; });
+      DB.put('kv', S.datos, 'datos');
+      return DB.put('cola', vale).then(function () { return DB.del('kv', claveInv()); }).then(function () {
+        S.inv = { contados: {} }; $('invForm').style.display = 'none'; actualizarPend();
+        if (!navigator.onLine) return toast('Inventario guardado en el móvil, se enviará solo', 'ok');
+        toast('Enviando inventario…'); sincronizar();
+      });
+    });
+  });
+};
 $('btnEntrada').onclick = function () { abrirMov('ENTRADA'); };
 $('btnTraspaso').onclick = function () { abrirMov('TRASPASO'); };
 $('btnSalida').onclick = function () { abrirMov('SALIDA'); };
@@ -1115,12 +1218,19 @@ function buscarVales() {
   }).then(function (j) { S.vales = j.vales; pintarVales(); })
     .catch(function (e) { $('valesLista').innerHTML = '<div class="aviso err">' + esc(e.message) + '</div>'; });
 }
+// dónde va o de dónde sale cada vale: almacén, obra o los dos (las compras dicen su destino)
+function lugarVale(x) {
+  var alm = function (c) { return esc(nombreAlmacen(c).split(' · ')[0]); };
+  if (x.tipo === 'COMPRA_OBRA') return 'Destino: obra ' + esc(x.obra);
+  if (x.tipo === 'ENTRADA') return 'Destino: ' + alm(x.almacen);
+  if (x.tipo === 'TRASPASO') return alm(x.almacen) + ' → ' + alm(x.almacen_destino);
+  return (x.almacen ? alm(x.almacen) : '') + (x.obra ? (x.almacen ? ' · ' : '') + esc(x.obra) : '');
+}
 function pintarVales() {
   var v = S.vales || [];
   $('valesLista').innerHTML = v.length ? v.map(function (x, i) {
     return '<div class="item toca vale-item' + (x.anulado ? ' anulado' : '') + '" data-i="' + i + '"><div><b>Nº ' + esc(x.numero) + ' · ' + esc(TIPO_VALE[x.tipo] || x.tipo) + ' · ' + esc(x.fecha) + ' ' + esc(x.hora) + '</b><small>' +
-      (x.almacen ? esc(nombreAlmacen(x.almacen).split(' · ')[0]) + (x.almacen_destino ? ' → ' + esc(nombreAlmacen(x.almacen_destino).split(' · ')[0]) : '') + ' · ' : '') +
-      esc(x.obra || x.proveedor || '') + (x.persona ? ' · ' + esc(x.persona) : '') + ' · anotado por ' + esc(x.usuario) + ' · ' + x.n_lineas + ' línea(s)' + (x.fotos.length ? ' · 📷 ' + x.fotos.length : '') + '</small></div>' +
+      lugarVale(x) + (x.proveedor ? ' · ' + esc(x.proveedor) : '') + (x.persona ? ' · ' + esc(x.persona) : '') + ' · anotado por ' + esc(x.usuario) + ' · ' + x.n_lineas + ' línea(s)' + (x.fotos.length ? ' · 📷 ' + x.fotos.length : '') + '</small></div>' +
       (x.anulado ? '<span class="chip anul">ANULADO</span>' : '') + '</div>';
   }).join('') : '<div class="aviso">No hay vales con esos filtros.</div>';
 }
@@ -1132,7 +1242,7 @@ $('valesLista').onclick = function (e) {
   if (sig && sig.classList.contains('det')) { sig.remove(); return; }
   var x = S.vales[+it.dataset.i], d = document.createElement('div'); d.className = 'det vale-item';
   d.innerHTML = '<table>' + x.lineas.map(function (l) {
-      return '<tr' + (l.anulado ? ' class="anulado"' : '') + '><td>' + l.linea + '</td><td><b>' + esc(l.material) + '</b>' + (l.material_codigo === 'OTRO' ? ' <span class="chip pend">OTRO</span>' : '') + '</td><td>' + esc(l.cantidad) + ' ' + esc(l.unidad || '') + '</td></tr>';
+      return '<tr' + (l.anulado ? ' class="anulado"' : '') + '><td>' + l.linea + '</td><td><b>' + esc(l.material) + '</b>' + (l.material_codigo === 'OTRO' ? ' <span class="chip pend">OTRO</span>' : '') + '</td><td>' + (l.contado !== '' && l.contado != null ? 'contado ' + esc(l.contado) + ' · dif. ' + (l.cantidad > 0 ? '+' : '') + esc(l.cantidad) : esc(l.cantidad)) + ' ' + esc(l.unidad || '') + '</td></tr>';
     }).join('') + '</table>' +
     (x.proveedor ? '<div>Proveedor: <b>' + esc(x.proveedor) + '</b> · ' + (x.tipo_doc === 'TICKET' ? 'Ticket' : 'Albarán') + ': <b>' + esc(x.albaran) + '</b>' + (x.estado ? ' · ' + esc(x.estado) : '') + '</div>' : '') +
     (x.nota ? '<div>Comentario: ' + esc(x.nota) + '</div>' : '') +

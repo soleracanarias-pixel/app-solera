@@ -28,14 +28,14 @@ var HOJAS = {
   MATERIALES: ['codigo','nombre','unidad','stock_min','activo','orden','categoria','codigo_mercadona','en_almacen','alias','uso_base'],   // en_almacen NO = va directo a obra: sale en partes, no en stock ni vales
   PARTES: ['id','numero','fecha','obra_codigo','obra','cliente','creado_por','trabajadores','total_horas','trabajos','materiales','medios','observaciones','firmado','firmante','pdf_url','fotos','creado_en','origen','firmado_en','copia_enviada_a','copia_enviada_en','copia_error'],
   PARTES_LINEAS: ['id','numero','fecha','obra','trabajador_codigo','trabajador','categoria','horas','horas_extra','firmado'],
-  MOVIMIENTOS: ['id','fecha','tipo','material_codigo','material','cantidad','unidad','obra','parte_numero','usuario','nota','creado_en','fotos','numero','hora','persona','linea','anulado','almacen'],
+  MOVIMIENTOS: ['id','fecha','tipo','material_codigo','material','cantidad','unidad','obra','parte_numero','usuario','nota','creado_en','fotos','numero','hora','persona','linea','anulado','almacen','contado'],   // contado: solo en AJUSTE (lo contado en el inventario)
   // un vale de almacén = una fila aquí + sus líneas en MOVIMIENTOS (mismo numero, linea 1, 2, 3…)
   VALES: ['numero','fecha','hora','tipo','obra','usuario','persona','nota','fotos','proveedor','albaran','n_lineas','anulado','anulado_por','anulado_en','motivo_anulacion','creado_en','id','tipo_doc','estado','almacen','almacen_destino'],   // estado: PENDIENTE_LEER / CONFIRMADA; almacen_destino solo en TRASPASO
   // almacenes físicos (MAT = La Matanza, AGU = Agüimes); en la app se ve 'NOMBRE · dirección corta', el código solo en la hoja
   ALMACENES: ['codigo','nombre','direccion','activo','por_defecto'],
   STOCK: ['codigo','nombre','unidad','entradas','salidas','stock','stock_min','aviso'],
   FIRMANTES: ['nombre','email','obra_ultima','veces','actualizado_en'],
-  POR_OBRA: ['obra','material_codigo','material','unidad','salido','devuelto','gastado','recuperado'],
+  POR_OBRA: ['obra','material_codigo','material','unidad','salido','devuelto','gastado','recuperado','comprado'],   // comprado = COMPRA_OBRA (directo a obra)
   // herramientas una a una: cada máquina con su número (BAT-01…), que se marca en la propia máquina
   HERR_TIPOS: ['prefijo','tipo','orden'],
   HERRAMIENTAS: ['codigo','tipo','activo','alta_fecha','alta_por'],
@@ -52,7 +52,7 @@ function clase_(c) { return CLASES[c === 'HER' ? 'HER' : 'MAT']; }
 function movFilas_(c) {
   return filas_(c.mov).map(function (f) { f.material_codigo = f[c.cod]; f.material = f[c.nom]; return f; });
 }
-var ESQUEMA = '12';            // subir cuando cambien las columnas de HOJAS
+var ESQUEMA = '13';            // subir cuando cambien las columnas de HOJAS
 var EMAIL_COPIA = 'soleracanarias@gmail.com';
 var CSV_NOMBRE = 'PARTES APP 2026.csv';  // se crea en la carpeta CARPETA_CSV_ID de CONFIG (CLIENTES\PARTES\APP)
 var CSV_COLUMNAS = ['N_PARTE','FECHA','DIA_SEMANA','CLIENTE','OBRA','COD_OBRA_APP','RESP_CLIENTE','RESP_CERT','RESP_SOLERA','MATRICULA',
@@ -81,7 +81,7 @@ function instalar() {
   var ma = ss.getSheetByName('MATERIALES');
   if (ma.getLastRow() < 2) ma.appendRow(['CEM25', 'Cemento gris saco 25 kg', 'saco', 10, 'SI']);
   // STOCK por fórmulas (se rehacen siempre), sin anulados:
-  //   entradas = ENTRADA + DEVOLUCION + RECUPERADO + TRASPASO_ENTRA; salidas = SALIDA + TRASPASO_SALE (total: los traspasos se anulan)
+  //   entradas = ENTRADA + DEVOLUCION + RECUPERADO + TRASPASO_ENTRA + AJUSTE; salidas = SALIDA + TRASPASO_SALE (total: los traspasos se anulan)
   //   y una columna "stock_<código>" por almacén activo (MAT, AGU…)
   var st = ss.getSheetByName('STOCK'), cm = hoja_('MOVIMIENTOS').getRange(1, 1, 1, hoja_('MOVIMIENTOS').getLastColumn()).getValues()[0];
   var letra = function (i) { var s = ''; while (i > 0) { s = String.fromCharCode(65 + (i - 1) % 26) + s; i = Math.floor((i - 1) / 26); } return s; };
@@ -91,12 +91,12 @@ function instalar() {
   var suma = function (tipo, alm) {
     return 'SUMIF(' + clave + (alm ? '&"|"&' + col('almacen') : '') + ';A2:A&"|' + tipo + '|' + (alm ? '|' + alm : '') + '";' + col('cantidad') + ')';
   };
-  var MAS = ['ENTRADA', 'DEVOLUCION', 'RECUPERADO', 'TRASPASO_ENTRA'], MENOS = ['SALIDA', 'TRASPASO_SALE'];
+  var MAS = TIPOS_SUMAN, MENOS = TIPOS_RESTAN;   // AJUSTE (con su signo) va en entradas; COMPRA_OBRA no cuenta
   // en STOCK solo lo que pasa por el almacén (en_almacen <> NO); lo que va directo a obra no sale
   var cma = ma.getRange(1, 1, 1, ma.getLastColumn()).getValues()[0];
   var colM = function (n) { var l = letra(cma.indexOf(n) + 1); return 'MATERIALES!' + l + '2:' + l; };
   st.getRange('A2:C').clearContent(); st.getRange('G2:G').clearContent();
-  st.getRange('A2').setFormula('=IFERROR(FILTER(MATERIALES!A2:A;MATERIALES!A2:A<>"";' + colM('en_almacen') + '<>"NO"))');
+  st.getRange('A2').setFormula('=IFERROR(FILTER(MATERIALES!A2:A;MATERIALES!A2:A<>"";' + colM('en_almacen') + '<>"NO";' + colM('activo') + '<>"NO"))');
   st.getRange('B2').setFormula('=ARRAYFORMULA(IF(A2:A="";;VLOOKUP(A2:A;MATERIALES!A2:C;2;FALSE)))');
   st.getRange('C2').setFormula('=ARRAYFORMULA(IF(A2:A="";;VLOOKUP(A2:A;MATERIALES!A2:C;3;FALSE)))');
   st.getRange('D2').setFormula('=ARRAYFORMULA(IF(A2:A="";;' + MAS.map(function (t) { return suma(t); }).join('+') + '))');
@@ -308,14 +308,14 @@ function materialesPorUso_() {
 }
 function enAlmacen_(f) { return String(f.en_almacen || '').trim().toUpperCase() !== 'NO'; }
 
-// stock total y por almacén (porAlmacen: { MAT: n, AGU: n }). Suman ENTRADA, DEVOLUCION, RECUPERADO y TRASPASO_ENTRA;
-// restan SALIDA y TRASPASO_SALE. Sin anulados.
-var TIPOS_RESTAN = ['SALIDA', 'TRASPASO_SALE'];
+// stock total y por almacén (porAlmacen: { MAT: n, AGU: n }). Suman ENTRADA, DEVOLUCION, RECUPERADO, TRASPASO_ENTRA y AJUSTE
+// (el AJUSTE lleva su signo: contado − stock); restan SALIDA y TRASPASO_SALE. COMPRA_OBRA no toca el stock. Sin anulados.
+var TIPOS_SUMAN = ['ENTRADA', 'DEVOLUCION', 'RECUPERADO', 'TRASPASO_ENTRA', 'AJUSTE'], TIPOS_RESTAN = ['SALIDA', 'TRASPASO_SALE'];
 function stock_() {
   var mats = filas_('MATERIALES').filter(function (f) { return si_(f.activo) && enAlmacen_(f); });
   var acc = {}, defecto = null;
   filas_('MOVIMIENTOS').forEach(function (m) {
-    if (si_(m.anulado)) return;
+    if (si_(m.anulado) || (TIPOS_SUMAN.indexOf(m.tipo) < 0 && TIPOS_RESTAN.indexOf(m.tipo) < 0)) return;
     var k = String(m.material_codigo), al = String(m.almacen || '') || (defecto = defecto || almacenPorDefecto_());
     var q = (Number(m.cantidad) || 0) * (TIPOS_RESTAN.indexOf(m.tipo) >= 0 ? -1 : 1);
     acc[k] = acc[k] || { total: 0, por: {} };
@@ -558,15 +558,15 @@ function movimiento_(m) {
 function porObra_(c) {
   c = c || CLASES.MAT;
   var acc = {}, orden = [];
-  var campo = { SALIDA: 'salido', DEVOLUCION: 'devuelto', RECUPERADO: 'recuperado' };
+  var campo = { SALIDA: 'salido', DEVOLUCION: 'devuelto', RECUPERADO: 'recuperado', COMPRA_OBRA: 'comprado' };
   movFilas_(c).forEach(function (m) {
     if (!campo[m.tipo] || !m.obra || si_(m.anulado)) return;
     var k = m.obra + '|' + m.material_codigo + '|' + m.material;
-    if (!acc[k]) { acc[k] = { obra: m.obra, material_codigo: m.material_codigo, material: m.material, unidad: m.unidad, salido: 0, devuelto: 0, recuperado: 0 }; orden.push(k); }
+    if (!acc[k]) { acc[k] = { obra: m.obra, material_codigo: m.material_codigo, material: m.material, unidad: m.unidad, salido: 0, devuelto: 0, recuperado: 0, comprado: 0 }; orden.push(k); }
     acc[k][campo[m.tipo]] += Number(m.cantidad) || 0;
   });
-  // gastado = salido − devuelto − recuperado (lo encontrado de esa obra vuelve al almacén como una devolución)
-  orden.forEach(function (k) { var a = acc[k]; a.gastado = a.salido - a.devuelto - a.recuperado; });
+  // gastado = salido + comprado − devuelto − recuperado (lo encontrado de esa obra vuelve al almacén como una devolución)
+  orden.forEach(function (k) { var a = acc[k]; a.gastado = a.salido + a.comprado - a.devuelto - a.recuperado; });
   var h = hoja_(c.resumen), cab = h.getRange(1, 1, 1, h.getLastColumn()).getValues()[0];
   if (h.getLastRow() > 1) h.getRange(2, 1, h.getLastRow() - 1, cab.length).clearContent();
   var filas = orden.sort().map(function (k) { return cab.map(function (col) { return acc[k][col] === undefined ? '' : acc[k][col]; }); });
@@ -574,7 +574,10 @@ function porObra_(c) {
 }
 
 // ---------------------------------------------------------------- vales de almacén (varias líneas, un número)
-var TIPOS_VALE = ['ENTRADA', 'SALIDA', 'DEVOLUCION', 'RECUPERADO', 'TRASPASO'];   // ENTRADA = COMPRA y TRASPASO: solo admin
+// ENTRADA = COMPRA al almacén, COMPRA_OBRA = compra que va directa a una obra (no toca el stock), AJUSTE = inventario.
+// Solo admin: ENTRADA, COMPRA_OBRA, TRASPASO y AJUSTE.
+var TIPOS_VALE = ['ENTRADA', 'COMPRA_OBRA', 'SALIDA', 'DEVOLUCION', 'RECUPERADO', 'TRASPASO', 'AJUSTE'];
+var SOLO_ADMIN = ['ENTRADA', 'COMPRA_OBRA', 'TRASPASO', 'AJUSTE'], SIN_PERSONA = ['ENTRADA', 'COMPRA_OBRA', 'TRASPASO', 'AJUSTE'];
 function extension_(dataUrl) {
   var m = String(dataUrl).match(/^data:([^;]+);/), t = m ? m[1] : '';
   return t === 'application/pdf' ? '.pdf' : (t === 'image/png' ? '.png' : '.jpg');
@@ -586,27 +589,38 @@ function vale_(v) {
   if (ya) return { ok: true, repetido: true, numero: ya.numero };
   var tipo = String(v.tipo || '');
   if (TIPOS_VALE.indexOf(tipo) < 0) throw new Error('Tipo de vale no válido: ' + tipo);
-  if (tipo === 'ENTRADA') {
-    exigirAdmin_(v.auth);
+  if (SOLO_ADMIN.indexOf(tipo) >= 0) exigirAdmin_(v.auth);
+  var compra = tipo === 'ENTRADA' || tipo === 'COMPRA_OBRA';
+  if (compra) {
     if (!String(v.proveedor || '').trim() || !String(v.albaran || '').trim()) throw new Error('La compra necesita proveedor y nº de albarán o ticket');
     // el mismo albarán/ticket del mismo proveedor no se mete dos veces (las facturas no van en la app)
     var clave = normal_(v.proveedor) + '|' + normal_(v.albaran).replace(/[^a-z0-9]/g, '');
     var repetido = filas_('VALES').filter(function (f) {
-      return f.tipo === 'ENTRADA' && !si_(f.anulado) && normal_(f.proveedor) + '|' + normal_(f.albaran).replace(/[^a-z0-9]/g, '') === clave;
+      return (f.tipo === 'ENTRADA' || f.tipo === 'COMPRA_OBRA') && !si_(f.anulado) && normal_(f.proveedor) + '|' + normal_(f.albaran).replace(/[^a-z0-9]/g, '') === clave;
     })[0];
     if (repetido) throw new Error('Albarán ya registrado: vale ' + repetido.numero);
   }
-  var almacen = comprobarAlmacen_(v.almacen), destino = '';
+  // la compra a obra no entra en ningún almacén
+  var almacen = tipo === 'COMPRA_OBRA' ? '' : comprobarAlmacen_(v.almacen), destino = '';
   if (tipo === 'TRASPASO') {
-    exigirAdmin_(v.auth);
     destino = comprobarAlmacen_(v.almacenDestino || 'falta');
     if (destino === almacen) throw new Error('El traspaso tiene que ser a otro almacén');
   }
-  if (tipo !== 'ENTRADA' && tipo !== 'TRASPASO' && !String(v.obra || '').trim()) throw new Error('Falta la obra');
+  if (['ENTRADA', 'TRASPASO', 'AJUSTE'].indexOf(tipo) < 0 && !String(v.obra || '').trim()) throw new Error('Falta la obra');
   if (tipo === 'RECUPERADO' && !String(v.nota || '').trim()) throw new Error('Falta el comentario (dónde se encontró)');
-  var lineas = (v.lineas || []).filter(function (l) { return l && (l.material || l.materialNombre) && Number(l.cantidad) > 0; });
-  if (!lineas.length) throw new Error('El vale no tiene líneas');
   var mats = {}; filas_('MATERIALES').forEach(function (f) { mats[String(f.codigo)] = f; });
+  var lineas;
+  if (tipo === 'AJUSTE') {
+    // inventario: llega lo contado; la diferencia (contado − stock de ese almacén, puede ser negativa) se calcula aquí al guardar
+    var actual = {}; stock_().forEach(function (m) { actual[m.codigo] = (m.porAlmacen || {})[almacen] || 0; });
+    lineas = (v.lineas || []).filter(function (l) { return l && l.contado !== '' && l.contado != null && !isNaN(Number(l.contado)) && Number(l.contado) >= 0; })
+      .map(function (l) {
+        var cod = String(l.material);
+        if (!mats[cod] || !(cod in actual)) throw new Error('Material no válido para inventario: ' + cod);
+        return { material: cod, contado: Number(l.contado), cantidad: Math.round((Number(l.contado) - actual[cod]) * 1000) / 1000 };
+      });
+  } else lineas = (v.lineas || []).filter(function (l) { return l && (l.material || l.materialNombre) && Number(l.cantidad) > 0; });
+  if (!lineas.length) throw new Error('El vale no tiene líneas');
 
   var n = Number(config_('SIGUIENTE_MOV')) || 1;
   setConfig_('SIGUIENTE_MOV', n + 1);
@@ -625,13 +639,14 @@ function vale_(v) {
       if (b) urls.push(carp.createFile(b).getUrl());
     });
   }
-  var persona = tipo === 'ENTRADA' || tipo === 'TRASPASO' ? '' : (v.persona || v.usuario || '');
+  var persona = SIN_PERSONA.indexOf(tipo) >= 0 ? '' : (v.persona || v.usuario || '');
   var hora = v.hora ? "'" + v.hora : '';   // con ' para que la hoja no lo convierta en fecha
   lineas.forEach(function (l, i) {
     var mat = mats[String(l.material)] || { codigo: 'OTRO', nombre: String(l.materialNombre || l.material).trim().toUpperCase(), unidad: l.unidad || '' };
     var fila = { id: v.id + '-' + (i + 1), fecha: fechaES_(fecha), tipo: tipo, material_codigo: String(mat.codigo), material: mat.nombre,
       cantidad: Number(l.cantidad), unidad: mat.unidad || '', obra: tipo === 'TRASPASO' ? '' : (v.obra || ''), parte_numero: '', usuario: v.usuario || '', nota: v.nota || '',
-      creado_en: creadoEn, fotos: urls.join(' '), numero: numero, hora: hora, persona: persona, linea: i + 1, anulado: '', almacen: almacen };
+      creado_en: creadoEn, fotos: urls.join(' '), numero: numero, hora: hora, persona: persona, linea: i + 1, anulado: '', almacen: almacen,
+      contado: tipo === 'AJUSTE' ? l.contado : '' };
     if (tipo !== 'TRASPASO') return anadirFila_('MOVIMIENTOS', fila);
     // traspaso: sale de un almacén y entra en el otro (no es gasto de ninguna obra)
     anadirFila_('MOVIMIENTOS', Object.assign({}, fila, { id: fila.id + '-S', tipo: 'TRASPASO_SALE' }));
@@ -640,10 +655,10 @@ function vale_(v) {
   anadirFila_('VALES', { numero: numero, fecha: fechaES_(fecha), hora: hora, tipo: tipo, obra: v.obra || '', usuario: v.usuario || '', persona: persona,
     nota: v.nota || '', fotos: urls.join(' '), proveedor: v.proveedor || '', albaran: v.albaran || '', n_lineas: lineas.length,
     anulado: '', anulado_por: '', anulado_en: '', motivo_anulacion: '', creado_en: creadoEn, id: v.id,
-    tipo_doc: tipo === 'ENTRADA' ? (v.tipoDoc === 'TICKET' ? 'TICKET' : 'ALBARAN') : '', estado: tipo === 'ENTRADA' ? 'CONFIRMADA' : '',
+    tipo_doc: compra ? (v.tipoDoc === 'TICKET' ? 'TICKET' : 'ALBARAN') : '', estado: compra ? 'CONFIRMADA' : '',
     almacen: almacen, almacen_destino: destino });
   avisarStock_(lineas.map(function (l) { return String(l.material); }));
-  if (tipo !== 'ENTRADA' && tipo !== 'TRASPASO') try { porObra_(); } catch (err) { console.error('POR_OBRA: ' + err); }
+  if (['SALIDA', 'DEVOLUCION', 'RECUPERADO', 'COMPRA_OBRA'].indexOf(tipo) >= 0) try { porObra_(); } catch (err) { console.error('POR_OBRA: ' + err); }
   return { ok: true, numero: numero, fotos: urls, n_lineas: lineas.length };
 }
 
@@ -654,7 +669,7 @@ function listaVales_(fl) {
   filas_('MOVIMIENTOS').forEach(function (m) {
     if (!m.numero || !m.linea || m.tipo === 'TRASPASO_ENTRA') return;   // el traspaso se enseña una vez por línea
     (lineas[m.numero] = lineas[m.numero] || []).push({ linea: Number(m.linea), material_codigo: String(m.material_codigo), material: m.material,
-      cantidad: m.cantidad, unidad: m.unidad, anulado: si_(m.anulado) });
+      cantidad: m.cantidad, unidad: m.unidad, anulado: si_(m.anulado), contado: m.contado === '' || m.contado == null ? '' : m.contado });
   });
   var q = normal_(fl.trabajador), o = normal_(fl.obra);
   return filas_('VALES').filter(function (v) {

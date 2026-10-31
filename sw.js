@@ -1,5 +1,5 @@
 // Service worker APP SOLERA — guarda la app en el móvil para que abra sin cobertura
-var CACHE = 'solera-v7';
+var CACHE = 'solera-v8';
 var FICHEROS = ['./', './index.html', './config.js', './manifest.json', './icon-192.png', './icon-512.png',
   './almacen.html', './almacen/', './manifest-almacen.json', './icon-almacen-192.png', './icon-almacen-512.png'];
 
