@@ -30,7 +30,7 @@ var HOJAS = {
   PARTES_LINEAS: ['id','numero','fecha','obra','trabajador_codigo','trabajador','categoria','horas','horas_extra','firmado'],
   MOVIMIENTOS: ['id','fecha','tipo','material_codigo','material','cantidad','unidad','obra','parte_numero','usuario','nota','creado_en','fotos','numero','hora','persona','linea','anulado'],
   // un vale de almacén = una fila aquí + sus líneas en MOVIMIENTOS (mismo numero, linea 1, 2, 3…)
-  VALES: ['numero','fecha','hora','tipo','obra','usuario','persona','nota','fotos','proveedor','albaran','n_lineas','anulado','anulado_por','anulado_en','motivo_anulacion','creado_en','id'],
+  VALES: ['numero','fecha','hora','tipo','obra','usuario','persona','nota','fotos','proveedor','albaran','n_lineas','anulado','anulado_por','anulado_en','motivo_anulacion','creado_en','id','tipo_doc','estado'],   // estado: PENDIENTE_LEER / CONFIRMADA
   STOCK: ['codigo','nombre','unidad','entradas','salidas','stock','stock_min','aviso'],
   FIRMANTES: ['nombre','email','obra_ultima','veces','actualizado_en'],
   POR_OBRA: ['obra','material_codigo','material','unidad','salido','devuelto','gastado','recuperado'],
@@ -50,7 +50,7 @@ function clase_(c) { return CLASES[c === 'HER' ? 'HER' : 'MAT']; }
 function movFilas_(c) {
   return filas_(c.mov).map(function (f) { f.material_codigo = f[c.cod]; f.material = f[c.nom]; return f; });
 }
-var ESQUEMA = '9';            // subir cuando cambien las columnas de HOJAS
+var ESQUEMA = '10';            // subir cuando cambien las columnas de HOJAS
 var EMAIL_COPIA = 'soleracanarias@gmail.com';
 var CSV_NOMBRE = 'PARTES APP 2026.csv';  // se crea en la carpeta CARPETA_CSV_ID de CONFIG (CLIENTES\PARTES\APP)
 var CSV_COLUMNAS = ['N_PARTE','FECHA','DIA_SEMANA','CLIENTE','OBRA','COD_OBRA_APP','RESP_CLIENTE','RESP_CERT','RESP_SOLERA','MATRICULA',
@@ -512,7 +512,13 @@ function vale_(v) {
   if (TIPOS_VALE.indexOf(tipo) < 0) throw new Error('Tipo de vale no válido: ' + tipo);
   if (tipo === 'ENTRADA') {
     exigirAdmin_(v.auth);
-    if (!String(v.proveedor || '').trim() || !String(v.albaran || '').trim()) throw new Error('La compra necesita proveedor y nº de albarán/factura');
+    if (!String(v.proveedor || '').trim() || !String(v.albaran || '').trim()) throw new Error('La compra necesita proveedor y nº de albarán o ticket');
+    // el mismo albarán/ticket del mismo proveedor no se mete dos veces (las facturas no van en la app)
+    var clave = normal_(v.proveedor) + '|' + normal_(v.albaran).replace(/[^a-z0-9]/g, '');
+    var repetido = filas_('VALES').filter(function (f) {
+      return f.tipo === 'ENTRADA' && !si_(f.anulado) && normal_(f.proveedor) + '|' + normal_(f.albaran).replace(/[^a-z0-9]/g, '') === clave;
+    })[0];
+    if (repetido) throw new Error('Albarán ya registrado: vale ' + repetido.numero);
   }
   if (tipo !== 'ENTRADA' && !String(v.obra || '').trim()) throw new Error('Falta la obra');
   if (tipo === 'RECUPERADO' && !String(v.nota || '').trim()) throw new Error('Falta el comentario (dónde se encontró)');
@@ -547,7 +553,8 @@ function vale_(v) {
   });
   anadirFila_('VALES', { numero: numero, fecha: fechaES_(fecha), hora: hora, tipo: tipo, obra: v.obra || '', usuario: v.usuario || '', persona: persona,
     nota: v.nota || '', fotos: urls.join(' '), proveedor: v.proveedor || '', albaran: v.albaran || '', n_lineas: lineas.length,
-    anulado: '', anulado_por: '', anulado_en: '', motivo_anulacion: '', creado_en: creadoEn, id: v.id });
+    anulado: '', anulado_por: '', anulado_en: '', motivo_anulacion: '', creado_en: creadoEn, id: v.id,
+    tipo_doc: tipo === 'ENTRADA' ? (v.tipoDoc === 'TICKET' ? 'TICKET' : 'ALBARAN') : '', estado: tipo === 'ENTRADA' ? 'CONFIRMADA' : '' });
   avisarStock_(lineas.map(function (l) { return String(l.material); }));
   if (tipo !== 'ENTRADA') try { porObra_(); } catch (err) { console.error('POR_OBRA: ' + err); }
   return { ok: true, numero: numero, fotos: urls, n_lineas: lineas.length };
@@ -573,7 +580,7 @@ function listaVales_(fl) {
     return true;
   }).reverse().slice(0, 300).map(function (v) {
     return { numero: v.numero, fecha: txtFecha_(v.fecha, 'dd/MM/yyyy'), hora: String(v.hora || ''), tipo: v.tipo, obra: v.obra, usuario: v.usuario,
-      persona: v.persona, nota: v.nota, proveedor: v.proveedor, albaran: v.albaran, n_lineas: v.n_lineas,
+      persona: v.persona, nota: v.nota, proveedor: v.proveedor, albaran: v.albaran, tipo_doc: v.tipo_doc || '', estado: v.estado || '', n_lineas: v.n_lineas,
       fotos: String(v.fotos || '').split(' ').filter(function (u) { return u; }), anulado: si_(v.anulado), anulado_por: v.anulado_por,
       anulado_en: String(v.anulado_en || ''), motivo_anulacion: v.motivo_anulacion,
       lineas: (lineas[v.numero] || []).sort(function (a, b) { return a.linea - b.linea; }) };

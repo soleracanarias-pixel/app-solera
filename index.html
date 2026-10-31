@@ -119,6 +119,13 @@ a.ayuda{display:inline-block;color:var(--azul)}
 .total{font-weight:700;color:var(--azul);text-align:right;margin-top:6px}
 .toast{position:fixed;left:50%;bottom:80px;transform:translateX(-50%);background:#222;color:#fff;padding:10px 16px;border-radius:20px;font-size:14px;opacity:0;transition:.3s;z-index:30;pointer-events:none;max-width:90%}
 .toast.ver{opacity:1}
+.toast.ok{background:var(--verde);font-size:16px;font-weight:600}
+.toast.err{background:var(--rojo)}
+.dlg{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:40;display:none;align-items:center;justify-content:center;padding:16px}
+.dlg.ver{display:flex}
+.dlg-caja{background:#fff;border-radius:12px;padding:16px;max-width:420px;width:100%}
+.dlg-caja p{margin:0 0 6px;font-size:16px;white-space:pre-line}
+.dlg-caja .btn{margin-top:8px}
 a{color:var(--azul)}
 </style>
 </head>
@@ -244,9 +251,11 @@ a{color:var(--azul)}
     <div class="ayuda" id="movCuando"></div>
     <div id="compraBloque" style="display:none">
       <label>Proveedor</label><input type="text" id="valeProveedor" placeholder="Sobradillo, Rosalesa…">
-      <label>Nº de albarán o factura</label><input type="text" id="valeAlbaran">
+      <label>Documento</label><select id="valeTipoDoc"><option value="ALBARAN">Albarán</option><option value="TICKET">Ticket</option></select>
+      <label>Nº de albarán o ticket</label><input type="text" id="valeAlbaran">
+      <div class="ayuda">Las facturas no se meten en la app.</div>
       <input type="file" id="valeAlbaranInput" accept="image/*,application/pdf,.pdf" style="display:none">
-      <button class="btn sec peq" id="valeBtnAlbaran">📎 Albarán: foto o fichero (jpg, png, pdf)</button>
+      <button class="btn sec peq" id="valeBtnAlbaran">📎 Foto o fichero del albarán/ticket (jpg, png, pdf)</button>
       <div class="ayuda" id="valeAlbaranNombre"></div>
     </div>
     <div id="movMatBloque"><label id="movMatLabel">Material</label><input type="text" id="movMatTxt" placeholder="Escribe el material…" autocomplete="off"><div class="sugs" id="movMatSugs" style="display:none"></div></div>
@@ -340,6 +349,7 @@ a{color:var(--azul)}
 </div>
 
 <div class="toast" id="toast"></div>
+<div class="dlg" id="dlg"><div class="dlg-caja"><p id="dlgTxt"></p><div class="fila"><button class="btn peq sec" id="dlgNo">No</button><button class="btn peq verde" id="dlgSi">Sí</button></div></div></div>
 
 <script src="config.js"></script>
 <script>
@@ -380,7 +390,22 @@ var DB = {
 // ---------------------------------------------------------------- estado
 var S = { datos: null, usuario: null, firma: null, fotos: [], movFotos: [], pantalla: 'parte', movTipo: 'ENTRADA' };
 
-function toast(msg) { var t = $('toast'); t.textContent = msg; t.classList.add('ver'); clearTimeout(t._t); t._t = setTimeout(function () { t.classList.remove('ver'); }, 2600); }
+// avisos dentro de la app (nada de ventanas del navegador): tipo 'ok' (verde) o 'err' (rojo)
+function toast(msg, tipo) {
+  var t = $('toast'); t.textContent = msg; t.className = 'toast ver' + (tipo ? ' ' + tipo : '');
+  clearTimeout(t._t); t._t = setTimeout(function () { t.classList.remove('ver'); }, tipo ? 4500 : 2600);
+}
+// pregunta dentro de la app; devuelve una promesa con true (Sí) o false (No)
+function preguntar(texto, si, no) {
+  return new Promise(function (res) {
+    $('dlgTxt').textContent = texto; $('dlgSi').textContent = si || 'Sí'; $('dlgNo').textContent = no || 'No';
+    $('dlg').classList.add('ver');
+    var fin = function (v) { $('dlg').classList.remove('ver'); res(v); };
+    $('dlgSi').onclick = function () { fin(true); }; $('dlgNo').onclick = function () { fin(false); };
+  });
+}
+// la huella solo en móviles, no en el ordenador
+function esMovil() { return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && /Macintosh/.test(navigator.userAgent)); }
 function aviso(id, msg, tipo) { $(id).innerHTML = msg ? '<div class="aviso ' + (tipo || '') + '">' + msg + '</div>' : ''; }
 function hoyISO() { var d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
 function fechaES(iso) { var m = String(iso || '').match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? m[3] + '/' + m[2] + '/' + m[1] : String(iso || ''); }
@@ -473,13 +498,16 @@ function ofrecerHuella(u) {
   Promise.all([DB.get('kv', 'huella'), DB.get('kv', 'huellaNo')]).then(function (r) {
     var h = r[0];
     if ((h && String(h.codigo) === String(u.codigo)) || r[1] === String(u.codigo)) return;   // ya puesta, o dijo que no
+    if (!esMovil()) return;
     return huella.disponible().then(function (si) {
       if (!si) return;
-      if (!confirm('¿Activar la huella? A partir de ahora entrarás como desbloqueas tu móvil (huella, cara o su PIN), sin el PIN de la app.')) return DB.put('kv', String(u.codigo), 'huellaNo');
-      return huella.crear(u).then(function (id) { return DB.put('kv', { codigo: u.codigo, id: id }, 'huella'); })
-        .then(function () { toast('Huella activada'); });
+      return preguntar('¿Activar la huella?\nA partir de ahora entrarás como desbloqueas tu móvil (huella, cara o su PIN), sin el PIN de la app.', 'Activar', 'Ahora no').then(function (ok) {
+        if (!ok) return DB.put('kv', String(u.codigo), 'huellaNo');
+        return huella.crear(u).then(function (id) { return DB.put('kv', { codigo: u.codigo, id: id }, 'huella'); })
+          .then(function () { toast('Huella activada', 'ok'); });
+      });
     });
-  }).catch(function (e) { aviso('loginAviso', ''); alert('No se pudo activar la huella (' + motivo(e) + ').\nLa app seguirá abriéndose sin pedir nada.'); });
+  }).catch(function (e) { toast('No se pudo activar la huella (' + motivo(e) + '). La app seguirá abriéndose sin pedir nada.', 'err'); });
 }
 function mostrarLogin() {
   $('btnSalir').style.display = 'none'; $('nav').style.display = 'none'; $('quien').textContent = '';
@@ -489,7 +517,7 @@ function mostrarLogin() {
     S.dueno = d || null;
     $('duenoBloque').style.display = d ? '' : 'none'; $('loginLista').style.display = d ? 'none' : '';
     if (d) { $('duenoNombre').textContent = d.nombre; $('loginTrab').value = String(d.codigo); }
-    var conHuella = !!(d && h && String(h.codigo) === String(d.codigo));
+    var conHuella = !!(d && h && String(h.codigo) === String(d.codigo)) && esMovil();
     // con huella: se entra con la huella o el PIN del propio móvil; el PIN de la app queda como plan B
     $('huellaBloque').style.display = conHuella ? '' : 'none';
     $('pinBloque').style.display = conHuella ? 'none' : '';
@@ -513,8 +541,10 @@ $('usarPinApp').onclick = function (e) { e.preventDefault(); $('pinBloque').styl
 // sin huella, la app abre directamente (la protege el bloqueo del propio móvil)
 $('quitarHuella').onclick = function (e) {
   e.preventDefault();
-  if (!confirm('¿Quitar la huella? La app se abrirá directamente, sin pedir nada, mientras no pulses Salir.')) return;
+  preguntar('¿Quitar la huella?\nLa app se abrirá directamente, sin pedir nada, mientras no pulses Salir.', 'Quitar', 'Cancelar').then(function (ok) {
+  if (!ok) return;
   DB.del('kv', 'huella').then(function () { return DB.put('kv', String(S.dueno.codigo), 'huellaNo'); }).then(function () { $('huellaBloque').style.display = 'none'; aviso('loginAviso', 'Huella quitada. Entra con tu PIN una vez.', 'ok'); });
+  });
 };
 function motivo(e) { return ((e && e.name) || 'error') + (e && e.message ? ': ' + e.message : ''); }
 // rol: admin / encargado / oficial (lo comprueba también el servidor; aquí solo se enseña u oculta)
@@ -542,6 +572,11 @@ function cambiar(p) {
   if (p === 'almacen') pintarStock();
   if (p === 'herramientas') pintarHerr();
   document.body.classList.toggle('ancho', p === 'vales');   // la pantalla de vales, más ancha en el ordenador
+  if (p === 'vales' && !S.vales) {   // al abrirla, los últimos 30 días sin pulsar Buscar
+    var d = new Date(); d.setDate(d.getDate() - 30);
+    $('fDesde').value = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    $('fHasta').value = hoyISO(); buscarVales();
+  }
   if (p === 'enviados') pintarEnviados();
   window.scrollTo(0, 0);
 }
@@ -774,7 +809,10 @@ $('btnGuardarParte').onclick = function () {
   if (!$('trabajos').value.trim()) return aviso('parteAviso', 'Escribe los trabajos realizados.', 'err');
   var email = $('firmanteEmail').value.trim();
   if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return aviso('parteAviso', 'El correo para la copia no es válido.', 'err');
-  if (!S.firma && !confirm('El parte va SIN FIRMA del cliente. ¿Guardar igualmente?')) return;
+  if (!S.firma && !S.sinFirmaOk) return preguntar('El parte va SIN FIRMA del cliente. ¿Guardar igualmente?', 'Guardar sin firma', 'Volver').then(function (ok) {
+    if (ok) { S.sinFirmaOk = true; $('btnGuardarParte').onclick(); }
+  });
+  S.sinFirmaOk = false;
   var obraTxt = $('obra').options[$('obra').selectedIndex].text;
   var parte = {
     id: uid(), tipo: 'parte', fecha: $('fecha').value || hoyISO(), obra: obra, obraNombre: obraTxt,
@@ -888,8 +926,8 @@ function abrirMov(tipo, clase) {
   if (vale) {
     $('movCantBloque').style.display = 'none';
     $('valeLineas').innerHTML = ''; filaVale();
-    $('valeProveedor').value = ''; $('valeAlbaran').value = ''; S.albaranArchivo = null; $('valeAlbaranNombre').textContent = '';
-    $('movTitulo').textContent = TIPO_VALE[tipo] + (tipo === 'SALIDA' ? ' (salida a obra)' : tipo === 'DEVOLUCION' ? ' (vuelve al almacén)' : tipo === 'RECUPERADO' ? ' (material que aparece sin albarán)' : ' (entrada con albarán)');
+    $('valeProveedor').value = ''; $('valeAlbaran').value = ''; $('valeTipoDoc').value = 'ALBARAN'; S.albaranArchivo = null; $('valeAlbaranNombre').textContent = '';
+    $('movTitulo').textContent = TIPO_VALE[tipo] + (tipo === 'SALIDA' ? ' (salida a obra)' : tipo === 'DEVOLUCION' ? ' (vuelve al almacén)' : tipo === 'RECUPERADO' ? ' (material que aparece sin albarán)' : ' (entrada con albarán o ticket)');
     $('movObraLabel').textContent = tipo === 'RECUPERADO' ? 'Obra de procedencia' : 'Obra';
     $('movPersonaLabel').textContent = { SALIDA: '¿Quién se lo lleva?', DEVOLUCION: '¿Quién lo devuelve?', RECUPERADO: '¿Quién lo encontró?' }[tipo] || '';
     $('movNotaLabel').textContent = tipo === 'RECUPERADO' ? 'Comentario: dónde y cómo se encontró (obligatorio)' : 'Comentario';
@@ -940,11 +978,11 @@ function guardarVale() {
   if (conObra && !$('movObra').value) return toast('Elige la obra');
   if (tipo === 'RECUPERADO' && !nota) return toast('Escribe dónde y cómo se encontró');
   var proveedor = $('valeProveedor').value.trim(), albaran = $('valeAlbaran').value.trim();
-  if (tipo === 'ENTRADA' && (!proveedor || !albaran)) return toast('La compra necesita proveedor y nº de albarán o factura');
+  if (tipo === 'ENTRADA' && (!proveedor || !albaran)) return toast('La compra necesita proveedor y nº de albarán o ticket');
   var obraSel = $('movObra'), obraTxt = conObra ? obraSel.options[obraSel.selectedIndex].text : '';
   var vale = { id: uid(), tipo: 'vale', valeTipo: tipo, obra: obraTxt, persona: conObra ? ($('movPersonaTxt').value.trim() || S.usuario.nombre) : '',
     nota: nota, fotos: S.movFotos.slice(), albaranArchivo: tipo === 'ENTRADA' ? S.albaranArchivo : null, proveedor: tipo === 'ENTRADA' ? proveedor : '',
-    albaran: tipo === 'ENTRADA' ? albaran : '', lineas: lineas, fecha: hoyISO(), hora: S.movCuando.slice(11), usuario: S.usuario.nombre, creadoEn: new Date().toISOString() };
+    albaran: tipo === 'ENTRADA' ? albaran : '', tipoDoc: tipo === 'ENTRADA' ? $('valeTipoDoc').value : '', lineas: lineas, fecha: hoyISO(), hora: S.movCuando.slice(11), usuario: S.usuario.nombre, creadoEn: new Date().toISOString() };
   // la compra va con el código y PIN de quien la hace: el servidor comprueba que es admin
   (tipo === 'ENTRADA' ? DB.get('kv', 'pin-' + S.usuario.codigo) : Promise.resolve(null)).then(function (pin) {
     if (tipo === 'ENTRADA') {
@@ -955,7 +993,11 @@ function guardarVale() {
       lineas.forEach(function (l) { if (l.material === m.codigo) m.stock += (tipo === 'SALIDA' ? -l.cantidad : l.cantidad); });
     });
     DB.put('kv', S.datos, 'datos');
-    return DB.put('cola', vale).then(function () { $('movForm').style.display = 'none'; pintarStock(); toast('Vale guardado'); actualizarPend(); sincronizar(); });
+    return DB.put('cola', vale).then(function () {
+      $('movForm').style.display = 'none'; pintarStock(); actualizarPend();
+      if (!navigator.onLine) return toast('Guardado en el móvil, se enviará solo', 'ok');
+      toast('Enviando vale…'); sincronizar();
+    });
   });
 }
 $('btnEntrada').onclick = function () { abrirMov('ENTRADA'); };
@@ -1025,7 +1067,7 @@ $('valesLista').onclick = function (e) {
   d.innerHTML = '<table>' + x.lineas.map(function (l) {
       return '<tr' + (l.anulado ? ' class="anulado"' : '') + '><td>' + l.linea + '</td><td><b>' + esc(l.material) + '</b>' + (l.material_codigo === 'OTRO' ? ' <span class="chip pend">OTRO</span>' : '') + '</td><td>' + esc(l.cantidad) + ' ' + esc(l.unidad || '') + '</td></tr>';
     }).join('') + '</table>' +
-    (x.proveedor ? '<div>Proveedor: <b>' + esc(x.proveedor) + '</b> · Albarán/factura: <b>' + esc(x.albaran) + '</b></div>' : '') +
+    (x.proveedor ? '<div>Proveedor: <b>' + esc(x.proveedor) + '</b> · ' + (x.tipo_doc === 'TICKET' ? 'Ticket' : 'Albarán') + ': <b>' + esc(x.albaran) + '</b>' + (x.estado ? ' · ' + esc(x.estado) : '') + '</div>' : '') +
     (x.nota ? '<div>Comentario: ' + esc(x.nota) + '</div>' : '') +
     (x.fotos.length ? '<div>' + x.fotos.map(function (u, i) { return '<a href="' + esc(u) + '" target="_blank">📎 adjunto ' + (i + 1) + '</a>'; }).join(' · ') + '</div>' : '') +
     (x.anulado ? '<div style="color:var(--rojo)">ANULADO por ' + esc(x.anulado_por) + ' el ' + esc(x.anulado_en) + ': ' + esc(x.motivo_anulacion) + '</div>'
@@ -1035,10 +1077,12 @@ $('valesLista').onclick = function (e) {
   if (b) b.onclick = function () {
     var motivo = d.querySelector('.motivo').value.trim();
     if (!motivo) return toast('Escribe el motivo');
-    if (!confirm('¿Anular el vale ' + x.numero + '? No se borra: queda marcado como anulado y deja de contar en el stock.')) return;
+    preguntar('¿Anular el vale ' + x.numero + '?\nNo se borra: queda marcado como anulado y deja de contar en el stock.', 'Anular', 'Cancelar').then(function (si) {
+    if (!si) return;
     authAdmin().then(function (auth) { return api('anularVale', { auth: auth, numero: x.numero, motivo: motivo }); })
-      .then(function () { toast('Vale ' + x.numero + ' anulado'); buscarVales(); cargarDatos(true); })
-      .catch(function (e) { toast('No se pudo anular: ' + e.message); });
+      .then(function () { toast('Vale ' + x.numero + ' anulado', 'ok'); buscarVales(); cargarDatos(true); })
+      .catch(function (e) { toast('No se pudo anular: ' + e.message, 'err'); });
+    });
   };
 };
 
@@ -1063,29 +1107,40 @@ function sincronizar() {
           ? api('crearParte', { parte: it })
           : it.tipo === 'vale'
           ? api('vale', { vale: { id: it.id, tipo: it.valeTipo, obra: it.obra, persona: it.persona, nota: it.nota, fotos: it.fotos || [], albaranArchivo: it.albaranArchivo || null,
-              proveedor: it.proveedor, albaran: it.albaran, lineas: it.lineas, fecha: it.fecha, hora: it.hora, usuario: it.usuario, auth: it.auth || null } })
+              proveedor: it.proveedor, albaran: it.albaran, tipoDoc: it.tipoDoc || '', lineas: it.lineas, fecha: it.fecha, hora: it.hora, usuario: it.usuario, auth: it.auth || null } })
           : api('movimiento', { mov: { id: it.id, tipo: it.movTipo, material: it.material, cantidad: it.cantidad, obra: it.obra, nota: it.nota, fotos: it.fotos || [], fecha: it.fecha, usuario: it.usuario, materialNombre: it.materialNombre, hora: it.hora, clase: it.clase || 'MAT', persona: it.persona || '', tipoHer: it.tipoHer || '', codigoNuevo: it.codigoNuevo || '' } });
         return llamada.then(function (j) {
           enviados++;
+          // confirmación clara con el número
+          if (it.tipo === 'vale') toast('Vale ' + j.numero + ' guardado', 'ok');
+          else if (it.tipo === 'parte') toast('Parte Nº ' + j.numero + ' guardado', 'ok');
           var h = { id: it.id, tipo: it.tipo, fecha: it.fecha, obra: it.obraNombre || it.obra, numero: j.numero || '', pdf_url: j.pdf_url || '', firmado: !!it.firma, enviadoEn: new Date().toISOString(), copia: j.copia_enviada_a || '', copiaError: j.copia_error || '', resumen: it.tipo === 'vale' ? 'Vale · ' + TIPO_VALE[it.valeTipo] + ' · ' + it.lineas.length + (it.lineas.length === 1 ? ' línea' : ' líneas') + (it.obra ? ' · ' + it.obra : (it.proveedor ? ' · ' + it.proveedor : ''))
             : it.tipo === 'mov' ? (it.clase === 'HER'
             ? '🔧 ' + (it.movTipo === 'ENTRADA' ? 'ALTA ' : it.movTipo + ' ') + it.materialNombre + (it.tipoHer ? ' → número ' + (j.herramienta || '?') + (j.cambiado ? ' ⚠️ CAMBIADO: tenía ' + it.codigoNuevo + ', corrige el número en la máquina' : '') : '')
             : it.movTipo + ' ' + it.cantidad + ' ' + (it.materialNombre || it.material)) + (it.persona ? ' · ' + it.persona : '') : '', hora: it.hora || '' };
           return DB.put('hist', h).then(function () { return DB.del('cola', it.id); });
         }).catch(function (e) {
+          // sin cobertura se queda en cola; si el servidor lo rechaza, se avisa
+          if (it.tipo === 'vale' && navigator.onLine && !/fetch|network|Failed/i.test(e.message)) toast('El vale no se ha guardado: ' + e.message, 'err');
           it.error = e.message; it.intentos = (it.intentos || 0) + 1; return DB.put('cola', it);
         });
       });
     });
-    return p.then(function () { if (enviados) toast(enviados + ' elemento(s) enviados'); });
+    return p;
   }).then(function () { sincronizando = false; return actualizarPend(); })
     .then(function (n) { if (n === 0 && navigator.onLine) cargarDatos(true); })
     .catch(function () { sincronizando = false; });
 }
+$('colaLista').onclick = function (e) {
+  var b = e.target.closest('.descartar'); if (!b) return;
+  preguntar('¿Quitar este pendiente del móvil?\nNo se enviará. Úsalo solo si el servidor lo rechaza (por ejemplo, albarán ya registrado).', 'Quitar', 'Cancelar').then(function (ok) {
+    if (ok) DB.del('cola', b.dataset.id).then(function () { actualizarPend(); pintarEnviados(); toast('Pendiente quitado'); });
+  });
+};
 function pintarEnviados() {
   DB.all('cola').then(function (c) {
     $('colaLista').innerHTML = c.length ? c.map(function (it) {
-      return '<div class="item"><div><b>' + (it.tipo === 'parte' ? 'Parte · ' + esc(it.obraNombre) : it.tipo === 'vale' ? 'Vale · ' + TIPO_VALE[it.valeTipo] + ' · ' + it.lineas.length + ' línea(s)' + (it.obra ? ' · ' + esc(it.obra) : '') : (it.clase === 'HER' ? 'Herramientas · ' : 'Almacén · ') + esc(it.movTipo) + ' ' + it.cantidad + ' ' + esc(it.materialNombre || it.material)) + '</b><small>' + fechaES(it.fecha) + (it.hora ? ' ' + esc(it.hora) : '') + (it.error ? ' · <span style="color:var(--rojo)">' + esc(it.error) + '</span>' : '') + '</small></div><span class="chip ' + (it.error ? 'err' : 'pend') + '">' + (it.error ? 'reintentar' : 'pendiente') + '</span></div>';
+      return '<div class="item"><div><b>' + (it.tipo === 'parte' ? 'Parte · ' + esc(it.obraNombre) : it.tipo === 'vale' ? 'Vale · ' + TIPO_VALE[it.valeTipo] + ' · ' + it.lineas.length + ' línea(s)' + (it.obra ? ' · ' + esc(it.obra) : '') : (it.clase === 'HER' ? 'Herramientas · ' : 'Almacén · ') + esc(it.movTipo) + ' ' + it.cantidad + ' ' + esc(it.materialNombre || it.material)) + '</b><small>' + fechaES(it.fecha) + (it.hora ? ' ' + esc(it.hora) : '') + (it.error ? ' · <span style="color:var(--rojo)">' + esc(it.error) + '</span>' : '') + '</small></div>' + (it.error ? '<button class="chip err descartar" data-id="' + esc(it.id) + '">quitar</button>' : '<span class="chip pend">pendiente</span>') + '</div>';
     }).join('') : '<div class="aviso ok">Todo enviado.</div>';
   });
   DB.all('hist').then(function (h) {
