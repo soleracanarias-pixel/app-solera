@@ -217,7 +217,7 @@ Radiografía sacada del código del repositorio (`main`, PASO 6) y de una lectur
 
 ## 6) VERSIONES
 
-- **Publicado en Apps Script (comprobado con clasp el 31/10/2026):** la implementación de la app (`AKfycbxon542…`, la de `config.js`) está en la **versión 9** ("PASO 6d+6e", 31/10/2026), que es **exactamente el `backend/Code.gs` del repositorio** (`ESQUEMA = '11'`). La 8 era el PASO 6b y la 7 el PASO 6.
+- **Publicado en Apps Script (comprobado con clasp el 31/10/2026):** la implementación de la app (`AKfycbxon542…`, la de `config.js`) está en la **versión 10** ("PASO 7: almacenes", 31/10/2026), que es **exactamente el `backend/Code.gs` del repositorio** (`ESQUEMA = '12'`). La 9 era el PASO 6d+6e, la 8 el 6b y la 7 el 6.
 - **`instalar` ya se ejecutó** con el PASO 6: roles en TRABAJADORES, fórmulas nuevas de STOCK y pestaña VALES (ya con `tipo_doc` y `estado`). No hace falta repetirlo para el 6b.
 - **Cómo se publica a partir de ahora:** con clasp desde Claude Code (`clasp push`, `clasp create-version`, `clasp update-deployment AKfycbxon542… -V <n>`), o a mano como hasta ahora (pegar, guardar y luego Implementar → Gestionar implementaciones → ✎ → Versión nueva). clasp necesita el inicio de sesión de Mateo, que se guarda en el entorno de la sesión y se pierde al cerrarla.
 - **En la hoja hay datos de prueba de otra sesión:** el trabajador 990 "PRUEBA (Claude)" y el vale A0003 (anulado).
@@ -273,7 +273,7 @@ Radiografía sacada del código del repositorio (`main`, PASO 6) y de una lectur
 - 65 filas, **62 activas**; 43 con partida de Mercadona (columna `codigo_mercadona`). No se ha borrado nada:
   PANDA, CUBO y MOR-ENL (juntado con MOR-BLA) quedan con activo = NO. Copia de antes en la pestaña **MATERIALES_ANTES_6D**.
 - Nuevos: COL-POR (MB9885), YES-RAP, YES-PRO, MAS-PU, MALL-6 y CRUCETAS (M48042; las cuñas siguen en CUNAS, MC0287).
-- Columna **`almacen`**: NO en AGUA, HORMIGON, ZAHORRA, PIC-M3, ARE-M3 y REV-M3 (van directo a obra). Salen en los partes,
+- Columna **`en_almacen`** (antes `almacen`, renombrada en el PASO 7): NO en AGUA, HORMIGON, ZAHORRA, PIC-M3, ARE-M3 y REV-M3 (van directo a obra). Salen en los partes,
   pero no en los vales, ni en el stock de la app, ni en la pestaña STOCK (ni saldrán en el inventario).
 - Lo nuevo que no esté en la lista entra como OTRO (no se añaden más materiales de Mercadona).
 
@@ -290,3 +290,21 @@ de ARRAYFORMULA). Ahora usa SUMIF con clave código|tipo|anulado; comprobado en 
 **No hay que ejecutar nada:** la lista y las fórmulas de STOCK las escribió Claude directamente en la hoja APP SOLERA,
 y `instalar()` ya genera las fórmulas nuevas si algún día se vuelve a ejecutar. `aplicarMaterialesPropuesta()` se queda en
 Code.gs para futuras versiones del CSV (lee el CSV de GitHub; la primera vez pedirá permiso para conectarse a internet).
+
+---
+
+## 9) PASO 7 — DOS ALMACENES Y TRASPASOS (publicado, versión 10)
+
+- **Pestaña ALMACENES** (codigo, nombre, direccion, activo, por_defecto): MAT = ALMACÉN LA MATANZA (por defecto) y AGU = ALMACÉN AGÜIMES.
+  En la app se ve "ALMACÉN LA MATANZA · C/ Chamiana 21"; el código solo en la hoja. Para añadir otro almacén basta una fila nueva.
+- **Cada vale guarda su almacén** (columna `almacen` en VALES y MOVIMIENTOS). Los vales anteriores pasaron a MAT.
+- **Selector de almacén arriba del formulario**: por defecto LA MATANZA; cada móvil recuerda el último que usó su dueño (se puede cambiar).
+- **TRASPASO** (solo admin, con PIN): de un almacén a otro, con líneas. En MOVIMIENTOS cada línea son dos filas
+  (TRASPASO_SALE en el origen y TRASPASO_ENTRA en el destino); en VALES, `almacen` = origen y `almacen_destino` = destino.
+  No cuenta como gasto de ninguna obra (no entra en POR_OBRA) y el total no cambia. Se anula como cualquier vale.
+- **Stock por almacén y total**: en "Ver stock" se elige el almacén o TOTAL (en TOTAL se ve el desglose). La pestaña STOCK
+  tiene el total (entradas, salidas, stock) y una columna `stock_MAT`, `stock_AGU`… por almacén. En Vales hay filtro por almacén.
+- La columna `almacen` (SI/NO) de MATERIALES se llama ahora **`en_almacen`**.
+- **Hecho ya en la hoja por Claude** (no hay que ejecutar nada): pestaña ALMACENES, columnas nuevas, vales antiguos a MAT y fórmulas
+  de STOCK. Si se añade un almacén, ejecutar `instalar()` para que STOCK tenga su columna.
+- **Pendiente:** el AJUSTE de inventario llegará con el inventario (también guardará su almacén). Las herramientas siguen sin almacén.

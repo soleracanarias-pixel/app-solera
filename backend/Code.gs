@@ -25,12 +25,14 @@ var HOJAS = {
   CONFIG: ['clave','valor'],
   TRABAJADORES: ['codigo','nombre','categoria','pin','activo','encargado','rol'],   // rol: admin / encargado / oficial
   OBRAS: ['codigo','nombre','cliente','activa'],
-  MATERIALES: ['codigo','nombre','unidad','stock_min','activo','orden','categoria','codigo_mercadona','almacen','alias','uso_base'],   // almacen NO = va directo a obra: sale en partes, no en stock ni vales
+  MATERIALES: ['codigo','nombre','unidad','stock_min','activo','orden','categoria','codigo_mercadona','en_almacen','alias','uso_base'],   // en_almacen NO = va directo a obra: sale en partes, no en stock ni vales
   PARTES: ['id','numero','fecha','obra_codigo','obra','cliente','creado_por','trabajadores','total_horas','trabajos','materiales','medios','observaciones','firmado','firmante','pdf_url','fotos','creado_en','origen','firmado_en','copia_enviada_a','copia_enviada_en','copia_error'],
   PARTES_LINEAS: ['id','numero','fecha','obra','trabajador_codigo','trabajador','categoria','horas','horas_extra','firmado'],
-  MOVIMIENTOS: ['id','fecha','tipo','material_codigo','material','cantidad','unidad','obra','parte_numero','usuario','nota','creado_en','fotos','numero','hora','persona','linea','anulado'],
+  MOVIMIENTOS: ['id','fecha','tipo','material_codigo','material','cantidad','unidad','obra','parte_numero','usuario','nota','creado_en','fotos','numero','hora','persona','linea','anulado','almacen'],
   // un vale de almacén = una fila aquí + sus líneas en MOVIMIENTOS (mismo numero, linea 1, 2, 3…)
-  VALES: ['numero','fecha','hora','tipo','obra','usuario','persona','nota','fotos','proveedor','albaran','n_lineas','anulado','anulado_por','anulado_en','motivo_anulacion','creado_en','id','tipo_doc','estado'],   // estado: PENDIENTE_LEER / CONFIRMADA
+  VALES: ['numero','fecha','hora','tipo','obra','usuario','persona','nota','fotos','proveedor','albaran','n_lineas','anulado','anulado_por','anulado_en','motivo_anulacion','creado_en','id','tipo_doc','estado','almacen','almacen_destino'],   // estado: PENDIENTE_LEER / CONFIRMADA; almacen_destino solo en TRASPASO
+  // almacenes físicos (MAT = La Matanza, AGU = Agüimes); en la app se ve 'NOMBRE · dirección corta', el código solo en la hoja
+  ALMACENES: ['codigo','nombre','direccion','activo','por_defecto'],
   STOCK: ['codigo','nombre','unidad','entradas','salidas','stock','stock_min','aviso'],
   FIRMANTES: ['nombre','email','obra_ultima','veces','actualizado_en'],
   POR_OBRA: ['obra','material_codigo','material','unidad','salido','devuelto','gastado','recuperado'],
@@ -50,7 +52,7 @@ function clase_(c) { return CLASES[c === 'HER' ? 'HER' : 'MAT']; }
 function movFilas_(c) {
   return filas_(c.mov).map(function (f) { f.material_codigo = f[c.cod]; f.material = f[c.nom]; return f; });
 }
-var ESQUEMA = '11';            // subir cuando cambien las columnas de HOJAS
+var ESQUEMA = '12';            // subir cuando cambien las columnas de HOJAS
 var EMAIL_COPIA = 'soleracanarias@gmail.com';
 var CSV_NOMBRE = 'PARTES APP 2026.csv';  // se crea en la carpeta CARPETA_CSV_ID de CONFIG (CLIENTES\PARTES\APP)
 var CSV_COLUMNAS = ['N_PARTE','FECHA','DIA_SEMANA','CLIENTE','OBRA','COD_OBRA_APP','RESP_CLIENTE','RESP_CERT','RESP_SOLERA','MATRICULA',
@@ -78,24 +80,35 @@ function instalar() {
   if (ob.getLastRow() < 2) ob.appendRow(['2549', 'MERCADONA 2549 GÁLDAR', 'MERCADONA', 'SI']);
   var ma = ss.getSheetByName('MATERIALES');
   if (ma.getLastRow() < 2) ma.appendRow(['CEM25', 'Cemento gris saco 25 kg', 'saco', 10, 'SI']);
-  // STOCK por fórmulas (se rehacen siempre): entradas = ENTRADA + DEVOLUCION + RECUPERADO, salidas = SALIDA, sin anulados
+  // STOCK por fórmulas (se rehacen siempre), sin anulados:
+  //   entradas = ENTRADA + DEVOLUCION + RECUPERADO + TRASPASO_ENTRA; salidas = SALIDA + TRASPASO_SALE (total: los traspasos se anulan)
+  //   y una columna "stock_<código>" por almacén activo (MAT, AGU…)
   var st = ss.getSheetByName('STOCK'), cm = hoja_('MOVIMIENTOS').getRange(1, 1, 1, hoja_('MOVIMIENTOS').getLastColumn()).getValues()[0];
-  var col = function (n) { var i = cm.indexOf(n) + 1, s = ''; while (i > 0) { s = String.fromCharCode(65 + (i - 1) % 26) + s; i = Math.floor((i - 1) / 26); } return 'MOVIMIENTOS!' + s + '2:' + s; };
-  // SUMIFS no calcula fila a fila dentro de ARRAYFORMULA (daba la misma cifra en todas): SUMIF con clave código|tipo|anulado
+  var letra = function (i) { var s = ''; while (i > 0) { s = String.fromCharCode(65 + (i - 1) % 26) + s; i = Math.floor((i - 1) / 26); } return s; };
+  var col = function (n) { var l = letra(cm.indexOf(n) + 1); return 'MOVIMIENTOS!' + l + '2:' + l; };
+  // SUMIFS no calcula fila a fila dentro de ARRAYFORMULA (daba la misma cifra en todas): SUMIF con clave código|tipo|anulado|almacén
   var clave = col('material_codigo') + '&"|"&' + col('tipo') + '&"|"&' + col('anulado');
-  var suma = function (tipo) { return 'SUMIF(' + clave + ';A2:A&"|' + tipo + '|";' + col('cantidad') + ')'; };
-  // en STOCK solo lo que pasa por el almacén (almacen <> NO); lo que va directo a obra no sale
+  var suma = function (tipo, alm) {
+    return 'SUMIF(' + clave + (alm ? '&"|"&' + col('almacen') : '') + ';A2:A&"|' + tipo + '|' + (alm ? '|' + alm : '') + '";' + col('cantidad') + ')';
+  };
+  var MAS = ['ENTRADA', 'DEVOLUCION', 'RECUPERADO', 'TRASPASO_ENTRA'], MENOS = ['SALIDA', 'TRASPASO_SALE'];
+  // en STOCK solo lo que pasa por el almacén (en_almacen <> NO); lo que va directo a obra no sale
   var cma = ma.getRange(1, 1, 1, ma.getLastColumn()).getValues()[0];
-  var colM = function (n) { var i = cma.indexOf(n) + 1, s = ''; while (i > 0) { s = String.fromCharCode(65 + (i - 1) % 26) + s; i = Math.floor((i - 1) / 26); } return 'MATERIALES!' + s + '2:' + s; };
+  var colM = function (n) { var l = letra(cma.indexOf(n) + 1); return 'MATERIALES!' + l + '2:' + l; };
   st.getRange('A2:C').clearContent(); st.getRange('G2:G').clearContent();
-  st.getRange('A2').setFormula('=IFERROR(FILTER(MATERIALES!A2:A;MATERIALES!A2:A<>"";' + colM('almacen') + '<>"NO"))');
+  st.getRange('A2').setFormula('=IFERROR(FILTER(MATERIALES!A2:A;MATERIALES!A2:A<>"";' + colM('en_almacen') + '<>"NO"))');
   st.getRange('B2').setFormula('=ARRAYFORMULA(IF(A2:A="";;VLOOKUP(A2:A;MATERIALES!A2:C;2;FALSE)))');
   st.getRange('C2').setFormula('=ARRAYFORMULA(IF(A2:A="";;VLOOKUP(A2:A;MATERIALES!A2:C;3;FALSE)))');
-  st.getRange('D2').setFormula('=ARRAYFORMULA(IF(A2:A="";;' + suma('ENTRADA') + '+' + suma('DEVOLUCION') + '+' + suma('RECUPERADO') + '))');
-  st.getRange('E2').setFormula('=ARRAYFORMULA(IF(A2:A="";;' + suma('SALIDA') + '))');
+  st.getRange('D2').setFormula('=ARRAYFORMULA(IF(A2:A="";;' + MAS.map(function (t) { return suma(t); }).join('+') + '))');
+  st.getRange('E2').setFormula('=ARRAYFORMULA(IF(A2:A="";;' + MENOS.map(function (t) { return suma(t); }).join('+') + '))');
   st.getRange('F2').setFormula('=ARRAYFORMULA(IF(A2:A="";;D2:D-E2:E))');
   st.getRange('G2').setFormula('=ARRAYFORMULA(IF(A2:A="";;VLOOKUP(A2:A;MATERIALES!A2:D;4;FALSE)))');
   st.getRange('H2').setFormula('=ARRAYFORMULA(IF(A2:A="";;IF((G2:G>0)*(F2:F<=G2:G);"PEDIR";"")))');
+  almacenes_().forEach(function (a, i) {
+    st.getRange(1, 9 + i).setValue('stock_' + a.codigo).setFontWeight('bold').setBackground('#fde9b8');
+    st.getRange(2, 9 + i).setFormula('=ARRAYFORMULA(IF(A2:A="";;' + MAS.map(function (t) { return suma(t, a.codigo); }).join('+') + '-(' +
+      MENOS.map(function (t) { return suma(t, a.codigo); }).join('+') + ')))');
+  });
   try { porObra_(); } catch (e) {}
   SpreadsheetApp.getUi().alert('APP SOLERA instalada. Rellena TRABAJADORES, OBRAS, MATERIALES y CARPETA_PARTES_ID en CONFIG; luego publica como aplicación web.');
 }
@@ -105,6 +118,12 @@ function asegurarHojas_(forzar) {
   var props = PropertiesService.getScriptProperties();
   if (!forzar && props.getProperty('ESQUEMA') === ESQUEMA) return;
   var ss = SpreadsheetApp.getActiveSpreadsheet();
+  // PASO 7: la columna 'almacen' (SI/NO) de MATERIALES pasa a llamarse 'en_almacen' (no se crea otra vacía)
+  var hm = ss.getSheetByName('MATERIALES');
+  if (hm && hm.getLastColumn() > 0) {
+    var cm = hm.getRange(1, 1, 1, hm.getLastColumn()).getValues()[0];
+    if (cm.indexOf('en_almacen') < 0 && cm.indexOf('almacen') >= 0) hm.getRange(1, cm.indexOf('almacen') + 1).setValue('en_almacen');
+  }
   Object.keys(HOJAS).forEach(function (nombre) {
     var h = ss.getSheetByName(nombre) || ss.insertSheet(nombre);
     if (h.getLastRow() === 0) {
@@ -117,7 +136,32 @@ function asegurarHojas_(forzar) {
     var faltan = HOJAS[nombre].filter(function (c) { return cab.indexOf(c) < 0; });
     if (faltan.length) h.getRange(1, cab.length + 1, 1, faltan.length).setValues([faltan]).setFontWeight('bold').setBackground('#fde9b8');
   });
+  migrarAlmacenes_();
   props.setProperty('ESQUEMA', ESQUEMA);
+}
+// almacenes iniciales y vales anteriores al PASO 7 → MAT (La Matanza). Solo rellena lo vacío: se puede repetir.
+var ALMACENES_INICIALES = [
+  ['MAT', 'ALMACÉN LA MATANZA', 'C/ Chamiana 21, local L1 (Edificio Chamiana), 38379 La Matanza de Acentejo', 'SI', 'SI'],
+  ['AGU', 'ALMACÉN AGÜIMES', 'C/ Falla 23, Las Rosas, Agüimes (Gran Canaria)', 'SI', 'NO']];
+function migrarAlmacenes_() {
+  var ha = hoja_('ALMACENES');
+  if (ha.getLastRow() < 2) ALMACENES_INICIALES.forEach(function (r) { ha.appendRow(r); });
+  ['MOVIMIENTOS', 'VALES'].forEach(function (n) {
+    var h = hoja_(n), v = h.getDataRange().getValues(), i = v[0].indexOf('almacen');
+    if (i < 0 || v.length < 2) return;
+    var col = v.slice(1).map(function (f) { return [f[0] === '' || f[i] !== '' ? f[i] : 'MAT']; });
+    h.getRange(2, i + 1, col.length, 1).setValues(col);
+  });
+}
+function almacenes_() {
+  return filas_('ALMACENES').filter(function (a) { return si_(a.activo); })
+    .map(function (a) { return { codigo: String(a.codigo), nombre: String(a.nombre), direccion: String(a.direccion || ''), por_defecto: si_(a.por_defecto) }; });
+}
+function almacenPorDefecto_() { var l = almacenes_(); return (l.filter(function (a) { return a.por_defecto; })[0] || l[0] || { codigo: 'MAT' }).codigo; }
+function comprobarAlmacen_(cod) {
+  if (!cod) return almacenPorDefecto_();
+  if (!almacenes_().some(function (a) { return a.codigo === String(cod); })) throw new Error('Almacén no válido: ' + cod);
+  return String(cod);
 }
 
 // ---------------------------------------------------------------- utilidades
@@ -229,6 +273,7 @@ function bootstrap_() {
     obras: filas_('OBRAS').filter(function (f) { return si_(f.activa); })
       .map(function (f) { return { codigo: String(f.codigo), nombre: f.nombre, cliente: f.cliente }; }),
     materiales: materialesPorUso_(),
+    almacenes: almacenes_(),
     stock: stock_(),
     otros: otrosPendientes_(),
     herramientas: herrDonde_(false),
@@ -256,24 +301,29 @@ function materialesPorUso_() {
   return filas_('MATERIALES').filter(function (f) { return si_(f.activo); }).map(function (f) {
     var k = String(f.codigo);
     return { codigo: k, nombre: f.nombre, unidad: f.unidad, stock_min: Number(f.stock_min) || 0,
-      alias: String(f.alias || ''), almacen: String(f.almacen || '').trim().toUpperCase() === 'NO' ? 'NO' : 'SI',
+      alias: String(f.alias || ''), en_almacen: enAlmacen_(f) ? 'SI' : 'NO',
       uso: (Number(f.uso_base) || 0) + (lineas[k] || 0), orden: Number(f.orden) || 9999 };
   }).sort(function (a, b) { return b.uso - a.uso || a.orden - b.orden; })
     .map(function (m) { delete m.orden; return m; });
 }
-function enAlmacen_(f) { return String(f.almacen || '').trim().toUpperCase() !== 'NO'; }
+function enAlmacen_(f) { return String(f.en_almacen || '').trim().toUpperCase() !== 'NO'; }
 
+// stock total y por almacén (porAlmacen: { MAT: n, AGU: n }). Suman ENTRADA, DEVOLUCION, RECUPERADO y TRASPASO_ENTRA;
+// restan SALIDA y TRASPASO_SALE. Sin anulados.
+var TIPOS_RESTAN = ['SALIDA', 'TRASPASO_SALE'];
 function stock_() {
   var mats = filas_('MATERIALES').filter(function (f) { return si_(f.activo) && enAlmacen_(f); });
-  var acc = {};
+  var acc = {}, defecto = null;
   filas_('MOVIMIENTOS').forEach(function (m) {
     if (si_(m.anulado)) return;
-    var k = String(m.material_codigo); acc[k] = acc[k] || { e: 0, s: 0 };
-    if (m.tipo === 'SALIDA') acc[k].s += Number(m.cantidad) || 0; else acc[k].e += Number(m.cantidad) || 0;   // ENTRADA, DEVOLUCION, RECUPERADO
+    var k = String(m.material_codigo), al = String(m.almacen || '') || (defecto = defecto || almacenPorDefecto_());
+    var q = (Number(m.cantidad) || 0) * (TIPOS_RESTAN.indexOf(m.tipo) >= 0 ? -1 : 1);
+    acc[k] = acc[k] || { total: 0, por: {} };
+    acc[k].total += q; acc[k].por[al] = (acc[k].por[al] || 0) + q;
   });
   return mats.map(function (f) {
-    var a = acc[String(f.codigo)] || { e: 0, s: 0 };
-    return { codigo: String(f.codigo), nombre: f.nombre, unidad: f.unidad, stock: a.e - a.s, stock_min: Number(f.stock_min) || 0 };
+    var a = acc[String(f.codigo)] || { total: 0, por: {} };
+    return { codigo: String(f.codigo), nombre: f.nombre, unidad: f.unidad, stock: a.total, porAlmacen: a.por, stock_min: Number(f.stock_min) || 0 };
   });
 }
 
@@ -491,6 +541,7 @@ function movimiento_(m) {
   var fila = { id: m.id, fecha: fechaES_(fecha), tipo: tipo, cantidad: her ? 1 : Number(m.cantidad) || 0, unidad: mat.unidad || '', obra: m.obra || '',
     parte_numero: '', usuario: m.usuario || '', nota: m.nota || '', creado_en: ahora_(), fotos: fotosUrls.join(' '), numero: numero,
     hora: m.hora ? "'" + m.hora : '',     // con ' para que la hoja no lo convierta en fecha
+    almacen: her ? '' : comprobarAlmacen_(m.almacen),
     persona: tipo === 'ENTRADA' ? '' : (m.persona || m.usuario || '') };   // quién se lo lleva / lo devuelve (usuario = quién lo anota)
   fila[c.cod] = String(mat.codigo); fila[c.nom] = mat.nombre;
   anadirFila_(c.mov, fila);
@@ -523,7 +574,7 @@ function porObra_(c) {
 }
 
 // ---------------------------------------------------------------- vales de almacén (varias líneas, un número)
-var TIPOS_VALE = ['ENTRADA', 'SALIDA', 'DEVOLUCION', 'RECUPERADO'];   // ENTRADA = COMPRA (solo admin)
+var TIPOS_VALE = ['ENTRADA', 'SALIDA', 'DEVOLUCION', 'RECUPERADO', 'TRASPASO'];   // ENTRADA = COMPRA y TRASPASO: solo admin
 function extension_(dataUrl) {
   var m = String(dataUrl).match(/^data:([^;]+);/), t = m ? m[1] : '';
   return t === 'application/pdf' ? '.pdf' : (t === 'image/png' ? '.png' : '.jpg');
@@ -545,7 +596,13 @@ function vale_(v) {
     })[0];
     if (repetido) throw new Error('Albarán ya registrado: vale ' + repetido.numero);
   }
-  if (tipo !== 'ENTRADA' && !String(v.obra || '').trim()) throw new Error('Falta la obra');
+  var almacen = comprobarAlmacen_(v.almacen), destino = '';
+  if (tipo === 'TRASPASO') {
+    exigirAdmin_(v.auth);
+    destino = comprobarAlmacen_(v.almacenDestino || 'falta');
+    if (destino === almacen) throw new Error('El traspaso tiene que ser a otro almacén');
+  }
+  if (tipo !== 'ENTRADA' && tipo !== 'TRASPASO' && !String(v.obra || '').trim()) throw new Error('Falta la obra');
   if (tipo === 'RECUPERADO' && !String(v.nota || '').trim()) throw new Error('Falta el comentario (dónde se encontró)');
   var lineas = (v.lineas || []).filter(function (l) { return l && (l.material || l.materialNombre) && Number(l.cantidad) > 0; });
   if (!lineas.length) throw new Error('El vale no tiene líneas');
@@ -561,27 +618,32 @@ function vale_(v) {
   var adjuntos = (v.albaranArchivo ? [v.albaranArchivo] : []).concat(v.fotos || []);
   if (adjuntos.length && idCarpeta) {
     var carp = subcarpeta_(subcarpeta_(DriveApp.getFolderById(idCarpeta), 'ALMACEN'), mesDe_(fecha));
-    var base = [fechaNombre_(fecha), numero, tipo, v.obra || v.proveedor || '', v.albaran || v.nota || ''].join(' ')
+    var base = [fechaNombre_(fecha), numero, tipo, almacen + (destino ? '-' + destino : ''), v.obra || v.proveedor || '', v.albaran || v.nota || ''].join(' ')
       .replace(/[\\/:*?"<>|]/g, '-').replace(/\s+/g, ' ').trim();
     adjuntos.forEach(function (f, i) {
       var b = blobDeDataUrl_(f, base + (adjuntos.length > 1 ? ' (' + (i + 1) + ')' : '') + extension_(f));
       if (b) urls.push(carp.createFile(b).getUrl());
     });
   }
-  var persona = tipo === 'ENTRADA' ? '' : (v.persona || v.usuario || '');
+  var persona = tipo === 'ENTRADA' || tipo === 'TRASPASO' ? '' : (v.persona || v.usuario || '');
   var hora = v.hora ? "'" + v.hora : '';   // con ' para que la hoja no lo convierta en fecha
   lineas.forEach(function (l, i) {
     var mat = mats[String(l.material)] || { codigo: 'OTRO', nombre: String(l.materialNombre || l.material).trim().toUpperCase(), unidad: l.unidad || '' };
-    anadirFila_('MOVIMIENTOS', { id: v.id + '-' + (i + 1), fecha: fechaES_(fecha), tipo: tipo, material_codigo: String(mat.codigo), material: mat.nombre,
-      cantidad: Number(l.cantidad), unidad: mat.unidad || '', obra: v.obra || '', parte_numero: '', usuario: v.usuario || '', nota: v.nota || '',
-      creado_en: creadoEn, fotos: urls.join(' '), numero: numero, hora: hora, persona: persona, linea: i + 1, anulado: '' });
+    var fila = { id: v.id + '-' + (i + 1), fecha: fechaES_(fecha), tipo: tipo, material_codigo: String(mat.codigo), material: mat.nombre,
+      cantidad: Number(l.cantidad), unidad: mat.unidad || '', obra: tipo === 'TRASPASO' ? '' : (v.obra || ''), parte_numero: '', usuario: v.usuario || '', nota: v.nota || '',
+      creado_en: creadoEn, fotos: urls.join(' '), numero: numero, hora: hora, persona: persona, linea: i + 1, anulado: '', almacen: almacen };
+    if (tipo !== 'TRASPASO') return anadirFila_('MOVIMIENTOS', fila);
+    // traspaso: sale de un almacén y entra en el otro (no es gasto de ninguna obra)
+    anadirFila_('MOVIMIENTOS', Object.assign({}, fila, { id: fila.id + '-S', tipo: 'TRASPASO_SALE' }));
+    anadirFila_('MOVIMIENTOS', Object.assign({}, fila, { id: fila.id + '-E', tipo: 'TRASPASO_ENTRA', almacen: destino }));
   });
   anadirFila_('VALES', { numero: numero, fecha: fechaES_(fecha), hora: hora, tipo: tipo, obra: v.obra || '', usuario: v.usuario || '', persona: persona,
     nota: v.nota || '', fotos: urls.join(' '), proveedor: v.proveedor || '', albaran: v.albaran || '', n_lineas: lineas.length,
     anulado: '', anulado_por: '', anulado_en: '', motivo_anulacion: '', creado_en: creadoEn, id: v.id,
-    tipo_doc: tipo === 'ENTRADA' ? (v.tipoDoc === 'TICKET' ? 'TICKET' : 'ALBARAN') : '', estado: tipo === 'ENTRADA' ? 'CONFIRMADA' : '' });
+    tipo_doc: tipo === 'ENTRADA' ? (v.tipoDoc === 'TICKET' ? 'TICKET' : 'ALBARAN') : '', estado: tipo === 'ENTRADA' ? 'CONFIRMADA' : '',
+    almacen: almacen, almacen_destino: destino });
   avisarStock_(lineas.map(function (l) { return String(l.material); }));
-  if (tipo !== 'ENTRADA') try { porObra_(); } catch (err) { console.error('POR_OBRA: ' + err); }
+  if (tipo !== 'ENTRADA' && tipo !== 'TRASPASO') try { porObra_(); } catch (err) { console.error('POR_OBRA: ' + err); }
   return { ok: true, numero: numero, fotos: urls, n_lineas: lineas.length };
 }
 
@@ -590,7 +652,7 @@ function listaVales_(fl) {
   var iso = function (v) { var t = txtFecha_(v, 'dd/MM/yyyy').split('/'); return t.length === 3 ? t[2] + '-' + t[1] + '-' + t[0] : ''; };
   var lineas = {};
   filas_('MOVIMIENTOS').forEach(function (m) {
-    if (!m.numero || !m.linea) return;
+    if (!m.numero || !m.linea || m.tipo === 'TRASPASO_ENTRA') return;   // el traspaso se enseña una vez por línea
     (lineas[m.numero] = lineas[m.numero] || []).push({ linea: Number(m.linea), material_codigo: String(m.material_codigo), material: m.material,
       cantidad: m.cantidad, unidad: m.unidad, anulado: si_(m.anulado) });
   });
@@ -600,12 +662,13 @@ function listaVales_(fl) {
     if (fl.desde && f < fl.desde) return false;
     if (fl.hasta && f > fl.hasta) return false;
     if (fl.tipo && v.tipo !== fl.tipo) return false;
+    if (fl.almacen && String(v.almacen) !== fl.almacen && String(v.almacen_destino) !== fl.almacen) return false;
     if (q && normal_(v.usuario + ' ' + v.persona).indexOf(q) < 0) return false;
     if (o && normal_(v.obra).indexOf(o) < 0) return false;
     return true;
   }).reverse().slice(0, 300).map(function (v) {
     return { numero: v.numero, fecha: txtFecha_(v.fecha, 'dd/MM/yyyy'), hora: String(v.hora || ''), tipo: v.tipo, obra: v.obra, usuario: v.usuario,
-      persona: v.persona, nota: v.nota, proveedor: v.proveedor, albaran: v.albaran, tipo_doc: v.tipo_doc || '', estado: v.estado || '', n_lineas: v.n_lineas,
+      persona: v.persona, nota: v.nota, proveedor: v.proveedor, almacen: String(v.almacen || ''), almacen_destino: String(v.almacen_destino || ''), albaran: v.albaran, tipo_doc: v.tipo_doc || '', estado: v.estado || '', n_lineas: v.n_lineas,
       fotos: String(v.fotos || '').split(' ').filter(function (u) { return u; }), anulado: si_(v.anulado), anulado_por: v.anulado_por,
       anulado_en: String(v.anulado_en || ''), motivo_anulacion: v.motivo_anulacion,
       lineas: (lineas[v.numero] || []).sort(function (a, b) { return a.linea - b.linea; }) };
@@ -646,7 +709,7 @@ function movimientosMaterial_(codigo, n, clase) {
   return movFilas_(clase_(clase)).filter(function (f) { return String(f.material_codigo) === String(codigo); })
     .slice(-n).reverse().map(function (f) {
       return { numero: f.numero || '', linea: f.linea || '', anulado: si_(f.anulado), hora: String(f.hora || ''), fecha: txtFecha_(f.fecha, 'dd/MM/yyyy'), tipo: f.tipo, cantidad: f.cantidad, unidad: f.unidad, obra: f.obra,
-        usuario: f.usuario, persona: f.persona || '', nota: f.nota, fotos: String(f.fotos || '').split(' ').filter(function (u) { return u; }) };
+        usuario: f.usuario, persona: f.persona || '', nota: f.nota, almacen: String(f.almacen || ''), fotos: String(f.fotos || '').split(' ').filter(function (u) { return u; }) };
     });
 }
 

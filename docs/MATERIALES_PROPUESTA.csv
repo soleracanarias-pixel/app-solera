@@ -1,4 +1,4 @@
-codigo,nombre,unidad,activo,categoria,codigo_mercadona,almacen,alias,uso_base,cambio,nota
+codigo,nombre,unidad,activo,categoria,codigo_mercadona,en_almacen,alias,uso_base,cambio,nota
 DIS-DIA,DISCO DIAMANTE / BORDE CONTINUO,ud,SI,HERRAMIENTA FUNGIBLE,MB9691,SI,"disco, diamante, disco porcelanico, disco ceramica, borde continuo, disco tronzar, disco hormigon, disco asfalto",59,RENOMBRADO,Todo disco de diamante o de borde continuo. Mercadona: UD DISCO DIAMANTE.
 ARE-BOL,ARENA EN BOLSA 25 KG,saco,SI,ÁRIDOS,M00172,SI,"arena, saco arena, arena montaña",58,RENOMBRADO,Mercadona: SACO DE ARENA 25 KG.
 CEM-GRI,CEMENTO GRIS 25 KG,saco,SI,CEMENTOS,M21198,SI,"cemento, saco cemento, palet cemento",56,SIN CAMBIO,Mercadona: SACO CEMENTO GRIS DE 25 KG. Un solo código para Sobradillo y Rosalesa.
