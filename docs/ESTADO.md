@@ -8,8 +8,8 @@ La app está **EN PRUEBAS** (ver `CLAUDE.md`). Lo pendiente está en `PENDIENTES
 - `index.html`: la app entera (SOLERA). Con `?modo=almacen` es **SOLERA Almacén** (`almacen/index.html`, sin la pestaña Parte).
 - `sw.js`: guarda la app en el móvil para abrirla sin cobertura (incluye `lib/`).
 - `lib/zxing-0.21.3.min.js`: lector de códigos de barras para iPhone (Apache 2.0), dentro de la app.
-- `backend/Code.gs`: servidor (Apps Script de la hoja "APP SOLERA"). Publicado en la **versión 17**, igual que el repositorio (`ESQUEMA = '17'`).
-- **Versión a la vista:** abajo, en pequeño, en la entrada y en la app: "web v17 · servidor 17 · esquema 17". `VERSION_WEB` (index.html) y `VERSION_SERVIDOR` (Code.gs) = nº de versión publicada en Apps Script; se suben a la vez en cada publicación. Si no coinciden, sale "⚠️ actualiza la app" (al tocarlo, recarga).
+- `backend/Code.gs`: servidor (Apps Script de la hoja "APP SOLERA"). Publicado en la **versión 18**, igual que el repositorio (`ESQUEMA = '18'`).
+- **Versión a la vista:** abajo, en pequeño, en la entrada y en la app: "web v18 · servidor 18 · esquema 18". `VERSION_WEB` (index.html) y `VERSION_SERVIDOR` (Code.gs) = nº de versión publicada en Apps Script; se suben a la vez en cada publicación. Si no coinciden, sale "⚠️ actualiza la app" (al tocarlo, recarga).
 - `docs/MATERIALES_PROPUESTA.csv`: lista de materiales aprobada (sin precios).
 
 ## Quién puede qué (columna `rol` de TRABAJADORES)
@@ -44,12 +44,15 @@ La app está **EN PRUEBAS** (ver `CLAUDE.md`). Lo pendiente está en `PENDIENTES
   **"Cerrar y ajustar"** crea el vale AJUSTE con el stock del servidor en ese momento, con fotos; las máquinas que falten se dan de alta y sale la lista para rotular. "Marca no contada = 0" solo en los materiales contados; las categorías sin contar no se tocan. El AJUSTE se anula desde Vales. También se puede **anular** el inventario sin ajustar.
 - Fuera de un inventario no se puede hacer ningún ajuste.
 
-## Herramientas (una a una, con número: BAT-01…)
-- **Estados** ("¿Dónde están?"): en almacén (cuál), en obra, ⚠️ AVERIADA (dónde y qué le pasa), 🔧 EN REPARACIÓN (con quién y nº de recibo), PENDIENTE DE OK y BAJA. Las que había quedaron en LA MATANZA.
-- **Llevar a obra** (solo las disponibles), **Devolver** y **Alta** (eligiendo el almacén; por defecto el del móvil). El alta de cualquiera queda **PENDIENTE DE OK** y se puede usar mientras tanto.
-- **⚠️ Avería** (cualquiera): máquina (o 📷), "¿qué le pasa?" y foto obligatorios, almacén donde la deja (QUIQUIRÁ por defecto). Averiada no se puede llevar a obra.
-- **Reparaciones y altas** (herramientas = SI): "Entregar a reparador" (una o varias averiadas, reparador de la pestaña REPARADORES, fecha y firma opcional) → recibo **R0001…** en PDF (Drive `HERRAMIENTAS/REPARACIONES`, copia en REPARACIONES y botón "📤 Compartir PDF"; no se envía solo). "Vuelve de reparación": reparada (al almacén que se elija) o sin arreglo (BAJA). "Máquinas pendientes de OK": OK o rechazar con motivo (la rechazada sale de la lista).
-- El 📷 de Herramientas ya lee el código de la máquina escrito o en QR (para cuando haya pegatinas); de momento, rotulador.
+## Herramientas
+- **Tipos** (HERR_TIPOS): `va_con` = PERSONA (la lleva un trabajador) u OBRA (se queda en la obra aunque cambie la cuadrilla); `control` = UNIDAD (cada una con su número, BAT-01) o CANTIDAD (andamios: por tipo de pieza y cuántas). Valores propuestos por Claude el 31/10/2026, **a revisar por Mateo y Gregorio**: PERSONA radiales, batidora, martillo, cortadora rubí, ventosa, taladro, coronas, atornillador y lijadora; OBRA alargador, amasadora, máquina de piso, tronzadora, foco, escalera, carretilla y compresor; ANDAMIO = CANTIDAD.
+- **Estados** ("¿Dónde están?"): en almacén (cuál), en obra, 👤 con una persona, ⚠️ AVERIADA (dónde y qué le pasa), 🔧 EN REPARACIÓN (con quién y nº de recibo), PENDIENTE DE OK y BAJA. Admin y gestores lo ven agrupado por persona, por obra y por almacén, con las cantidades de andamio (por obra y por almacén).
+- **De PERSONA:** "Mis herramientas" (las que tiene cada uno) y un solo botón **"✋ La tengo yo"** (se la asigna quien la tiene en la mano, venga de otra persona, de una obra o de un almacén; sin foto). Si es una nueva que ya tiene, "… sin número" le da número y queda PENDIENTE DE OK. "Devolver" la deja en un almacén.
+- **De OBRA (con número):** "Llevar a obra" / "Devolver" como siempre (con foto).
+- **Andamios (CANTIDAD):** pantalla "🏗️ Andamios": llevar a obra, recoger de obra o entrada en almacén; almacén, obra, quién; la lista de tipos de pieza con una casilla de número cada una (vacía = 0) y UNA foto general obligatoria. En HERR_MOV, una línea por tipo con el mismo nº, quién, cuándo, de dónde y a dónde. "+ Tipo de pieza nuevo" (material, qué es y foto): queda PENDIENTE con un código provisional hasta que un gestor le pone código y nombre (sus movimientos pasan al definitivo).
+- **⚠️ Avería**, **Alta** con OK y **Reparaciones** (gestores: entregar a reparador con recibo PDF, vuelta, OK de altas y aprobar tipos nuevos) como hasta ahora.
+- **Inventario:** las máquinas con número por estado (bien/regular/averiada, con altas de las que falten); los andamios por tipo y cantidad, y al cerrar se ajusta la cantidad de cada tipo en ese almacén.
+- El 📷 de Herramientas lee el código de la máquina escrito o en QR (para cuando haya pegatinas).
 
 ## Códigos de barras
 - Lector: primero el del navegador (BarcodeDetector, Android) y si no ZXing (iPhone), que va dentro de la app y se guarda en el móvil al instalar/actualizar, al abrirla con cobertura y con "Preparar". Sin cámara se escribe el número o la referencia del fabricante.
@@ -59,7 +62,7 @@ La app está **EN PRUEBAS** (ver `CLAUDE.md`). Lo pendiente está en `PENDIENTES
 - Los artículos de proveedor (`MATERIALES APP.csv` y las tablas de precios) **no traen EAN**; `ref_fabricante` se puede rellenar a mano en EANS.
 
 ## Pestañas de la hoja
-CONFIG, TRABAJADORES (+ `rol`, `inventario`, `herramientas`), OBRAS, MATERIALES (+ `codigo_mercadona`, `en_almacen`, `alias`, `uso_base`), PARTES, PARTES_LINEAS, MOVIMIENTOS (+ `almacen`, `contado`, `marca`, `stock_antes`), VALES (+ `almacen`, `almacen_destino`, `inicio`, `cierre`, `inventario`), STOCK (fórmulas, con `stock_MAT`, `stock_AGU` y `stock_QUI`), POR_OBRA, ALMACENES, EANS, INVENTARIOS (id, almacen, nombre, fecha, abierto/cerrado por y en, estado ABIERTO/CERRADO/ANULADO, participantes, asignacion, terminados, fotos, vale), INV_LINEAS (lo contado: quién, cuándo, corregido), INV_MAQUINAS, FIRMANTES, HERR_TIPOS, HERRAMIENTAS (+ `ok`, `ok_por`, `ok_en`, `motivo_rechazo`), HERR_MOV (+ `almacen`, `recibo`), HERR_DONDE (+ `estado`, `almacen`, `ok`, `averia`), REPARADORES, REPARACIONES, MATERIALES_ANTES_6D (copia de seguridad) y "Hoja 1" (vacía, no se usa).
+CONFIG, TRABAJADORES (+ `rol`, `inventario`, `herramientas`), OBRAS, MATERIALES (+ `codigo_mercadona`, `en_almacen`, `alias`, `uso_base`), PARTES, PARTES_LINEAS, MOVIMIENTOS (+ `almacen`, `contado`, `marca`, `stock_antes`), VALES (+ `almacen`, `almacen_destino`, `inicio`, `cierre`, `inventario`), STOCK (fórmulas, con `stock_MAT`, `stock_AGU` y `stock_QUI`), POR_OBRA, ALMACENES, EANS, INVENTARIOS (id, almacen, nombre, fecha, abierto/cerrado por y en, estado ABIERTO/CERRADO/ANULADO, participantes, asignacion, terminados, fotos, vale), INV_LINEAS (lo contado: quién, cuándo, corregido), INV_MAQUINAS, FIRMANTES, HERR_TIPOS (+ `va_con`, `control`, `estado`, `material`, `definicion`, `foto`, `propuesto_por`, `creado_en`), HERRAMIENTAS (+ `ok`, `ok_por`, `ok_en`, `motivo_rechazo`), HERR_MOV (+ `almacen`, `recibo`), HERR_DONDE (+ `estado`, `almacen`, `ok`, `averia`), REPARADORES, REPARACIONES, MATERIALES_ANTES_6D (copia de seguridad) y "Hoja 1" (vacía, no se usa).
 Las pestañas y columnas nuevas se crean solas en la primera llamada. `instalar()` solo hace falta si se añade un almacén (columna en STOCK).
 
 ## Publicar

@@ -129,7 +129,10 @@ table.rev td.dif{color:var(--rojo);font-weight:600}
 .v-info.nuevo{color:#b26a00}
 details#movMas{margin-top:10px}
 details#movMas summary{color:var(--azul);font-size:14px;cursor:pointer;padding:6px 0}
-#movGuardar{font-size:19px;padding:16px}
+#movGuardar,#andGuardar{font-size:19px;padding:16px}
+.and-fila{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--borde)}
+.and-fila span{flex:1;min-width:0;overflow-wrap:anywhere}.and-fila small{color:var(--gris)}
+.and-fila input{flex:0 0 84px;width:84px}
 .pestanas{display:flex;gap:6px;margin:10px 0}
 .pestanas button{flex:1;padding:10px;border:2px solid var(--azul);background:#fff;border-radius:8px;font-weight:600;color:var(--azul)}
 .pestanas button.activa{background:var(--azul);color:#fff}
@@ -355,6 +358,13 @@ a{color:var(--azul)}
 
 <!-- HERRAMIENTAS -->
 <section class="pantalla" id="p-herramientas">
+  <!-- las de PERSONA: cada uno ve las suyas; "La tengo yo" se la asigna a quien la tiene en la mano -->
+  <div class="tarjeta">
+    <h2>Mis herramientas</h2>
+    <div class="lista" id="misHerr"></div>
+    <button class="btn" id="btnHLaTengo">✋ La tengo yo</button>
+  </div>
+  <div id="movSitioHERP"></div>
   <div class="tarjeta">
     <div class="fila">
       <button class="btn peq" id="btnHSalida">⬆ Llevar a obra</button>
@@ -364,8 +374,26 @@ a{color:var(--azul)}
       <button class="btn peq rojo" id="btnHAveria">⚠️ Avería</button>
       <button class="btn peq sec" id="btnHEntrada">⬇ Alta (nueva o comprada)</button>
     </div>
+    <button class="btn peq sec" id="btnAndamios" style="width:100%">🏗️ Andamios (por piezas)</button>
   </div>
   <div id="movSitioHER"></div>
+  <!-- andamios: una sola pantalla con todas las piezas, una casilla por tipo (vacía = 0) y UNA foto general -->
+  <div class="tarjeta" id="andForm" style="display:none">
+    <h2>🏗️ Andamios</h2>
+    <div class="ayuda" id="andCuando"></div>
+    <select id="andModo"><option value="SALIDA">Llevar a obra</option><option value="DEVOLUCION">Recoger de obra (vuelve al almacén)</option><option value="ENTRADA">Entrada en almacén (nuevos o comprados)</option></select>
+    <label id="andAlmLabel">Sale del almacén</label><select id="andAlmacen"></select>
+    <div id="andObraBloque"><label>Obra</label><div style="position:relative"><input type="text" id="andObraTxt" placeholder="Escribe la obra…" autocomplete="off"><div class="sugs" id="andObraSugs" style="display:none"></div></div><select id="andObra" style="display:none"></select>
+      <label id="andPersonaLabel">¿Quién lo lleva?</label><div style="position:relative"><input type="text" id="andPersona" autocomplete="off"><div class="sugs" id="andPersonaSugs" style="display:none"></div></div></div>
+    <label>Piezas (vacío = 0)</label>
+    <div id="andLista"></div>
+    <button class="btn sec peq" id="andTipoNuevo">＋ Tipo de pieza nuevo</button>
+    <input type="file" id="andFotoInput" accept="image/*" style="display:none">
+    <button class="btn sec peq" id="andFoto">📷 Foto general del conjunto (obligatoria)</button>
+    <div class="fotos" id="andFotos"></div>
+    <button class="btn verde" id="andGuardar">GUARDAR</button>
+    <button class="btn peq sec" id="andCancelar" style="width:100%">Cancelar</button>
+  </div>
   <!-- reparaciones y OK de altas: solo herramientas = SI (Mateo, Gregorio y Sergio) -->
   <div class="tarjeta solo-herr" id="herrGestion">
     <h2>Reparaciones y altas</h2>
@@ -392,6 +420,7 @@ a{color:var(--azul)}
     </div>
     <div id="repResultado"></div>
     <div id="herrPendOk"></div>
+    <div id="herrTiposPend"></div>
   </div>
   <div class="tarjeta">
     <button class="btn peq sec" id="verHerr" style="width:100%">🔧 ¿Dónde están las herramientas?</button>
@@ -526,6 +555,19 @@ a{color:var(--azul)}
   </div>
   <div class="pie"><button class="btn sec" id="eanCancelar">Cancelar</button><button class="btn verde" id="eanGuardar">Guardar</button></div>
 </div>
+<!-- tipo de andamio nuevo (queda PENDIENTE hasta que el admin le ponga código y nombre) -->
+<div class="modal" id="modalTipoNuevo">
+  <div class="cab"><b>Tipo de andamio nuevo</b></div>
+  <div class="caja">
+    <label>Material</label><select id="tnMaterial"><option>ALUMINIO</option><option>HIERRO</option><option>OTRO</option></select>
+    <label>Qué es (corto)</label><input type="text" id="tnDef" placeholder="Módulo 2 m, plataforma, rodapié…" autocomplete="off">
+    <input type="file" id="tnFotoInput" accept="image/*" style="display:none">
+    <button class="btn sec peq" id="tnFoto">📷 Foto (obligatoria)</button>
+    <div class="fotos" id="tnFotos"></div>
+    <div class="ayuda">Queda pendiente hasta que el admin le ponga código y nombre; mientras, se puede usar.</div>
+  </div>
+  <div class="pie"><button class="btn sec" id="tnCancelar">Cancelar</button><button class="btn verde" id="tnGuardar">Guardar</button></div>
+</div>
 <!-- inventario: material que no está en la lista (queda como OTRO) -->
 <div class="modal" id="modalOtro">
   <div class="cab"><b>Material que no está en la lista</b></div>
@@ -557,7 +599,7 @@ a{color:var(--azul)}
 'use strict';
 var CFG = window.SOLERA_CONFIG || {};
 // número de esta versión de la app (el mismo que VERSION_SERVIDOR de Code.gs: se sube a la vez en cada publicación)
-var VERSION_WEB = 17;
+var VERSION_WEB = 18;
 var $ = function (id) { return document.getElementById(id); };
 
 // ---------------------------------------------------------------- almacenamiento local (IndexedDB)
@@ -876,21 +918,33 @@ buscador($('movObraTxt'), $('movObraSugs'), obras, function (o) { $('movObra').v
 buscador($('movMatTxt'), $('movMatSugs'), function () {
   if (!S.datos) return [];
   if (S.movClase !== 'HER') return matsAlmacen();
-  var tipos = S.datos.herrTipos || [];
-  if (S.movTipo === 'ENTRADA') return tipos;
-  // llevar a obra: solo las disponibles; avería: las que no están ya averiadas, en reparación o de baja; devolver: las que están en obra
+  var tipos = S.datos.herrTipos || [], t = S.movTipo;
+  // de CANTIDAD (andamios): por tipo y cuántas; "tipo nuevo" si no está en la lista
+  // los andamios (CANTIDAD) no van aquí: tienen su pantalla, con todas las piezas a la vez
+  if (t === 'ENTRADA') return tipos.filter(function (x) { return x.control !== 'CANTIDAD'; });
+  var vaCon = function (h) { return (tipoHerr(h.codigo.split('-')[0]) || {}).va_con || 'OBRA'; };
+  var yo = S.usuario ? S.usuario.nombre : '';
+  // llevar a obra: las de OBRA disponibles; "La tengo yo": las de PERSONA que no tengo yo; avería: las que se usan; devolver: en obra o con alguien
   var hs = (S.datos.herramientas || []).filter(function (h) {
     var e = h.estado || 'DISPONIBLE';
-    return S.movTipo === 'SALIDA' ? e === 'DISPONIBLE' : S.movTipo === 'AVERIA' ? ['DISPONIBLE', 'EN OBRA'].indexOf(e) >= 0 : S.movTipo === 'DEVOLUCION' ? e === 'EN OBRA' || e === 'DISPONIBLE' : true;
+    if (t === 'SALIDA') return e === 'DISPONIBLE' && vaCon(h) === 'OBRA';
+    if (t === 'ASIGNAR') return vaCon(h) === 'PERSONA' && ['DISPONIBLE', 'EN OBRA', 'CON PERSONA'].indexOf(e) >= 0 && !(e === 'CON PERSONA' && h.quien === yo);
+    if (t === 'AVERIA') return ['DISPONIBLE', 'EN OBRA', 'CON PERSONA'].indexOf(e) >= 0;
+    if (t === 'DEVOLUCION') return e === 'EN OBRA' || e === 'CON PERSONA';
+    return true;
   });
-  if (S.movTipo === 'AVERIA') return hs;
+  if (t === 'AVERIA') return hs;
   // las que ya tienen número y, detrás, cada tipo "sin número" para numerarla en ese momento
-  return hs.concat(tipos.map(function (t) {
-    return { prefijo: t.prefijo, tipo: t.nombre, nuevo: true, nombre: t.nombre + ' · sin número (se le da uno nuevo)' };
-  }));
-}, function (m) {
+  var sinNum = tipos.filter(function (x) { return x.control !== 'CANTIDAD' && (t === 'ASIGNAR' ? x.va_con === 'PERSONA' : x.va_con !== 'PERSONA'); }).map(function (x) {
+    return { prefijo: x.prefijo, tipo: x.nombre, nuevo: true, nombre: x.nombre + ' · sin número (se le da uno nuevo)' };
+  });
+  if (t === 'ASIGNAR') return hs.concat(sinNum);
+  return hs.concat(t === 'SALIDA' ? sinNum : []);
+}, function (m, alEscribir) {
+  if (m && m.tipoNuevo) { if (!alEscribir) { $('movMatTxt').value = ''; abrirTipoNuevo(); } return; }
   S.movMat = m;
   mostrarNumeroNuevo();
+  if (S.movClase === 'HER') pintarFormHer();
   // al devolver una herramienta, la obra donde estaba sale ya puesta
   if (m && S.movClase === 'HER' && S.movTipo === 'DEVOLUCION' && m.donde && m.donde !== 'ALMACÉN') {
     var o = obras().filter(function (x) { return x.nombre === m.donde; })[0];
@@ -1150,20 +1204,45 @@ function siguienteNumero(prefijo) {
   return prefijo + '-' + ('0' + (max + 1)).slice(-2);
 }
 function mostrarNumeroNuevo() {
-  var m = S.movMat, nuevo = m && S.movClase === 'HER' && (S.movTipo === 'ENTRADA' || m.nuevo);
+  var m = S.movMat, nuevo = m && S.movClase === 'HER' && !m.cantidad && (S.movTipo === 'ENTRADA' || m.nuevo);
   S.codigoNuevo = nuevo ? siguienteNumero(m.prefijo) : '';
   $('numeroNuevo').style.display = nuevo ? '' : 'none';
   $('numeroNuevo').innerHTML = nuevo ? 'Número para esta máquina: <b style="font-size:22px">' + S.codigoNuevo + '</b><br>✍️ Escríbelo con el rotulador en la máquina y haz la foto donde se vea.' : '';
 }
 // herramientas una a una (BAT-01…): dónde está cada una y quién la tiene (al tocarla, sus últimos movimientos)
 function herrLocal() { return (S.datos && S.datos.herramientas) || []; }
+// "¿Dónde están?" para admin y gestores: por persona, por obra y por almacén (con los andamios por cantidad)
+function pintarHerrAgrupado(q) {
+  var alm = function (c) { return nombreAlmacen(c).split(' · ')[0].replace(/^ALMACÉN /, ''); };
+  var g = { 'Con personas': {}, 'En obras': {}, 'En almacenes': {}, 'Averiadas, en reparación o de baja': {} };
+  var pon = function (grupo, sitio, txt) { if (!q || normal(sitio + ' ' + txt).indexOf(q) >= 0) (g[grupo][sitio] = g[grupo][sitio] || []).push(txt); };
+  herrLocal().forEach(function (h) {
+    var e = h.estado || 'DISPONIBLE', ok = h.ok === 'PENDIENTE' ? ' (pendiente de OK)' : '';
+    if (e === 'CON PERSONA') pon('Con personas', h.quien || h.donde, h.nombre + ok);
+    else if (e === 'EN OBRA') pon('En obras', h.donde, h.nombre + ok);
+    else if (e === 'DISPONIBLE') pon('En almacenes', alm(h.almacen), h.nombre + ok);
+    else pon('Averiadas, en reparación o de baja', e === 'EN REPARACION' ? 'En reparación' : e === 'AVERIADA' ? 'Averiadas' : 'Baja', h.nombre + (h.averia ? ': ' + h.averia : '') + (h.reparador ? ' · ' + h.reparador : ''));
+  });
+  ((S.datos && S.datos.andamios) || []).forEach(function (a) {
+    Object.keys(a.porObra).forEach(function (o) { if (a.porObra[o]) pon('En obras', o, a.tipo + ': ' + a.porObra[o]); });
+    Object.keys(a.porAlmacen).forEach(function (c) { if (a.porAlmacen[c]) pon('En almacenes', alm(c), a.tipo + ': ' + a.porAlmacen[c]); });
+  });
+  return Object.keys(g).map(function (k) {
+    var sitios = Object.keys(g[k]).sort(function (a, b) { return a.localeCompare(b, 'es'); }); if (!sitios.length) return '';
+    return '<details class="cat-stock" open><summary><span>' + esc(k) + '</span><small>' + sitios.length + '</small></summary>' + sitios.map(function (st) {
+      return '<div class="item"><div><b>' + esc(st) + '</b><small>' + g[k][st].map(esc).join(' · ') + '</small></div></div>';
+    }).join('') + '</details>';
+  }).join('') || '<div class="aviso">Nada con ese nombre.</div>';
+}
 function pintarHerr() {
   var q = normal($('buscarHerr').value);
+  pintarMisHerr();
+  if (puedeHerr() || rolActual() === 'admin') { $('herrLista').innerHTML = pintarHerrAgrupado(q); return; }
   var lista = herrLocal().filter(function (h) { return !q || normal(h.nombre + ' ' + h.donde + ' ' + h.quien + ' ' + (h.estado || '') + ' ' + (h.reparador || '')).indexOf(q) >= 0; });
   var alm = function (c) { return esc(nombreAlmacen(c).split(' · ')[0].replace(/^ALMACÉN /, '')); };
   $('herrLista').innerHTML = lista.length ? lista.map(function (h) {
     var e = h.estado || (h.donde && h.donde !== 'ALMACÉN' ? 'EN OBRA' : 'DISPONIBLE');
-    var txt = e === 'EN OBRA' ? '📍 ' + esc(h.donde) : e === 'AVERIADA' ? '⚠️ AVERIADA en ' + alm(h.almacen) + (h.averia ? ': ' + esc(h.averia) : '')
+    var txt = e === 'EN OBRA' ? '📍 ' + esc(h.donde) : e === 'CON PERSONA' ? '👤 con ' + esc(h.quien) : e === 'AVERIADA' ? '⚠️ AVERIADA en ' + alm(h.almacen) + (h.averia ? ': ' + esc(h.averia) : '')
       : e === 'EN REPARACION' ? '🔧 EN REPARACIÓN con ' + esc(h.reparador) + (h.recibo ? ' · recibo ' + esc(h.recibo) : '') : e === 'BAJA' ? 'BAJA' : 'En almacén ' + alm(h.almacen);
     var chip = e === 'AVERIADA' || e === 'BAJA' ? '<span class="chip est">' + e + '</span>' : e === 'EN REPARACION' ? '<span class="chip rep">EN REPARACIÓN</span>' : h.ok === 'PENDIENTE' ? '<span class="chip okp">PENDIENTE DE OK</span>' : '';
     return '<div class="item toca" data-cod="' + esc(h.codigo) + '" data-clase="HER"><div><b>' + esc(h.nombre) + '</b><small>' + txt +
@@ -1206,6 +1285,7 @@ $('stockLista').onclick = verHistorial;
 $('herrLista').onclick = verHistorial;
 function abrirMov(tipo, clase) {
   S.movClase = clase || 'MAT';
+  $('andForm').style.display = 'none';
   $('movSitio' + S.movClase).appendChild($('movForm'));   // el formulario se abre justo debajo de los botones
   var her = S.movClase === 'HER';
   $('movMatLabel').textContent = her ? 'Herramienta' : 'Material';
@@ -1217,9 +1297,9 @@ function abrirMov(tipo, clase) {
   if (her && tipo === 'ENTRADA') { $('movMatLabel').textContent = 'Tipo de herramienta'; $('movMatTxt').placeholder = 'Escribe el tipo (batidora, rubí…)'; }
   $('movBtnFoto').textContent = her ? '📷 Foto de la herramienta (obligatoria)' : '📷 Foto (albarán, material…)';
   S.movTipo = tipo; $('movForm').style.display = '';
-  $('movTitulo').textContent = (her ? { ENTRADA: 'Alta de herramienta en el almacén', SALIDA: 'Llevar herramienta a obra', DEVOLUCION: 'Devolver herramienta al almacén', AVERIA: '⚠️ Avería de herramienta' }
+  $('movTitulo').textContent = (her ? { ENTRADA: 'Alta de herramienta en el almacén', SALIDA: 'Llevar herramienta a obra', DEVOLUCION: 'Devolver herramienta al almacén', AVERIA: '⚠️ Avería de herramienta', ASIGNAR: '✋ La tengo yo' }
     : { ENTRADA: 'Entrada al almacén', SALIDA: 'Salida a obra', DEVOLUCION: 'Devolución de obra (vuelve al almacén)' })[tipo];
-  $('movObraBloque').style.display = tipo === 'ENTRADA' || tipo === 'AVERIA' ? 'none' : ''; $('movCant').value = ''; $('movNota').value = '';
+  $('movObraBloque').style.display = tipo === 'ENTRADA' || tipo === 'AVERIA' || tipo === 'ASIGNAR' ? 'none' : ''; $('movCant').value = ''; $('movNota').value = '';
   $('movMatCam').style.display = her && tipo !== 'ENTRADA' ? '' : 'none';
   $('movMatTxt').value = ''; S.movMat = null; S.movCuando = ahoraES();
   $('movCuando').textContent = 'Fecha y hora: ' + S.movCuando + ' · el nº se asigna al enviarlo';
@@ -1233,6 +1313,7 @@ function abrirMov(tipo, clase) {
   // almacén arriba del formulario (por defecto el último de este usuario); en el traspaso, también el de destino
   // herramientas: al dejarla (alta, devolver o avería) se elige el almacén; avería: QUIQUIRÁ por defecto
   var almHer = her && ['ENTRADA', 'DEVOLUCION', 'AVERIA'].indexOf(tipo) >= 0;
+  if (her) $('movSitio' + (tipo === 'ASIGNAR' ? 'HERP' : 'HER')).appendChild($('movForm'));
   $('almBloque').style.display = vale || almHer ? '' : 'none';
   if (almHer) almacenGuardado().then(function (c) { opcionesAlmacen('valeAlmacen', tipo === 'AVERIA' && almacenes().some(function (a) { return a.codigo === 'QUI'; }) ? 'QUI' : c); });
   $('almLabel').textContent = tipo === 'TRASPASO' ? 'Sale del almacén' : 'Almacén';
@@ -1266,6 +1347,7 @@ function abrirMov(tipo, clase) {
     $('movBtnFoto').textContent = '📷 Foto (opcional)';
     if (tipo === 'ENTRADA') pintarDestino();
   } else {
+    pintarFormHer();
     $('movObraLabel').textContent = 'Obra'; $('movNotaLabel').textContent = tipo === 'AVERIA' ? '¿Qué le pasa? (obligatorio)' : 'Comentario';
     $('almLabel').textContent = tipo === 'AVERIA' ? '¿En qué almacén la dejas?' : 'Almacén donde se deja';
     if (tipo === 'AVERIA') $('movBtnFoto').textContent = '📷 Foto de la máquina y de la avería (obligatoria)';
@@ -1294,6 +1376,22 @@ function pintarResumen() {
 }
 $('valeCambiar').onclick = function (e) { e.preventDefault(); $('movForm').classList.add('cambiando'); };
 $('movPersonaTxt').addEventListener('input', pintarResumen);
+// herramientas: el formulario cambia según lo elegido (andamios por cantidad, devolver desde una obra o desde una persona)
+function tipoHerr(p) { return ((S.datos && S.datos.herrTipos) || []).filter(function (t) { return t.prefijo === p; })[0]; }
+function pintarFormHer() {
+  if (S.movClase !== 'HER') return;
+  var m = S.movMat, t = S.movTipo, cant = !!(m && m.cantidad);
+  $('movCantBloque').style.display = cant ? '' : 'none';
+  $('movMatCam').style.display = cant || t === 'ENTRADA' ? 'none' : '';
+  var conObra = t === 'SALIDA' || (t === 'DEVOLUCION' && (cant || !m || m.estado === 'EN OBRA'));
+  $('movObraBloque').style.display = conObra ? '' : 'none';
+  $('movPersonaLabel').textContent = t === 'DEVOLUCION' ? '¿Quién lo recoge?' : '¿Quién se lo lleva?';
+  // al llevar andamios a obra se dice de qué almacén salen
+  if (t === 'SALIDA') { $('almBloque').style.display = cant ? '' : 'none'; $('almLabel').textContent = 'Sale del almacén'; if (cant && !$('valeAlmacen').value) almacenGuardado().then(function (c) { opcionesAlmacen('valeAlmacen', c); }); }
+  var fotoObl = !cant && t !== 'ASIGNAR' || (m && m.nuevo);
+  $('movBtnFoto').textContent = t === 'AVERIA' ? '📷 Foto de la máquina y de la avería (obligatoria)' : fotoObl ? '📷 Foto de la herramienta (obligatoria)' : '📷 Foto (opcional)';
+  $('movMas').open = !!fotoObl || t === 'AVERIA';
+}
 function pintarDestino() {
   if (S.movTipo !== 'ENTRADA' || S.movClase === 'HER') return;
   var d = $('valeDestino').value;
@@ -1759,6 +1857,8 @@ function pintarMaq() {
   $('invMaqLista').innerHTML = tipos.map(function (t) {
     var m = S.inv.maq[t.prefijo] || {};
     var c = function (k) { return '<input type="number" inputmode="numeric" min="0" step="1" data-p="' + esc(t.prefijo) + '" data-k="' + k + '" value="' + esc(m[k] == null ? '' : m[k]) + '">'; };
+    // andamios (CANTIDAD): una sola casilla, cuántos hay de ese tipo
+    if (t.control === 'CANTIDAD') return '<div class="maq"><div><b>' + esc(t.nombre) + '</b><small>' + esc(t.prefijo) + ' · cantidad</small></div><div style="grid-column:span 3">' + c('bien').replace('<input', '<input placeholder="Cuántos"') + '</div></div>';
     return '<div class="maq"><div><b>' + esc(t.nombre) + '</b><small>' + esc(t.prefijo) + '</small></div>' + c('bien') + c('regular') + c('averiada') + '</div>';
   }).join('') || '<div class="aviso">No hay tipos de máquina en HERR_TIPOS.</div>';
 }
@@ -1958,12 +2058,24 @@ $('movMatCam').onclick = function () {
 };
 function pintarHerrGestion() {
   if (!puedeHerr()) return;
+  var tp = ((S.datos && S.datos.herrTipos) || []).filter(function (t) { return t.estado === 'PENDIENTE'; });
+  $('herrTiposPend').innerHTML = tp.length ? '<label>Tipos nuevos pendientes (' + tp.length + ')</label><div class="lista">' + tp.map(function (t) {
+    return '<div class="item" data-tipo="' + esc(t.prefijo) + '"><div><b>' + esc(t.nombre) + '</b><div class="fila" style="margin-top:4px"><div style="flex:0 0 80px"><input type="text" class="tpPref" placeholder="Código" maxlength="4"></div>' +
+      '<div><input type="text" class="tpNombre" placeholder="Nombre definitivo"></div><button class="btn peq verde tpOk" style="flex:0 0 auto">Aprobar</button></div></div></div>';
+  }).join('') + '</div>' : '';
   var pend = herrLocal().filter(function (h) { return h.ok === 'PENDIENTE'; });
   $('herrPendOk').innerHTML = pend.length ? '<label>Máquinas pendientes de OK (' + pend.length + ')</label><div class="lista">' + pend.map(function (h) {
     return '<div class="item" data-ok="' + esc(h.codigo) + '"><div><b>' + esc(h.nombre) + '</b><small>alta de ' + esc(h.quien) + (h.desde ? ' · ' + esc(h.desde) : '') + (h.foto ? ' · <a href="' + esc(h.foto) + '" target="_blank">📷 foto</a>' : '') + '</small>' +
       '<div class="fila" style="margin-top:4px"><div><input type="text" class="motivoRech" placeholder="Motivo si se rechaza"></div><button class="btn peq verde okSi" style="flex:0 0 auto">OK</button><button class="btn peq rojo okNo" style="flex:0 0 auto">Rechazar</button></div></div></div>';
   }).join('') + '</div>' : '';
 }
+$('herrTiposPend').onclick = function (e) {
+  var d = e.target.closest('[data-tipo]'); if (!d || !e.target.classList.contains('tpOk')) return;
+  if (!navigator.onLine) return toast('Hace falta cobertura');
+  authAdmin().then(function (auth) { return api('herrTipoAprobar', { auth: auth, id: d.dataset.tipo, prefijo: d.querySelector('.tpPref').value.trim(), nombre: d.querySelector('.tpNombre').value.trim() }); })
+    .then(function (r) { toast('Tipo aprobado: ' + r.prefijo + ' (' + r.movimientos + ' movimiento/s pasados)', 'ok'); return cargarDatos(true); })
+    .then(function () { pintarHerrGestion(); }).catch(function (er) { toast(er.message, 'err'); });
+};
 $('herrPendOk').onclick = function (e) {
   var d = e.target.closest('[data-ok]'); if (!d) return;
   var si = e.target.classList.contains('okSi'), no = e.target.classList.contains('okNo'); if (!si && !no) return;
@@ -2039,37 +2151,143 @@ $('btnHSalida').onclick = function () { abrirMov('SALIDA', 'HER'); };
 $('btnHDevolucion').onclick = function () { abrirMov('DEVOLUCION', 'HER'); };
 $('btnHEntrada').onclick = function () { abrirMov('ENTRADA', 'HER'); };
 $('btnHAveria').onclick = function () { abrirMov('AVERIA', 'HER'); };
+$('btnHLaTengo').onclick = function () { abrirMov('ASIGNAR', 'HER'); };
+// ---------------------------------------------------------------- andamios (tipos de CANTIDAD)
+S.andFotos = [];
+function andamiosLocal() { return (S.datos && S.datos.andamios) || []; }
+function pintarAndLista() {
+  var modo = $('andModo').value, alm = $('andAlmacen').value, obra = $('andObra').value ? $('andObra').options[$('andObra').selectedIndex].text : '';
+  var antes = {}; $('andLista').querySelectorAll('input').forEach(function (i) { antes[i.dataset.p] = i.value; });
+  var tipos = ((S.datos && S.datos.herrTipos) || []).filter(function (t) { return t.control === 'CANTIDAD'; });
+  $('andLista').innerHTML = tipos.map(function (t) {
+    var a = andamiosLocal().filter(function (x) { return x.prefijo === t.prefijo; })[0] || { porObra: {}, porAlmacen: {} };
+    var hay = modo === 'DEVOLUCION' ? (obra ? 'en la obra: ' + (a.porObra[obra] || 0) : '') : modo === 'SALIDA' ? 'en el almacén: ' + (a.porAlmacen[alm] || 0) : '';
+    return '<div class="and-fila"><span>' + esc(t.nombre) + (hay ? ' <small>· ' + hay + '</small>' : '') + '</span><input type="number" inputmode="numeric" min="0" step="1" data-p="' + esc(t.prefijo) + '" value="' + esc(antes[t.prefijo] || '') + '" placeholder="0"></div>';
+  }).join('') || '<div class="ayuda">No hay tipos de pieza: pulsa "+ Tipo de pieza nuevo".</div>';
+}
+function pintarAndModo() {
+  var modo = $('andModo').value;
+  $('andObraBloque').style.display = modo === 'ENTRADA' ? 'none' : '';
+  $('andAlmLabel').textContent = modo === 'SALIDA' ? 'Sale del almacén' : 'Se deja en el almacén';
+  $('andPersonaLabel').textContent = modo === 'DEVOLUCION' ? '¿Quién lo recoge?' : '¿Quién lo lleva?';
+  pintarAndLista();
+}
+$('btnAndamios').onclick = function () {
+  $('movForm').style.display = 'none'; $('andForm').style.display = '';
+  $('andModo').value = 'SALIDA'; $('andObra').value = ''; $('andObraTxt').value = ''; $('andPersona').value = S.usuario ? S.usuario.nombre : '';
+  $('andLista').innerHTML = ''; S.andFotos = []; pintarFotosEn('andFotos', S.andFotos); S.andCuando = ahoraES();
+  $('andCuando').textContent = 'Fecha y hora: ' + S.andCuando;
+  opciones($('andObra'), obras(), 'codigo', 'nombre', '— obra —');
+  almacenGuardado().then(function (c) { opcionesAlmacen('andAlmacen', c); pintarAndModo(); });
+};
+$('andModo').onchange = pintarAndModo; $('andAlmacen').onchange = pintarAndLista;
+buscador($('andObraTxt'), $('andObraSugs'), obras, function (o) { $('andObra').value = o ? String(o.codigo) : ''; pintarAndLista(); });
+buscador($('andPersona'), $('andPersonaSugs'), function () { return (S.datos && S.datos.trabajadores) || []; }, function () {});
+$('andTipoNuevo').onclick = abrirTipoNuevo;
+$('andFoto').onclick = function () { $('andFotoInput').click(); };
+$('andFotoInput').onchange = function () { var f = this.files && this.files[0]; this.value = ''; if (f) comprimir(f).then(function (d) { if (d) { S.andFotos = [d]; pintarFotosEn('andFotos', S.andFotos); } }); };
+$('andCancelar').onclick = function () { $('andForm').style.display = 'none'; };
+$('andGuardar').onclick = function () {
+  var modo = $('andModo').value, lineas = [];
+  $('andLista').querySelectorAll('input').forEach(function (i) { var q = +i.value || 0; if (q > 0) lineas.push({ prefijo: i.dataset.p, cantidad: q }); });
+  if (!lineas.length) return toast('Pon cuántas piezas de algún tipo');
+  if (modo !== 'ENTRADA' && !$('andObra').value) return toast('Elige la obra');
+  if (!S.andFotos.length) return toast('Haz la foto general del conjunto');
+  var obra = modo === 'ENTRADA' ? '' : $('andObra').options[$('andObra').selectedIndex].text, alm = $('andAlmacen').value;
+  var mov = { id: uid(), tipo: modo, obra: obra, almacen: alm, persona: modo === 'ENTRADA' ? '' : ($('andPersona').value.trim() || S.usuario.nombre), usuario: S.usuario.nombre,
+    lineas: lineas, foto: S.andFotos[0], fecha: hoyISO(), hora: S.andCuando.slice(11) };
+  recordarAlmacen(alm);
+  // cantidades del móvil hasta que llegue lo del servidor
+  lineas.forEach(function (l) {
+    var a = andamiosLocal().filter(function (x) { return x.prefijo === l.prefijo; })[0]; if (!a) return;
+    var s = function (o, k, v) { if (k) o[k] = (o[k] || 0) + v; };
+    if (modo === 'SALIDA') { s(a.porAlmacen, alm, -l.cantidad); s(a.porObra, obra, l.cantidad); }
+    else if (modo === 'DEVOLUCION') { s(a.porObra, obra, -l.cantidad); s(a.porAlmacen, alm, l.cantidad); }
+    else s(a.porAlmacen, alm, l.cantidad);
+  });
+  DB.put('kv', S.datos, 'datos');
+  DB.put('cola', { id: mov.id, tipo: 'andamios', mov: mov, fecha: mov.fecha, hora: mov.hora, creadoEn: new Date().toISOString() }).then(function () {
+    $('andForm').style.display = 'none'; pintarHerr(); actualizarPend();
+    toast(navigator.onLine ? 'Andamios guardados. Enviando…' : 'Guardado en el móvil, se enviará solo', 'ok'); if (navigator.onLine) sincronizar();
+  });
+};
+// Mis herramientas: las que tengo a mi cargo (CON PERSONA); "Devolver" las deja en un almacén
+function pintarMisHerr() {
+  var yo = S.usuario ? S.usuario.nombre : '', mias = herrLocal().filter(function (h) { return h.estado === 'CON PERSONA' && h.quien === yo; });
+  $('misHerr').innerHTML = mias.length ? mias.map(function (h) {
+    return '<div class="item"><div><b>' + esc(h.nombre) + '</b><small>desde ' + esc(h.desde || '') + (h.ok === 'PENDIENTE' ? ' · PENDIENTE DE OK' : '') + '</small></div><button class="btn peq sec devolverMia" data-cod="' + esc(h.codigo) + '" style="flex:0 0 auto">↩ Devolver</button></div>';
+  }).join('') : '<div class="ayuda">No tienes ninguna a tu cargo. Si tienes una en la mano, pulsa "La tengo yo".</div>';
+}
+$('misHerr').onclick = function (e) {
+  var b = e.target.closest('.devolverMia'); if (!b) return;
+  abrirMov('DEVOLUCION', 'HER');
+  var h = herrLocal().filter(function (x) { return x.codigo === b.dataset.cod; })[0];
+  $('movMatTxt').value = h.nombre; $('movMatTxt').dispatchEvent(new Event('input')); $('movMatSugs').style.display = 'none';
+};
+// tipo de andamio nuevo: se guarda en el móvil y se sube primero (antes que sus movimientos)
+S.tnFotos = [];
+function abrirTipoNuevo() {
+  $('tnMaterial').value = 'ALUMINIO'; $('tnDef').value = ''; S.tnFotos = []; pintarFotosEn('tnFotos', S.tnFotos);
+  $('modalTipoNuevo').classList.add('activa');
+}
+$('tnFoto').onclick = function () { $('tnFotoInput').click(); };
+$('tnFotoInput').onchange = function () { var f = this.files && this.files[0]; this.value = ''; if (f) comprimir(f).then(function (d) { if (d) { S.tnFotos = [d]; pintarFotosEn('tnFotos', S.tnFotos); } }); };
+$('tnCancelar').onclick = function () { $('modalTipoNuevo').classList.remove('activa'); };
+$('tnGuardar').onclick = function () {
+  var def = $('tnDef').value.trim();
+  if (!def) return toast('Escribe qué es'); if (!S.tnFotos.length) return toast('Haz la foto');
+  var id = 'NUEVO-' + Math.random().toString(36).slice(2, 7).toUpperCase().replace(/[^A-Z0-9]/g, 'X');
+  var nombre = 'ANDAMIO ' + $('tnMaterial').value + ' · ' + def.toUpperCase() + ' (PENDIENTE)';
+  var it = { id: uid(), tipo: 'herrTipoNuevo', tipoNuevo: { id: id, material: $('tnMaterial').value, definicion: def, foto: S.tnFotos[0], usuario: S.usuario.nombre }, nombre: nombre, fecha: hoyISO(), creadoEn: new Date().toISOString() };
+  S.datos.herrTipos = (S.datos.herrTipos || []).concat([{ prefijo: id, nombre: nombre, va_con: 'OBRA', control: 'CANTIDAD', estado: 'PENDIENTE' }]);
+  S.datos.andamios = (S.datos.andamios || []).concat([{ prefijo: id, tipo: nombre, pendiente: true, porObra: {}, porAlmacen: {} }]);
+  DB.put('kv', S.datos, 'datos'); DB.put('cola', it).then(actualizarPend);
+  $('modalTipoNuevo').classList.remove('activa');
+  pintarAndLista(); var inp = $('andLista').querySelector('input[data-p="' + id + '"]'); if (inp) inp.focus();
+  if (navigator.onLine) sincronizar();
+};
 $('movCancelar').onclick = function () { $('movForm').style.display = 'none'; };
 $('movGuardar').onclick = function () {
   if (S.movClase !== 'HER') return guardarVale();
-  var her = S.movClase === 'HER', nombreMat = $('movMatTxt').value.trim(), cant = her ? 1 : +$('movCant').value;
+  var her = S.movClase === 'HER', porCant = her && S.movMat && S.movMat.cantidad, nombreMat = $('movMatTxt').value.trim(), cant = her && !porCant ? 1 : +$('movCant').value;
   if (her && !S.movMat) return toast(S.movTipo === 'ENTRADA' ? 'Elige el tipo de la lista' : 'Elige la herramienta de la lista (por su número)');
-  if (her && !S.movFotos.length) return toast('Haz una foto de la herramienta');
+  if (porCant && !(cant > 0)) return toast('Pon cuántas');
+  var fotoObl = her && ((!porCant && S.movTipo !== 'ASIGNAR') || S.movMat.nuevo);   // andamios y "La tengo yo": foto opcional
+  if (fotoObl && !S.movFotos.length) return toast('Haz una foto de la herramienta');
   if (her && S.movTipo === 'AVERIA' && !$('movNota').value.trim()) return toast('Escribe qué le pasa');
   if (!nombreMat || !cant) return toast('Escribe material y cantidad');
   // si no se eligió de la lista, va como texto libre (código OTRO, no cuenta en el stock)
   var mat = S.movMat ? String(S.movMat.codigo || '') : 'OTRO', matNombre = S.movMat ? (S.movMat.nuevo ? S.movMat.tipo : S.movMat.nombre) : nombreMat.toUpperCase();
-  var conObra = S.movTipo !== 'ENTRADA' && S.movTipo !== 'AVERIA';   // salida y devolución van siempre ligadas a una obra
-  var almacenHer = her && S.movTipo !== 'SALIDA' ? $('valeAlmacen').value : '';
+  var conObra = her ? $('movObraBloque').style.display !== 'none' : S.movTipo !== 'ENTRADA' && S.movTipo !== 'AVERIA';   // herramientas: según el formulario
+  var almacenHer = her && S.movTipo !== 'ASIGNAR' && (S.movTipo !== 'SALIDA' || porCant) ? $('valeAlmacen').value : '';
   if (almacenHer) recordarAlmacen(almacenHer);
   if (conObra && !$('movObra').value) return toast('Elige la obra');
   var obraSel = $('movObra'), obraTxt = conObra ? obraSel.options[obraSel.selectedIndex].text : '';
-  var persona = conObra ? ($('movPersonaTxt').value.trim() || S.usuario.nombre) : '';
-  var mov = { id: uid(), tipo: 'mov', clase: S.movClase, persona: persona, movTipo: S.movTipo, material: mat, materialNombre: matNombre, tipoHer: her && (S.movTipo === 'ENTRADA' || S.movMat.nuevo) ? S.movMat.prefijo : '', codigoNuevo: S.codigoNuevo || '', almacen: almacenHer, hora: S.movCuando.slice(11), cantidad: cant, obra: obraTxt, nota: $('movNota').value.trim(), fotos: S.movFotos.slice(), fecha: hoyISO(), usuario: S.usuario.nombre, creadoEn: new Date().toISOString() };
+  var persona = conObra ? ($('movPersonaTxt').value.trim() || S.usuario.nombre) : S.movTipo === 'ASIGNAR' ? S.usuario.nombre : '';
+  var mov = { id: uid(), tipo: 'mov', clase: S.movClase, persona: persona, movTipo: S.movTipo, material: mat, materialNombre: matNombre, tipoHer: her && !porCant && (S.movTipo === 'ENTRADA' || S.movMat.nuevo) ? S.movMat.prefijo : '', codigoNuevo: S.codigoNuevo || '', almacen: almacenHer, hora: S.movCuando.slice(11), cantidad: cant, obra: obraTxt, nota: $('movNota').value.trim(), fotos: S.movFotos.slice(), fecha: hoyISO(), usuario: S.usuario.nombre, creadoEn: new Date().toISOString() };
   // ajuste optimista del stock local
-  if (her && S.codigoNuevo) {   // la nueva entra ya en la lista del móvil, para no repetir su número
+  if (porCant) { mov.material = S.movMat.prefijo; mov.materialNombre = S.movMat.nombre; }
+  else if (her && S.codigoNuevo) {   // la nueva entra ya en la lista del móvil, para no repetir su número
     (S.numerosPendientes = S.numerosPendientes || []).push(S.codigoNuevo);
     herrLocal().push({ codigo: S.codigoNuevo, tipo: S.movMat.tipo || S.movMat.nombre, nombre: S.codigoNuevo + ' · ' + (S.movMat.tipo || S.movMat.nombre),
-      donde: S.movTipo === 'SALIDA' ? obraTxt : 'ALMACÉN', quien: persona || S.usuario.nombre, desde: S.movCuando, estado: S.movTipo === 'SALIDA' ? 'EN OBRA' : 'DISPONIBLE', almacen: almacenHer, ok: 'PENDIENTE' });
+      donde: S.movTipo === 'SALIDA' ? obraTxt : S.movTipo === 'ASIGNAR' ? S.usuario.nombre : 'ALMACÉN', quien: persona || S.usuario.nombre, desde: S.movCuando,
+      estado: S.movTipo === 'SALIDA' ? 'EN OBRA' : S.movTipo === 'ASIGNAR' ? 'CON PERSONA' : 'DISPONIBLE', almacen: almacenHer, ok: 'PENDIENTE' });
   } else if (her) herrLocal().forEach(function (h) {
     if (h.codigo === mat) {
-      h.donde = S.movTipo === 'SALIDA' ? obraTxt : 'ALMACÉN'; h.quien = persona || S.usuario.nombre; h.desde = S.movCuando; h.almacen = almacenHer;
-      h.estado = S.movTipo === 'SALIDA' ? 'EN OBRA' : S.movTipo === 'AVERIA' ? 'AVERIADA' : 'DISPONIBLE'; if (S.movTipo === 'AVERIA') h.averia = $('movNota').value.trim();
+      h.donde = S.movTipo === 'SALIDA' ? obraTxt : S.movTipo === 'ASIGNAR' ? S.usuario.nombre : 'ALMACÉN'; h.quien = persona || S.usuario.nombre; h.desde = S.movCuando; h.almacen = almacenHer;
+      h.estado = S.movTipo === 'SALIDA' ? 'EN OBRA' : S.movTipo === 'AVERIA' ? 'AVERIADA' : S.movTipo === 'ASIGNAR' ? 'CON PERSONA' : 'DISPONIBLE'; if (S.movTipo === 'AVERIA') h.averia = $('movNota').value.trim();
     }
   });
   else stockLocal().forEach(function (m) { if (m.codigo === mat) m.stock += (S.movTipo === 'SALIDA' ? -cant : cant); });
   DB.put('kv', S.datos, 'datos');
-  DB.put('cola', mov).then(function () { $('movForm').style.display = 'none'; pintarStock(); pintarHerr(); toast('Movimiento guardado'); actualizarPend(); sincronizar(); });
+  if (porCant) (S.datos.andamios || []).forEach(function (a) {   // cantidades del móvil hasta que llegue lo del servidor
+    if (a.prefijo !== mov.material) return;
+    var s = function (o, k, v) { if (k) o[k] = (o[k] || 0) + v; };
+    if (S.movTipo === 'SALIDA') { s(a.porAlmacen, almacenHer, -cant); s(a.porObra, obraTxt, cant); }
+    else if (S.movTipo === 'DEVOLUCION') { s(a.porObra, obraTxt, -cant); s(a.porAlmacen, almacenHer, cant); }
+    else s(a.porAlmacen, almacenHer, cant);
+  });
+  DB.put('cola', mov).then(function () { $('movForm').style.display = 'none'; pintarStock(); pintarHerr(); pintarMisHerr(); toast('Movimiento guardado'); actualizarPend(); sincronizar(); });
 };
 
 // ---------------------------------------------------------------- vales (solo admin; el servidor comprueba el rol)
@@ -2149,7 +2367,7 @@ function sincronizar() {
   sincronizando = true;
   return DB.all('cola').then(function (cola) {
     // orden: EAN nuevos, luego partes y vales (el inventario), y al final las fotos, una a una
-    var prio = function (it) { return it.tipo === 'eans' ? 0 : it.tipo === 'foto' || it.tipo === 'fotoInv' ? 2 : 1; };
+    var prio = function (it) { return it.tipo === 'eans' || it.tipo === 'herrTipoNuevo' ? 0 : it.tipo === 'foto' || it.tipo === 'fotoInv' ? 2 : 1; };
     cola.sort(function (a, b) { return prio(a) - prio(b) || (a.creadoEn < b.creadoEn ? -1 : a.creadoEn > b.creadoEn ? 1 : (a.n || 0) - (b.n || 0)); });
     var p = Promise.resolve(), enviados = 0, pendientes = {};
     cola.forEach(function (it) { if (it.tipo === 'vale') pendientes[it.id] = true; if (it.tipo === 'invEntrega') pendientes['inv:' + it.inventario] = true; });
@@ -2157,6 +2375,16 @@ function sincronizar() {
       p = p.then(function () {
         if (it.tipo === 'foto' && pendientes[it.valeId]) return;   // la foto espera a que llegue su inventario
         if (it.tipo === 'fotoInv' && pendientes['inv:' + it.inventario]) return;
+        if (it.tipo === 'andamios') return api('andamios', { mov: it.mov }).then(function (j) {
+          toast('Andamios ' + j.numero + ' guardados', 'ok');
+          return DB.put('hist', { id: it.id, tipo: 'vale', fecha: it.fecha, numero: j.numero, resumen: 'Andamios · ' + ({ SALIDA: 'a obra', DEVOLUCION: 'recogidos de obra', ENTRADA: 'entrada en almacén' })[it.mov.tipo] + (it.mov.obra ? ' · ' + it.mov.obra : '') + ' · ' + it.mov.lineas.map(function (l) { return l.cantidad; }).reduce(function (a, b) { return a + b; }, 0) + ' piezas', hora: it.hora, enviadoEn: new Date().toISOString() })
+            .then(function () { return DB.del('cola', it.id); });
+        }).catch(function (e) {
+          if (navigator.onLine && !/fetch|network|Failed/i.test(e.message)) toast('Los andamios no se han guardado: ' + e.message, 'err');
+          it.error = e.message; it.intentos = (it.intentos || 0) + 1; return DB.put('cola', it);
+        });
+        if (it.tipo === 'herrTipoNuevo') return api('herrTipoNuevo', { tipo: it.tipoNuevo }).then(function () { return DB.del('cola', it.id); })
+          .catch(function (e) { it.error = e.message; it.intentos = (it.intentos || 0) + 1; return DB.put('cola', it); });
         if (it.tipo === 'invEntrega') return api('invEntrega', { entrega: it.entrega, auth: it.auth }).then(function () {
           delete pendientes['inv:' + it.inventario]; toast('Inventario entregado: ' + it.nombre, 'ok');
           return DB.put('hist', { id: it.id, tipo: 'vale', fecha: it.fecha, numero: '', resumen: 'Inventario entregado · ' + it.nombre + ' · ' + it.entrega.lineas.length + ' línea(s)', hora: it.hora, enviadoEn: new Date().toISOString() })
@@ -2235,6 +2463,8 @@ function pintarEnviados() {
     }).join('');
     c = c.filter(function (it) { return it.tipo !== 'foto' && it.tipo !== 'fotoInv'; });
     $('colaLista').innerHTML = (c.length || htmlFotos) ? htmlFotos + c.map(function (it) {
+      if (it.tipo === 'andamios') return '<div class="item"><div><b>Andamios · ' + esc(({ SALIDA: 'a obra', DEVOLUCION: 'recogidos de obra', ENTRADA: 'entrada en almacén' })[it.mov.tipo]) + (it.mov.obra ? ' · ' + esc(it.mov.obra) : '') + '</b><small>' + fechaES(it.fecha) + ' ' + esc(it.hora || '') + (it.error ? ' · <span style="color:var(--rojo)">' + esc(it.error) + '</span>' : '') + '</small></div>' + (it.error ? '<button class="chip err descartar" data-id="' + esc(it.id) + '">quitar</button>' : '<span class="chip pend">pendiente</span>') + '</div>';
+      if (it.tipo === 'herrTipoNuevo') return '<div class="item"><div><b>Tipo de andamio nuevo · ' + esc(it.nombre) + '</b><small>' + fechaES(it.fecha) + (it.error ? ' · <span style="color:var(--rojo)">' + esc(it.error) + '</span>' : '') + '</small></div><span class="chip pend">pendiente</span></div>';
       if (it.tipo === 'invEntrega') return '<div class="item"><div><b>Inventario · ' + esc(it.nombre) + ' · He terminado · ' + it.entrega.lineas.length + ' línea(s)</b><small>' + fechaES(it.fecha) + ' ' + esc(it.hora || '') + (it.error ? ' · <span style="color:var(--rojo)">' + esc(it.error) + '</span>' : '') + '</small></div><span class="chip pend">pendiente</span></div>';
       if (it.tipo === 'eans') return '<div class="item"><div><b>Código de barras nuevo · ' + esc(it.eans.map(function (e) { return e.ean + (e.marca ? ' (' + e.marca + ')' : ''); }).join(', ')) + '</b><small>' + fechaES(it.fecha) + (it.error ? ' · <span style="color:var(--rojo)">' + esc(it.error) + '</span>' : '') + '</small></div><span class="chip pend">pendiente</span></div>';
       return '<div class="item"><div><b>' + (it.tipo === 'parte' ? 'Parte · ' + esc(it.obraNombre) : it.tipo === 'vale' ? (it.valeTipo === 'AJUSTE' ? 'Inventario · ' + esc(nombreAlmacen(it.almacen).split(' · ')[0]) + ' · ' + (it.nFotos || 0) + ' foto(s)' : 'Vale · ' + TIPO_VALE[it.valeTipo]) + ' · ' + it.lineas.length + ' línea(s)' + (it.obra ? ' · ' + esc(it.obra) : '') : (it.clase === 'HER' ? 'Herramientas · ' : 'Almacén · ') + esc(it.movTipo) + ' ' + it.cantidad + ' ' + esc(it.materialNombre || it.material)) + '</b><small>' + fechaES(it.fecha) + (it.hora ? ' ' + esc(it.hora) : '') + (it.error ? ' · <span style="color:var(--rojo)">' + esc(it.error) + '</span>' : '') + '</small></div>' + (it.error ? '<button class="chip err descartar" data-id="' + esc(it.id) + '">quitar</button>' : '<span class="chip pend">pendiente</span>') + '</div>';

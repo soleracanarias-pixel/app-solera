@@ -45,9 +45,10 @@ var HOJAS = {
   FIRMANTES: ['nombre','email','obra_ultima','veces','actualizado_en'],
   POR_OBRA: ['obra','material_codigo','material','unidad','salido','devuelto','gastado','recuperado','comprado'],   // comprado = COMPRA_OBRA (directo a obra)
   // herramientas una a una: cada máquina con su número (BAT-01…), que se marca en la propia máquina
-  HERR_TIPOS: ['prefijo','tipo','orden'],
+  // va_con: PERSONA u OBRA; control: UNIDAD (con número) o CANTIDAD (andamios); estado PENDIENTE = tipo nuevo propuesto por un trabajador
+  HERR_TIPOS: ['prefijo','tipo','orden','va_con','control','estado','material','definicion','foto','propuesto_por','creado_en'],
   HERRAMIENTAS: ['codigo','tipo','activo','alta_fecha','alta_por','ok','ok_por','ok_en','motivo_rechazo'],   // ok: PENDIENTE (alta de cualquiera) / OK / RECHAZADA
-  // tipo: ENTRADA (alta), SALIDA (a obra), DEVOLUCION, AVERIA, REPARACION (al reparador), VUELTA (reparada), BAJA
+  // tipo: ENTRADA (alta), SALIDA (a obra), DEVOLUCION, AVERIA, REPARACION (al reparador), VUELTA (reparada), BAJA, ASIGNAR ("La tengo yo": con persona), AJUSTE (inventario de las de CANTIDAD)
   HERR_MOV: ['id','fecha','tipo','herramienta_codigo','herramienta','cantidad','unidad','obra','usuario','nota','creado_en','fotos','numero','hora','persona','almacen','recibo'],
   HERR_DONDE: ['codigo','herramienta','donde','quien','desde','ultimo_mov','foto','estado','almacen','ok','averia'],
   REPARADORES: ['nombre','telefono','email'],
@@ -63,9 +64,9 @@ function clase_(c) { return CLASES[c === 'HER' ? 'HER' : 'MAT']; }
 function movFilas_(c) {
   return filas_(c.mov).map(function (f) { f.material_codigo = f[c.cod]; f.material = f[c.nom]; return f; });
 }
-var ESQUEMA = '17';
+var ESQUEMA = '18';
 // número de la versión publicada en Apps Script (subirlo en cada publicación, igual que VERSION_WEB de index.html)
-var VERSION_SERVIDOR = 17;            // subir cuando cambien las columnas de HOJAS
+var VERSION_SERVIDOR = 18;            // subir cuando cambien las columnas de HOJAS
 var EMAIL_COPIA = 'soleracanarias@gmail.com';
 var CSV_NOMBRE = 'PARTES APP 2026.csv';  // se crea en la carpeta CARPETA_CSV_ID de CONFIG (CLIENTES\PARTES\APP)
 var CSV_COLUMNAS = ['N_PARTE','FECHA','DIA_SEMANA','CLIENTE','OBRA','COD_OBRA_APP','RESP_CLIENTE','RESP_CERT','RESP_SOLERA','MATRICULA',
@@ -273,6 +274,9 @@ function doPost(e) {
       case 'herrReparar': lock.waitLock(30000); return json_(herrReparar_(body));
       case 'herrVuelta': lock.waitLock(30000); return json_(herrVuelta_(body));
       case 'herrOk': lock.waitLock(30000); return json_(herrOk_(body));
+      case 'herrTipoNuevo': lock.waitLock(30000); return json_(herrTipoNuevo_(body.tipo));
+      case 'andamios': lock.waitLock(30000); return json_(andamiosMov_(body.mov));
+      case 'herrTipoAprobar': lock.waitLock(30000); return json_(herrTipoAprobar_(body));
       case 'vales': exigirAdmin_(body.auth); return json_({ ok: true, vales: listaVales_(body.filtros || {}) });
       case 'anularVale': exigirAdmin_(body.auth); lock.waitLock(30000); return json_(anularVale_(body.numero, body.motivo, body.auth));
       default: return json_({ ok: false, error: 'Acción desconocida' });
@@ -335,7 +339,9 @@ function bootstrap_() {
     herramientas: herrDonde_(false),
     herrTipos: filas_('HERR_TIPOS').filter(function (f) { return f.prefijo; })
       .sort(function (a, b) { return (Number(a.orden) || 9999) - (Number(b.orden) || 9999); })
-      .map(function (f) { return { prefijo: String(f.prefijo), nombre: String(f.tipo) }; }),
+      .map(function (f) { return { prefijo: String(f.prefijo), nombre: String(f.tipo), va_con: String(f.va_con || '').toUpperCase() === 'PERSONA' ? 'PERSONA' : 'OBRA',
+        control: String(f.control || '').toUpperCase() === 'CANTIDAD' ? 'CANTIDAD' : 'UNIDAD', estado: String(f.estado || '') }; }),
+    andamios: andamios_(),
     firmantes: filas_('FIRMANTES').filter(function (f) { return f.nombre; })
       .sort(function (a, b) { return (Number(b.veces) || 0) - (Number(a.veces) || 0); })
       .map(function (f) { return { nombre: String(f.nombre), email: String(f.email || '') }; }),
@@ -403,10 +409,10 @@ function herrDonde_(escribir) {
   var def = null;
   var lista = filas_('HERRAMIENTAS').filter(function (f) { return si_(f.activo); }).map(function (f) {
     var u = ult[String(f.codigo)] || {}, m = u.m, tipo = m ? String(m.tipo) : '', alm = m && m.almacen ? String(m.almacen) : (def = def || almacenPorDefecto_());
-    var estado = tipo === 'SALIDA' ? 'EN OBRA' : tipo === 'AVERIA' ? 'AVERIADA' : tipo === 'REPARACION' ? 'EN REPARACION' : tipo === 'BAJA' ? 'BAJA' : 'DISPONIBLE';
+    var estado = tipo === 'SALIDA' ? 'EN OBRA' : tipo === 'AVERIA' ? 'AVERIADA' : tipo === 'REPARACION' ? 'EN REPARACION' : tipo === 'BAJA' ? 'BAJA' : tipo === 'ASIGNAR' ? 'CON PERSONA' : 'DISPONIBLE';
     var enAlm = estado === 'DISPONIBLE' || estado === 'AVERIADA';
     return { codigo: String(f.codigo), tipo: f.tipo, nombre: f.codigo + ' · ' + f.tipo,
-      donde: estado === 'EN OBRA' ? m.obra : enAlm ? 'ALMACÉN' : estado === 'EN REPARACION' ? 'REPARADOR' : 'BAJA',
+      donde: estado === 'EN OBRA' ? m.obra : enAlm ? 'ALMACÉN' : estado === 'CON PERSONA' ? String(m.persona || m.usuario || '') : estado === 'EN REPARACION' ? 'REPARADOR' : 'BAJA',
       quien: m ? (m.persona || m.usuario || '') : (f.alta_por || ''),
       desde: m ? txtFecha_(m.fecha, 'dd/MM/yyyy') + (m.hora ? ' ' + m.hora : '') : '', ultimo_mov: m ? m.numero : '', foto: u.foto || '',
       estado: estado, almacen: enAlm ? alm : '', ok: String(f.ok || '') === 'PENDIENTE' ? 'PENDIENTE' : 'OK',
@@ -580,9 +586,12 @@ function movimiento_(m) {
   var c = clase_(m.clase);
   var ya = filas_(c.mov).filter(function (f) { return f.id === m.id; })[0];
   if (ya) return { ok: true, repetido: true, numero: ya.numero || '' };
-  var her = c === CLASES.HER, mat;
-  // alta, o herramienta que aún no tenía número (se le da uno al llevarla/devolverla)
-  if (her && (m.tipo === 'ENTRADA' || (!m.material && m.tipoHer))) mat = altaHerramienta_(m.tipoHer, m.usuario, m.codigoNuevo);
+  var her = c === CLASES.HER, mat, tiposH = her ? tiposHerr_() : {}, porCantidad = false;
+  var tCant = her && tiposH[String(m.material || m.tipoHer || '')];
+  // herramientas de CANTIDAD (andamios): se mueven por tipo y cuántas, sin número
+  if (tCant && tCant.control === 'CANTIDAD') { mat = { codigo: tCant.prefijo, nombre: tCant.tipo, unidad: 'ud' }; porCantidad = true; if (!(Number(m.cantidad) > 0)) throw new Error('Pon cuántas'); }
+  // alta, o herramienta que aún no tenía número (se le da uno al llevarla, devolverla o al decir "La tengo yo")
+  else if (her && (m.tipo === 'ENTRADA' || (!m.material && m.tipoHer))) mat = altaHerramienta_(m.tipoHer, m.usuario, m.codigoNuevo);
   else if (her) {
     var u = filas_('HERRAMIENTAS').filter(function (f) { return String(f.codigo) === String(m.material); })[0];
     if (!u) throw new Error('Herramienta no encontrada: ' + (m.material || ''));
@@ -597,11 +606,14 @@ function movimiento_(m) {
   var n = Number(config_(c.contador)) || 1;
   setConfig_(c.contador, n + 1);
   var numero = c.prefijo + ('000' + n).slice(-4);
-  var tipo = ['ENTRADA', 'DEVOLUCION', 'AVERIA'].indexOf(m.tipo) >= 0 && (her || m.tipo !== 'AVERIA') ? m.tipo : 'SALIDA';
-  if (her && tipo !== 'ENTRADA' && mat.codigo) {
+  var tipo = ['ENTRADA', 'DEVOLUCION', 'AVERIA', 'ASIGNAR'].indexOf(m.tipo) >= 0 && (her || ['AVERIA', 'ASIGNAR'].indexOf(m.tipo) < 0) ? m.tipo : 'SALIDA';
+  if (tipo === 'ASIGNAR' && (porCantidad || (tiposH[String(mat.codigo).split('-')[0]] || {}).va_con !== 'PERSONA')) throw new Error('"La tengo yo" es solo para las herramientas que van con la persona');
+  if (porCantidad && ['AVERIA', 'ASIGNAR'].indexOf(tipo) >= 0) throw new Error('Los andamios se mueven por cantidad: llevar, devolver o alta');
+  if (her && !porCantidad && tipo !== 'ENTRADA' && mat.codigo) {
     var est = (herrPorCodigo_(mat.codigo) || {}).estado;
     if (tipo === 'SALIDA' && ['AVERIADA', 'EN REPARACION', 'BAJA'].indexOf(est) >= 0) throw new Error(mat.codigo + ' está ' + (est === 'EN REPARACION' ? 'EN REPARACIÓN' : est) + ': no se puede llevar a obra');
     if (tipo === 'AVERIA' && ['EN REPARACION', 'BAJA'].indexOf(est) >= 0) throw new Error(mat.codigo + ' ya está ' + (est === 'BAJA' ? 'de BAJA' : 'EN REPARACIÓN'));
+    if (tipo === 'ASIGNAR' && ['AVERIADA', 'EN REPARACION', 'BAJA'].indexOf(est) >= 0) throw new Error(mat.codigo + ' está ' + (est === 'EN REPARACION' ? 'EN REPARACIÓN' : est));
   }
   if (tipo === 'AVERIA' && !String(m.nota || '').trim()) throw new Error('Escribe qué le pasa a la máquina');
   if (tipo === 'AVERIA' && !(m.fotos && m.fotos.length)) throw new Error('La avería necesita una foto');
@@ -616,11 +628,12 @@ function movimiento_(m) {
       if (b) fotosUrls.push(carp.createFile(b).getUrl());
     });
   }
-  var fila = { id: m.id, fecha: fechaES_(fecha), tipo: tipo, cantidad: her ? 1 : Number(m.cantidad) || 0, unidad: mat.unidad || '', obra: m.obra || '',
+  var fila = { id: m.id, fecha: fechaES_(fecha), tipo: tipo, cantidad: her && !porCantidad ? 1 : Number(m.cantidad) || 0, unidad: mat.unidad || '', obra: m.obra || '',
     parte_numero: '', usuario: m.usuario || '', nota: m.nota || '', creado_en: ahora_(), fotos: fotosUrls.join(' '), numero: numero,
     hora: m.hora ? "'" + m.hora : '',     // con ' para que la hoja no lo convierta en fecha
-    almacen: tipo === 'SALIDA' ? '' : comprobarAlmacen_(m.almacen || (tipo === 'AVERIA' ? 'QUI' : '')),   // herramientas: dónde la deja (avería: QUIQUIRÁ por defecto)
-    persona: tipo === 'ENTRADA' ? '' : (m.persona || m.usuario || '') };   // quién se lo lleva / lo devuelve (usuario = quién lo anota)
+    // herramientas: dónde la deja (avería: QUIQUIRÁ por defecto); las de CANTIDAD guardan también de qué almacén salen; "La tengo yo", sin almacén
+    almacen: tipo === 'ASIGNAR' || (tipo === 'SALIDA' && !porCantidad) ? '' : comprobarAlmacen_(m.almacen || (tipo === 'AVERIA' ? 'QUI' : '')),
+    persona: tipo === 'ENTRADA' ? '' : (m.persona || m.usuario || '') };   // quién se la lleva / la recoge / la tiene (ASIGNAR); usuario = quién lo anota
   fila[c.cod] = String(mat.codigo); fila[c.nom] = mat.nombre;
   anadirFila_(c.mov, fila);
   if (her) { try { herrDonde_(true); } catch (err) { console.error('HERR_DONDE: ' + err); } }
@@ -778,9 +791,18 @@ function inventarioMaquinas_(maquinas, v, numero, fecha, almacen, hora, creadoEn
   if (!maquinas.length) return [];
   var enAlm = {};
   herrDonde_(false).forEach(function (h) { if (h.donde === 'ALMACÉN' && h.almacen === almacen) { var p = h.codigo.split('-')[0]; enAlm[p] = (enAlm[p] || 0) + 1; } });
-  var altas = [];
+  var altas = [], tiposH = tiposHerr_(), cant = {};
+  andamios_().forEach(function (a) { cant[a.prefijo] = a.porAlmacen[almacen] || 0; });
   maquinas.forEach(function (m) {
     var bien = Number(m.bien) || 0, regular = Number(m.regular) || 0, averiada = Number(m.averiada) || 0, total = bien + regular + averiada;
+    if ((tiposH[m.prefijo] || {}).control === 'CANTIDAD') {   // andamios: se ajusta la cantidad de ese tipo en ese almacén
+      var dif = total - (cant[m.prefijo] || 0);
+      if (dif) anadirFila_('HERR_MOV', { id: v.id + '#Q|' + m.prefijo, fecha: fechaES_(fecha), tipo: 'AJUSTE', herramienta_codigo: m.prefijo, herramienta: tiposH[m.prefijo].tipo,
+        cantidad: dif, unidad: 'ud', obra: '', usuario: v.usuario || '', nota: 'Inventario ' + numero, creado_en: creadoEn, fotos: '', numero: numero, hora: hora, persona: '', almacen: almacen });
+      anadirFila_('INV_MAQUINAS', { numero: numero, fecha: fechaES_(fecha), almacen: almacen, prefijo: m.prefijo, tipo: m.tipo || tiposH[m.prefijo].tipo, bien: total, regular: 0,
+        averiada: 0, total: total, en_almacen_antes: cant[m.prefijo] || 0, altas: '' });
+      return;
+    }
     var faltan = Math.max(0, total - (enAlm[m.prefijo] || 0)), propuestos = m.altas || [], codigos = [];
     for (var i = 0; i < faltan; i++) {
       var h = altaHerramienta_(m.prefijo, v.usuario, propuestos[i] || '', true);
@@ -943,6 +965,7 @@ function invRevision_(b) {
   });
   Object.keys(porMat).forEach(function (k) { porMat[k].diferencia = Math.round((porMat[k].contado - porMat[k].stock) * 1000) / 1000; });
   var enAlm = {}; herrDonde_(false).forEach(function (h) { if (h.donde === 'ALMACÉN' && h.almacen === inv.almacen) { var p = h.codigo.split('-')[0]; enAlm[p] = (enAlm[p] || 0) + 1; } });
+  andamios_().forEach(function (a) { enAlm[a.prefijo] = a.porAlmacen[inv.almacen] || 0; });   // las de CANTIDAD: cuántas hay en ese almacén
   var vales = filas_('VALES').filter(function (v) { return String(v.inventario || '') === inv.id; }).map(function (v) {
     return { numero: v.numero, tipo: v.tipo, fecha: txtFecha_(v.fecha, 'dd/MM/yyyy'), hora: String(v.hora || ''), obra: v.obra, usuario: v.usuario, anulado: si_(v.anulado) }; });
   var pendientes = []; Object.keys(inv.asignacion).forEach(function (c) { var cod = inv.asignacion[c]; if (!inv.terminados[cod] && pendientes.indexOf(nombres[cod] || cod) < 0) pendientes.push(nombres[cod] || cod); });
@@ -1082,6 +1105,95 @@ function herrOk_(b) {
   if (!hecho) throw new Error('Máquina no encontrada');
   try { herrDonde_(true); } catch (err) { console.error('HERR_DONDE: ' + err); }
   return { ok: true };
+}
+
+// ---------------------------------------------------------------- herramientas por PERSONA u OBRA, y por UNIDAD o CANTIDAD
+// HERR_TIPOS.va_con: PERSONA (la lleva un trabajador: "La tengo yo") u OBRA (se lleva a la obra y allí se queda).
+// HERR_TIPOS.control: UNIDAD (cada una con su número, BAT-01) o CANTIDAD (andamios: se mueven por tipo y cuántas).
+function tiposHerr_() {
+  var t = {};
+  filas_('HERR_TIPOS').forEach(function (f) {
+    if (!f.prefijo) return;
+    t[String(f.prefijo)] = { prefijo: String(f.prefijo), tipo: String(f.tipo || ''), va_con: String(f.va_con || '').toUpperCase() === 'PERSONA' ? 'PERSONA' : 'OBRA',
+      control: String(f.control || '').toUpperCase() === 'CANTIDAD' ? 'CANTIDAD' : 'UNIDAD', estado: String(f.estado || '') };
+  });
+  return t;
+}
+// cuántas hay de cada tipo de CANTIDAD en cada obra y en cada almacén (sin anulados)
+function andamios_() {
+  var tipos = tiposHerr_(), acc = {}, def = almacenPorDefecto_();
+  Object.keys(tipos).forEach(function (p) { if (tipos[p].control === 'CANTIDAD') acc[p] = { prefijo: p, tipo: tipos[p].tipo, pendiente: tipos[p].estado === 'PENDIENTE', porObra: {}, porAlmacen: {} }; });
+  movFilas_(CLASES.HER).forEach(function (m) {
+    var a = acc[String(m.material_codigo)]; if (!a || si_(m.anulado)) return;
+    var q = Number(m.cantidad) || 0, alm = String(m.almacen || '') || def, obra = String(m.obra || '');
+    var suma = function (o, k, v) { if (k) o[k] = (o[k] || 0) + v; };
+    if (m.tipo === 'ENTRADA' || m.tipo === 'AJUSTE') suma(a.porAlmacen, alm, q);
+    else if (m.tipo === 'SALIDA') { suma(a.porAlmacen, alm, -q); suma(a.porObra, obra, q); }
+    else if (m.tipo === 'DEVOLUCION') { suma(a.porObra, obra, -q); suma(a.porAlmacen, alm, q); }
+  });
+  return Object.keys(acc).map(function (k) { return acc[k]; });
+}
+// andamios (tipos de CANTIDAD): una sola pantalla con todas las piezas y UNA foto general. Una línea por tipo en HERR_MOV,
+// todas con el mismo nº, quién (persona), cuándo, de dónde y a dónde (almacén y obra)
+function andamiosMov_(a) {
+  a = a || {};
+  if (!a.id) throw new Error('Movimiento sin id');
+  var ya = movFilas_(CLASES.HER).filter(function (m) { return String(m.id).indexOf(a.id + '-') === 0; })[0];
+  if (ya) return { ok: true, repetido: true, numero: ya.numero };
+  var tipo = ['SALIDA', 'DEVOLUCION', 'ENTRADA'].indexOf(a.tipo) >= 0 ? a.tipo : '';
+  if (!tipo) throw new Error('¿Llevar, recoger o entrada?');
+  var tipos = tiposHerr_();
+  var lineas = (a.lineas || []).filter(function (l) { return Number(l.cantidad) > 0; });
+  lineas.forEach(function (l) { if (!tipos[l.prefijo] || tipos[l.prefijo].control !== 'CANTIDAD') throw new Error('Pieza no válida: ' + l.prefijo); });
+  if (!lineas.length) throw new Error('Pon cuántas piezas de algún tipo');
+  if (tipo !== 'ENTRADA' && !String(a.obra || '').trim()) throw new Error('Falta la obra');
+  if (!a.foto) throw new Error('Falta la foto general del conjunto');
+  var almacen = comprobarAlmacen_(a.almacen), fecha = a.fecha || new Date().toISOString();
+  var n = Number(config_('SIGUIENTE_HERR')) || 1; setConfig_('SIGUIENTE_HERR', n + 1);
+  var numero = 'H' + ('000' + n).slice(-4), url = '', idCarpeta = config_('CARPETA_PARTES_ID');
+  if (idCarpeta) {
+    var b = blobDeDataUrl_(a.foto, [fechaNombre_(fecha), numero, 'ANDAMIOS', tipo, a.obra || almacen].join(' ').replace(/[\/:*?"<>|]/g, '-') + '.jpg');
+    if (b) url = subcarpeta_(subcarpeta_(DriveApp.getFolderById(idCarpeta), 'HERRAMIENTAS'), mesDe_(fecha)).createFile(b).getUrl();
+  }
+  var creado = ahora_();
+  lineas.forEach(function (l, i) {
+    anadirFila_('HERR_MOV', { id: a.id + '-' + (i + 1), fecha: fechaES_(fecha), tipo: tipo, herramienta_codigo: l.prefijo, herramienta: tipos[l.prefijo].tipo, cantidad: Number(l.cantidad),
+      unidad: 'ud', obra: tipo === 'ENTRADA' ? '' : String(a.obra), usuario: a.usuario || '', nota: a.nota || '', creado_en: creado, fotos: url, numero: numero,
+      hora: a.hora ? "'" + a.hora : '', persona: tipo === 'ENTRADA' ? '' : (a.persona || a.usuario || ''), almacen: almacen });
+  });
+  return { ok: true, numero: numero, lineas: lineas.length };
+}
+// tipo nuevo de andamio propuesto por un trabajador: queda PENDIENTE (con un código provisional) hasta que el admin lo apruebe
+function herrTipoNuevo_(d) {
+  d = d || {};
+  var id = String(d.id || '');
+  if (!/^NUEVO-[A-Z0-9]{4,}$/.test(id)) throw new Error('Código provisional no válido');
+  if (tiposHerr_()[id]) return { ok: true, repetido: true, prefijo: id };
+  var material = ['ALUMINIO', 'HIERRO', 'OTRO'].indexOf(String(d.material)) >= 0 ? String(d.material) : 'OTRO', def = String(d.definicion || '').trim();
+  if (!def) throw new Error('Falta la definición');
+  if (!d.foto) throw new Error('El tipo nuevo necesita una foto');
+  var url = '', idCarpeta = config_('CARPETA_PARTES_ID');
+  if (idCarpeta) {
+    var b = blobDeDataUrl_(d.foto, id + ' ' + material + ' ' + def.replace(/[\\/:*?"<>|]/g, '-') + '.jpg');
+    if (b) url = subcarpeta_(subcarpeta_(DriveApp.getFolderById(idCarpeta), 'HERRAMIENTAS'), 'TIPOS NUEVOS').createFile(b).getUrl();
+  }
+  anadirFila_('HERR_TIPOS', { prefijo: id, tipo: 'ANDAMIO ' + material + ' · ' + def.toUpperCase() + ' (PENDIENTE)', orden: 999, va_con: 'OBRA', control: 'CANTIDAD',
+    estado: 'PENDIENTE', material: material, definicion: def, foto: url, propuesto_por: String(d.usuario || ''), creado_en: ahora_() });
+  return { ok: true, prefijo: id };
+}
+// el admin le pone código y nombre definitivos; sus movimientos pasan al código nuevo
+function herrTipoAprobar_(b) {
+  exigirHerr_(b.auth);
+  var id = String(b.id || ''), pref = String(b.prefijo || '').trim().toUpperCase(), nombre = String(b.nombre || '').trim().toUpperCase();
+  if (!/^[A-Z]{2,4}$/.test(pref)) throw new Error('El código son 2 a 4 letras (por ejemplo ANA)');
+  if (!nombre) throw new Error('Falta el nombre');
+  var tipos = tiposHerr_();
+  if (!tipos[id] || tipos[id].estado !== 'PENDIENTE') throw new Error('Ese tipo no está pendiente');
+  if (tipos[pref]) throw new Error('Ya hay un tipo con el código ' + pref);
+  filas_('HERR_TIPOS').forEach(function (f, i) { if (String(f.prefijo) === id) ponerEnFila_('HERR_TIPOS', i + 2, { prefijo: pref, tipo: nombre, estado: '', orden: 50 }); });
+  var n = 0;
+  filas_('HERR_MOV').forEach(function (m, i) { if (String(m.herramienta_codigo) === id) { ponerEnFila_('HERR_MOV', i + 2, { herramienta_codigo: pref, herramienta: nombre }); n++; } });
+  return { ok: true, prefijo: pref, movimientos: n };
 }
 
 // códigos escaneados en un vale que nadie conocía: quedan PENDIENTE (con el material que eligió a mano quien lo escaneó)
