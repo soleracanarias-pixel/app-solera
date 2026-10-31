@@ -644,6 +644,59 @@ function avisarStock_(codigos) {
   } catch (err) { console.error('Aviso stock: ' + err); }
 }
 
+// ---------------------------------------------------------------- PASO 6d: lista de materiales ordenada
+// NO se ejecuta sola. Cuando Mateo dé el OK a docs/MATERIALES_PROPUESTA.csv, se lanza A MANO desde el editor:
+// aplicarMaterialesPropuesta(). Lee el CSV del repositorio (o el texto que se le pase) y, en la pestaña MATERIALES:
+//  - antes de tocar nada guarda una copia en la pestaña MATERIALES_ANTES_6D (si ya existe, no la pisa);
+//  - añade al final la columna codigo_mercadona si no está;
+//  - por cada código del CSV: si existe, cambia nombre, unidad, activo, categoria y codigo_mercadona;
+//    si no existe (NUEVO), lo añade al final con el siguiente "orden";
+//  - NO borra filas ni toca stock_min, orden ni otras columnas (veces_partes, compras_2026...).
+//    Lo que sobra queda con activo = NO. Los movimientos y partes antiguos no cambian.
+var URL_MATERIALES_PROPUESTA = 'https://raw.githubusercontent.com/soleracanarias-pixel/app-solera/main/docs/MATERIALES_PROPUESTA.csv';
+function aplicarMaterialesPropuesta(texto) {
+  if (typeof texto !== 'string' || !texto) texto = UrlFetchApp.fetch(URL_MATERIALES_PROPUESTA).getContentText('UTF-8');
+  var datos = Utilities.parseCsv(texto.replace(/^\uFEFF/, ''));
+  var cabCsv = datos.shift().map(function (c) { return String(c).trim(); });
+  var ic = function (n) { var i = cabCsv.indexOf(n); if (i < 0) throw new Error('Falta la columna ' + n + ' en el CSV'); return i; };
+  var CAMPOS = ['nombre', 'unidad', 'activo', 'categoria', 'codigo_mercadona'];
+  var idx = { codigo: ic('codigo') }; CAMPOS.forEach(function (c) { idx[c] = ic(c); });
+  var lock = LockService.getScriptLock(); lock.waitLock(30000);
+  try {
+    var ss = ss_(), h = hoja_('MATERIALES'), todo = h.getDataRange().getValues();
+    if (!ss.getSheetByName('MATERIALES_ANTES_6D')) {
+      var copia = ss.insertSheet('MATERIALES_ANTES_6D');
+      copia.getRange(1, 1, todo.length, todo[0].length).setValues(todo);
+    }
+    var cab = todo[0].map(String);
+    if (cab.indexOf('codigo_mercadona') < 0) {
+      h.getRange(1, cab.length + 1).setValue('codigo_mercadona').setFontWeight('bold').setBackground('#fde9b8');
+      cab.push('codigo_mercadona');
+    }
+    var iCod = cab.indexOf('codigo'), iOrden = cab.indexOf('orden'), filaDe = {}, maxOrden = 0;
+    for (var r = 1; r < todo.length; r++) {
+      var cod = String(todo[r][iCod]).trim();
+      if (cod) filaDe[cod] = r + 1;
+      if (iOrden >= 0) maxOrden = Math.max(maxOrden, Number(todo[r][iOrden]) || 0);
+    }
+    var res = { cambiados: 0, nuevos: 0, sinCambio: 0, activos: 0, desactivados: [] };
+    datos.forEach(function (f) {
+      var cod = String(f[idx.codigo] || '').trim(); if (!cod) return;
+      var o = {}; CAMPOS.forEach(function (c) { o[c] = String(f[idx[c]] == null ? '' : f[idx[c]]).trim(); });
+      o.activo = si_(o.activo) ? 'SI' : 'NO';
+      if (o.activo === 'SI') res.activos++; else res.desactivados.push(cod);
+      if (filaDe[cod]) {
+        var actual = todo[filaDe[cod] - 1] || [], distinto = CAMPOS.some(function (c) { var i = cab.indexOf(c); return String(i >= 0 && i < actual.length ? actual[i] : '').trim() !== o[c]; });
+        if (distinto) { ponerEnFila_('MATERIALES', filaDe[cod], o); res.cambiados++; } else res.sinCambio++;
+      } else {
+        o.codigo = cod; o.orden = ++maxOrden; anadirFila_('MATERIALES', o); res.nuevos++;
+      }
+    });
+    Logger.log(JSON.stringify(res));
+    return res;
+  } finally { lock.releaseLock(); }
+}
+
 // ---------------------------------------------------------------- CSV para "DATOS PARTES LEIDOS 2026"
 // Rehace "PARTES APP 2026.csv" con todas las líneas de la app, con las mismas columnas y formato que el CSV maestro
 // (separador ;, BOM UTF-8, CRLF, una fila por trabajador, categorías OF/PE). El maestro no se toca.

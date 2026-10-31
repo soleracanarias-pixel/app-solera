@@ -23,6 +23,9 @@ Cosas pedidas que todavía NO se han hecho. Se borran de aquí cuando estén hec
   como algo aparte (de momento, pasándole la foto a Claude; más adelante, quizá una app de escritorio
   ligada al sistema). *(30/10/2026)*
 
+- **PASO 6d, lista de materiales:** propuesta en `docs/MATERIALES_PROPUESTA.csv` y dudas en `docs/ESTADO.md` (sección 8).
+  Esperando OK de Mateo; luego publicar y ejecutar `aplicarMaterialesPropuesta()`. Después, el inventario.
+
 ## Hoja APP SOLERA (lo hace Mateo: el sistema no deja a Claude borrar filas)
 - Borrar el parte de prueba nº 90001: 1 fila en PARTES, 2 en PARTES_LINEAS y 1 en MOVIMIENTOS
   (sus 2 PDF ya están en la papelera de Drive). Y cualquier parte de prueba posterior.

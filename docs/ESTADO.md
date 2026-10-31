@@ -264,3 +264,46 @@ Radiografía sacada del código del repositorio (`main`, PASO 6) y de una lectur
 - **Al acabar las pruebas:**
   - Activar el CSV (`CARPETA_CSV_ID` = carpeta APP).
   - Revisar los artículos de proveedor de `MATERIALES APP.csv`.
+
+---
+
+## 8) PASO 6d — PROPUESTA DE LISTA DE MATERIALES (31/10/2026, sin aplicar)
+
+Propuesta en `docs/MATERIALES_PROPUESTA.csv` (sin precios). **No se ha escrito nada en la hoja.**
+
+- **Quedan 62 activos** de 65 filas: los 59 actuales + 6 nuevos − 3 desactivados.
+- **Cambios:** 36 renombrados (nombre corto en mayúsculas con formato: 25 KG, 20 KG, 8 MM X 6 M…; marcas fuera: T-REX, TANGIT),
+  20 sin cambio, 6 nuevos, 2 desactivados y 1 juntado. 42 llevan partida de Mercadona; el resto, vacía.
+- **Colas:** COL-POR "CEMENTO COLA PORCELÁNICO NORMAL 25 KG" (NUEVO, MB9885), COL-FLX "CEMENTO COLA FLEX 25 KG" (ME1458),
+  COL-RAP "CEMENTO COLA RÁPIDO 25 KG" (M98069).
+- **Nuevos:** COL-POR, CEM-BLA cemento blanco 25 kg (M00163), YES-RAP yeso rápido (MD9362) y YES-PRO yeso proyectar (MK93RC)
+  (antes dentro de YESO), MAS-PU masilla poliuretano (MB9887, antes dentro de SILIC), MALL-6 mallazo 15x15x6 (MC7619).
+- **Desactivar:** PANDA (es una marca), CUBO (material de trabajo, 0 partes). **Juntar:** MOR-ENL con MOR-BLA.
+- **Unidades:** caja → ud (TORN, CLAVOS, TACOS), paquete → bolsa (CUNAS), ud → rollo (CINTA), ud → bote (COLA-PVC),
+  bote → saco (IMPERM, es Morcemseal).
+- **Directo a obra (no pasa por almacén):** AGUA, HORMIGON, ZAHORRA, PIC-M3, ARE-M3, REV-M3. Marcados en la nota; siguen activos.
+- **Para aplicarlo** (cuando Mateo dé el OK): publicar Code.gs y ejecutar a mano `aplicarMaterialesPropuesta()` en el editor.
+  Guarda antes una copia en la pestaña MATERIALES_ANTES_6D, añade la columna `codigo_mercadona`, actualiza por código
+  nombre/unidad/activo/categoría/partida, añade los nuevos al final y no borra nada (stock_min, orden y demás columnas se quedan).
+  Se puede repetir sin duplicar. Probada en el entorno de pruebas.
+
+**Dudas (decide Mateo):**
+1. COL-POR: ¿partida MB9885? Hay otras tres iguales (M96276, M97738, M83733).
+2. COL-RAP con M98069 (CEMENTO COLA ESPECIAL PORCELÁNICO): ¿confirmas que el especial es el rápido?
+3. CEM-425 (gris 42,5 SR / marino): ¿lo dejamos aparte? En Mercadona no hay partida propia; le he puesto la del gris (M21198).
+4. MOR-GRI: ¿MD7194 (mortero para enfoscado), MK93RE (M-10) o M34809 (M-80)?
+5. YESO, SILIC y MALLAZO los he partido en dos o tres códigos (yeso rápido/proyectar, masilla PU, mallazo de 6). ¿De acuerdo?
+6. Rejuntes (blanco, gris, perla): los tres con M95248 "BOLSA REJUNTADO 5 KG". ¿Compramos bolsas de 5 kg, o sacos de 25 (MK93RB)?
+7. CUNAS: ¿MC0287 (bolsa separadores) o M48042 (crucetas 1,5 mm bolsa 1000)? ¿Hacen falta dos códigos (cuñas y crucetas)?
+8. SACA: ¿M34817 (saca desechable escombros) o MB2272 (saca con apertura)?
+9. Productos que Mercadona cobra por kg o m2 y nosotros por unidad: CLAVOS (KG), PUENTE (KG), PLASTICO (M2), ESQUIN (ML).
+   ¿Os vale contar cajas/botes/rollos en el almacén y convertir al facturar?
+10. ACC-FON y TUBO-PVC agrupan piezas y medidas distintas (40, 50, 90, 110). ¿Los dejamos genéricos o un código por medida?
+11. Fontanería y electricidad (ACC-FON, TUBO-PVC, COLA-PVC, CABLE): ¿siguen en la lista o los desactivamos?
+12. PLACOSTIL: ¿qué producto exacto es (pasta de juntas, adhesivo de placa)? Sin partida.
+13. CAPAZO: ¿lo dejamos (se compra mucho, 10 veces) o es material de trabajo que no va a la lista?
+14. Directo a obra (agua, hormigón, zahorra, picón, arena y revuelto a granel): ¿se quedan activos para los partes o se desactivan?
+15. HORMIGON: ¿un solo código o uno por tipo (HM-20, HA-25…), como Mercadona?
+16. ¿Añadimos más de Mercadona que no tenemos? Candidatos: escayola (M00171), mortero autonivelante (MB1534), monocapa (M21197),
+    cemento cola blanco (M00168), varilla 6 y 10 mm (MB9687, MB9689), cinta americana (MB9886), guardavivo PVC (M85229),
+    saco de hormigón seco (MC2350), ladrillo hueco del 11 (M00145), bloque de 12 (M34804).
