@@ -6,7 +6,8 @@
  *  1. Crear una hoja de Google Sheets nueva llamada "APP SOLERA".
  *  2. Extensiones > Apps Script. Borrar lo que haya y pegar este fichero entero.
  *  3. Ejecutar la función  instalar  (menú de arriba: elegir "instalar" y pulsar ▶). Aceptar permisos.
- *     Crea las pestañas CONFIG, TRABAJADORES, OBRAS, MATERIALES, PARTES, PARTES_LINEAS, MOVIMIENTOS, STOCK y FIRMANTES.
+ *     Crea todas las pestañas de HOJAS (más abajo), rellena el ROL de TRABAJADORES donde esté vacío
+ *     y rehace las fórmulas de STOCK. Hay que volver a ejecutarlo cuando cambia ESQUEMA.
  *  4. Rellenar TRABAJADORES (código, nombre, categoría, PIN), OBRAS y MATERIALES.
  *     En CONFIG poner CARPETA_PARTES_ID = id de la carpeta de Drive donde irán los PDF
  *     (el id es lo que va después de /folders/ en la dirección de la carpeta).
@@ -22,15 +23,17 @@
 var MESES = ['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
 var HOJAS = {
   CONFIG: ['clave','valor'],
-  TRABAJADORES: ['codigo','nombre','categoria','pin','activo','encargado'],
+  TRABAJADORES: ['codigo','nombre','categoria','pin','activo','encargado','rol'],   // rol: admin / encargado / oficial
   OBRAS: ['codigo','nombre','cliente','activa'],
   MATERIALES: ['codigo','nombre','unidad','stock_min','activo','orden','categoria'],
   PARTES: ['id','numero','fecha','obra_codigo','obra','cliente','creado_por','trabajadores','total_horas','trabajos','materiales','medios','observaciones','firmado','firmante','pdf_url','fotos','creado_en','origen','firmado_en','copia_enviada_a','copia_enviada_en','copia_error'],
   PARTES_LINEAS: ['id','numero','fecha','obra','trabajador_codigo','trabajador','categoria','horas','horas_extra','firmado'],
-  MOVIMIENTOS: ['id','fecha','tipo','material_codigo','material','cantidad','unidad','obra','parte_numero','usuario','nota','creado_en','fotos','numero','hora','persona'],
+  MOVIMIENTOS: ['id','fecha','tipo','material_codigo','material','cantidad','unidad','obra','parte_numero','usuario','nota','creado_en','fotos','numero','hora','persona','linea','anulado'],
+  // un vale de almacén = una fila aquí + sus líneas en MOVIMIENTOS (mismo numero, linea 1, 2, 3…)
+  VALES: ['numero','fecha','hora','tipo','obra','usuario','persona','nota','fotos','proveedor','albaran','n_lineas','anulado','anulado_por','anulado_en','motivo_anulacion','creado_en','id'],
   STOCK: ['codigo','nombre','unidad','entradas','salidas','stock','stock_min','aviso'],
   FIRMANTES: ['nombre','email','obra_ultima','veces','actualizado_en'],
-  POR_OBRA: ['obra','material_codigo','material','unidad','salido','devuelto','gastado'],
+  POR_OBRA: ['obra','material_codigo','material','unidad','salido','devuelto','gastado','recuperado'],
   // herramientas una a una: cada máquina con su número (BAT-01…), que se marca en la propia máquina
   HERR_TIPOS: ['prefijo','tipo','orden'],
   HERRAMIENTAS: ['codigo','tipo','activo','alta_fecha','alta_por'],
@@ -47,7 +50,7 @@ function clase_(c) { return CLASES[c === 'HER' ? 'HER' : 'MAT']; }
 function movFilas_(c) {
   return filas_(c.mov).map(function (f) { f.material_codigo = f[c.cod]; f.material = f[c.nom]; return f; });
 }
-var ESQUEMA = '8';            // subir cuando cambien las columnas de HOJAS
+var ESQUEMA = '9';            // subir cuando cambien las columnas de HOJAS
 var EMAIL_COPIA = 'soleracanarias@gmail.com';
 var CSV_NOMBRE = 'PARTES APP 2026.csv';  // se crea en la carpeta CARPETA_CSV_ID de CONFIG (CLIENTES\PARTES\APP)
 var CSV_COLUMNAS = ['N_PARTE','FECHA','DIA_SEMANA','CLIENTE','OBRA','COD_OBRA_APP','RESP_CLIENTE','RESP_CERT','RESP_SOLERA','MATRICULA',
@@ -69,21 +72,25 @@ function instalar() {
   }
   var tr = ss.getSheetByName('TRABAJADORES');
   if (tr.getLastRow() < 2) tr.appendRow([1, 'José Miguel Brito Sosa', 'OFICIAL', '1234', 'SI', 'SI']);
+  // rol por defecto donde esté vacío: 999 = admin; encargado=SI → encargado; resto → oficial
+  filas_('TRABAJADORES').forEach(function (t, i) { if (!String(t.rol || '').trim()) ponerEnFila_('TRABAJADORES', i + 2, { rol: rolDe_(t) }); });
   var ob = ss.getSheetByName('OBRAS');
   if (ob.getLastRow() < 2) ob.appendRow(['2549', 'MERCADONA 2549 GÁLDAR', 'MERCADONA', 'SI']);
   var ma = ss.getSheetByName('MATERIALES');
   if (ma.getLastRow() < 2) ma.appendRow(['CEM25', 'Cemento gris saco 25 kg', 'saco', 10, 'SI']);
-  var st = ss.getSheetByName('STOCK');
-  if (st.getLastRow() < 2) {
-    st.getRange('A2').setFormula('=ARRAYFORMULA(IF(MATERIALES!A2:A="";;MATERIALES!A2:A))');
-    st.getRange('B2').setFormula('=ARRAYFORMULA(IF(MATERIALES!A2:A="";;MATERIALES!B2:B))');
-    st.getRange('C2').setFormula('=ARRAYFORMULA(IF(MATERIALES!A2:A="";;MATERIALES!C2:C))');
-    st.getRange('D2').setFormula('=ARRAYFORMULA(IF(A2:A="";;SUMIFS(MOVIMIENTOS!F:F;MOVIMIENTOS!D:D;A2:A;MOVIMIENTOS!C:C;"ENTRADA")+SUMIFS(MOVIMIENTOS!F:F;MOVIMIENTOS!D:D;A2:A;MOVIMIENTOS!C:C;"DEVOLUCION")))');
-    st.getRange('E2').setFormula('=ARRAYFORMULA(IF(A2:A="";;SUMIFS(MOVIMIENTOS!F:F;MOVIMIENTOS!D:D;A2:A;MOVIMIENTOS!C:C;"SALIDA")))');
-    st.getRange('F2').setFormula('=ARRAYFORMULA(IF(A2:A="";;D2:D-E2:E))');
-    st.getRange('G2').setFormula('=ARRAYFORMULA(IF(MATERIALES!A2:A="";;MATERIALES!D2:D))');
-    st.getRange('H2').setFormula('=ARRAYFORMULA(IF(A2:A="";;IF((G2:G>0)*(F2:F<=G2:G);"PEDIR";"")))');
-  }
+  // STOCK por fórmulas (se rehacen siempre): entradas = ENTRADA + DEVOLUCION + RECUPERADO, salidas = SALIDA, sin anulados
+  var st = ss.getSheetByName('STOCK'), cm = hoja_('MOVIMIENTOS').getRange(1, 1, 1, hoja_('MOVIMIENTOS').getLastColumn()).getValues()[0];
+  var col = function (n) { var i = cm.indexOf(n) + 1, s = ''; while (i > 0) { s = String.fromCharCode(65 + (i - 1) % 26) + s; i = Math.floor((i - 1) / 26); } return 'MOVIMIENTOS!' + s + ':' + s; };
+  var suma = function (tipo) { return 'SUMIFS(' + col('cantidad') + ';' + col('material_codigo') + ';A2:A;' + col('tipo') + ';"' + tipo + '";' + col('anulado') + ';"<>SI")'; };
+  st.getRange('A2').setFormula('=ARRAYFORMULA(IF(MATERIALES!A2:A="";;MATERIALES!A2:A))');
+  st.getRange('B2').setFormula('=ARRAYFORMULA(IF(MATERIALES!A2:A="";;MATERIALES!B2:B))');
+  st.getRange('C2').setFormula('=ARRAYFORMULA(IF(MATERIALES!A2:A="";;MATERIALES!C2:C))');
+  st.getRange('D2').setFormula('=ARRAYFORMULA(IF(A2:A="";;' + suma('ENTRADA') + '+' + suma('DEVOLUCION') + '+' + suma('RECUPERADO') + '))');
+  st.getRange('E2').setFormula('=ARRAYFORMULA(IF(A2:A="";;' + suma('SALIDA') + '))');
+  st.getRange('F2').setFormula('=ARRAYFORMULA(IF(A2:A="";;D2:D-E2:E))');
+  st.getRange('G2').setFormula('=ARRAYFORMULA(IF(MATERIALES!A2:A="";;MATERIALES!D2:D))');
+  st.getRange('H2').setFormula('=ARRAYFORMULA(IF(A2:A="";;IF((G2:G>0)*(F2:F<=G2:G);"PEDIR";"")))');
+  try { porObra_(); } catch (e) {}
   SpreadsheetApp.getUi().alert('APP SOLERA instalada. Rellena TRABAJADORES, OBRAS, MATERIALES y CARPETA_PARTES_ID en CONFIG; luego publica como aplicación web.');
 }
 
@@ -174,6 +181,9 @@ function doPost(e) {
       case 'stock': return json_({ ok: true, stock: stock_() });
       case 'partes': return json_({ ok: true, partes: ultimosPartes_(body.limite || 30) });
       case 'movimientos': return json_({ ok: true, movimientos: movimientosMaterial_(body.material, 10, body.clase) });
+      case 'vale': lock.waitLock(30000); return json_(vale_(body.vale));
+      case 'vales': exigirAdmin_(body.auth); return json_({ ok: true, vales: listaVales_(body.filtros || {}) });
+      case 'anularVale': exigirAdmin_(body.auth); lock.waitLock(30000); return json_(anularVale_(body.numero, body.motivo, body.auth));
       default: return json_({ ok: false, error: 'Acción desconocida' });
     }
   } catch (err) {
@@ -187,20 +197,36 @@ function login_(b) {
   var t = filas_('TRABAJADORES').filter(function (f) { return String(f.codigo) === String(b.codigo) && si_(f.activo); })[0];
   if (!t) return { ok: false, error: 'Trabajador no encontrado' };
   if (String(t.pin).padStart(4, '0') !== String(b.pin).padStart(4, '0')) return { ok: false, error: 'PIN incorrecto' };
-  return { ok: true, trabajador: { codigo: t.codigo, nombre: t.nombre, categoria: t.categoria, encargado: si_(t.encargado) } };
+  return { ok: true, trabajador: { codigo: t.codigo, nombre: t.nombre, categoria: t.categoria, encargado: si_(t.encargado), rol: rolDe_(t) } };
+}
+// rol del trabajador: el de la columna rol; si está vacía, 999 = admin, encargado=SI → encargado, resto → oficial
+// (de momento encargado tiene los mismos permisos que oficial)
+function rolDe_(t) {
+  var r = normal_(t.rol);
+  if (r === 'admin' || r === 'encargado' || r === 'oficial') return r;
+  return String(t.codigo) === '999' ? 'admin' : (si_(t.encargado) ? 'encargado' : 'oficial');
+}
+// las acciones de admin llevan auth = {codigo, pin} y se comprueban aquí (ocultar botones no basta)
+function exigirAdmin_(auth) {
+  auth = auth || {};
+  var t = filas_('TRABAJADORES').filter(function (f) { return String(f.codigo) === String(auth.codigo) && si_(f.activo); })[0];
+  if (!t || String(t.pin).padStart(4, '0') !== String(auth.pin || '').padStart(4, '0')) throw new Error('Solo el administrador puede hacer esto (vuelve a entrar con tu PIN)');
+  if (rolDe_(t) !== 'admin') throw new Error('Solo el administrador puede hacer esto');
+  return t;
 }
 
 function bootstrap_() {
   return {
     ok: true,
     trabajadores: filas_('TRABAJADORES').filter(function (f) { return si_(f.activo); })
-      .map(function (f) { return { codigo: f.codigo, nombre: f.nombre, categoria: f.categoria }; }),
+      .map(function (f) { return { codigo: f.codigo, nombre: f.nombre, categoria: f.categoria, rol: rolDe_(f) }; }),
     obras: filas_('OBRAS').filter(function (f) { return si_(f.activa); })
       .map(function (f) { return { codigo: String(f.codigo), nombre: f.nombre, cliente: f.cliente }; }),
     materiales: filas_('MATERIALES').filter(function (f) { return si_(f.activo); })
       .sort(function (a, b) { return (Number(a.orden) || 9999) - (Number(b.orden) || 9999); })   // lo más usado primero
       .map(function (f) { return { codigo: String(f.codigo), nombre: f.nombre, unidad: f.unidad, stock_min: Number(f.stock_min) || 0 }; }),
     stock: stock_(),
+    otros: otrosPendientes_(),
     herramientas: herrDonde_(false),
     herrTipos: filas_('HERR_TIPOS').filter(function (f) { return f.prefijo; })
       .sort(function (a, b) { return (Number(a.orden) || 9999) - (Number(b.orden) || 9999); })
@@ -216,8 +242,9 @@ function stock_() {
   var mats = filas_('MATERIALES').filter(function (f) { return si_(f.activo); });
   var acc = {};
   filas_('MOVIMIENTOS').forEach(function (m) {
+    if (si_(m.anulado)) return;
     var k = String(m.material_codigo); acc[k] = acc[k] || { e: 0, s: 0 };
-    if (m.tipo === 'ENTRADA' || m.tipo === 'DEVOLUCION') acc[k].e += Number(m.cantidad) || 0; else acc[k].s += Number(m.cantidad) || 0;
+    if (m.tipo === 'SALIDA') acc[k].s += Number(m.cantidad) || 0; else acc[k].e += Number(m.cantidad) || 0;   // ENTRADA, DEVOLUCION, RECUPERADO
   });
   return mats.map(function (f) {
     var a = acc[String(f.codigo)] || { e: 0, s: 0 };
@@ -455,23 +482,138 @@ function movimiento_(m) {
 function porObra_(c) {
   c = c || CLASES.MAT;
   var acc = {}, orden = [];
+  var campo = { SALIDA: 'salido', DEVOLUCION: 'devuelto', RECUPERADO: 'recuperado' };
   movFilas_(c).forEach(function (m) {
-    if ((m.tipo !== 'SALIDA' && m.tipo !== 'DEVOLUCION') || !m.obra) return;
+    if (!campo[m.tipo] || !m.obra || si_(m.anulado)) return;
     var k = m.obra + '|' + m.material_codigo + '|' + m.material;
-    if (!acc[k]) { acc[k] = { obra: m.obra, codigo: m.material_codigo, material: m.material, unidad: m.unidad, salido: 0, devuelto: 0 }; orden.push(k); }
-    acc[k][m.tipo === 'SALIDA' ? 'salido' : 'devuelto'] += Number(m.cantidad) || 0;
+    if (!acc[k]) { acc[k] = { obra: m.obra, material_codigo: m.material_codigo, material: m.material, unidad: m.unidad, salido: 0, devuelto: 0, recuperado: 0 }; orden.push(k); }
+    acc[k][campo[m.tipo]] += Number(m.cantidad) || 0;
   });
-  var filas = orden.sort().map(function (k) { var a = acc[k]; return [a.obra, a.codigo, a.material, a.unidad, a.salido, a.devuelto, a.salido - a.devuelto]; });
-  var h = hoja_(c.resumen), ancho = HOJAS[c.resumen].length;
-  if (h.getLastRow() > 1) h.getRange(2, 1, h.getLastRow() - 1, ancho).clearContent();
-  if (filas.length) h.getRange(2, 1, filas.length, ancho).setValues(filas);
+  // gastado = salido − devuelto − recuperado (lo encontrado de esa obra vuelve al almacén como una devolución)
+  orden.forEach(function (k) { var a = acc[k]; a.gastado = a.salido - a.devuelto - a.recuperado; });
+  var h = hoja_(c.resumen), cab = h.getRange(1, 1, 1, h.getLastColumn()).getValues()[0];
+  if (h.getLastRow() > 1) h.getRange(2, 1, h.getLastRow() - 1, cab.length).clearContent();
+  var filas = orden.sort().map(function (k) { return cab.map(function (col) { return acc[k][col] === undefined ? '' : acc[k][col]; }); });
+  if (filas.length) h.getRange(2, 1, filas.length, cab.length).setValues(filas);
+}
+
+// ---------------------------------------------------------------- vales de almacén (varias líneas, un número)
+var TIPOS_VALE = ['ENTRADA', 'SALIDA', 'DEVOLUCION', 'RECUPERADO'];   // ENTRADA = COMPRA (solo admin)
+function extension_(dataUrl) {
+  var m = String(dataUrl).match(/^data:([^;]+);/), t = m ? m[1] : '';
+  return t === 'application/pdf' ? '.pdf' : (t === 'image/png' ? '.png' : '.jpg');
+}
+function vale_(v) {
+  if (!v || !v.id) throw new Error('Vale sin id');
+  // reintento del móvil sin cobertura: el id del vale evita duplicados
+  var ya = filas_('VALES').filter(function (f) { return f.id === v.id; })[0];
+  if (ya) return { ok: true, repetido: true, numero: ya.numero };
+  var tipo = String(v.tipo || '');
+  if (TIPOS_VALE.indexOf(tipo) < 0) throw new Error('Tipo de vale no válido: ' + tipo);
+  if (tipo === 'ENTRADA') {
+    exigirAdmin_(v.auth);
+    if (!String(v.proveedor || '').trim() || !String(v.albaran || '').trim()) throw new Error('La compra necesita proveedor y nº de albarán/factura');
+  }
+  if (tipo !== 'ENTRADA' && !String(v.obra || '').trim()) throw new Error('Falta la obra');
+  if (tipo === 'RECUPERADO' && !String(v.nota || '').trim()) throw new Error('Falta el comentario (dónde se encontró)');
+  var lineas = (v.lineas || []).filter(function (l) { return l && (l.material || l.materialNombre) && Number(l.cantidad) > 0; });
+  if (!lineas.length) throw new Error('El vale no tiene líneas');
+  var mats = {}; filas_('MATERIALES').forEach(function (f) { mats[String(f.codigo)] = f; });
+
+  var n = Number(config_('SIGUIENTE_MOV')) || 1;
+  setConfig_('SIGUIENTE_MOV', n + 1);
+  var numero = 'A' + ('000' + n).slice(-4);
+  var fecha = v.fecha || new Date().toISOString(), creadoEn = ahora_();
+
+  // fotos y albarán (foto o PDF) en <CARPETA_PARTES>/ALMACEN/<MES>/
+  var urls = [], idCarpeta = config_('CARPETA_PARTES_ID');
+  var adjuntos = (v.albaranArchivo ? [v.albaranArchivo] : []).concat(v.fotos || []);
+  if (adjuntos.length && idCarpeta) {
+    var carp = subcarpeta_(subcarpeta_(DriveApp.getFolderById(idCarpeta), 'ALMACEN'), mesDe_(fecha));
+    var base = [fechaNombre_(fecha), numero, tipo, v.obra || v.proveedor || '', v.albaran || v.nota || ''].join(' ')
+      .replace(/[\\/:*?"<>|]/g, '-').replace(/\s+/g, ' ').trim();
+    adjuntos.forEach(function (f, i) {
+      var b = blobDeDataUrl_(f, base + (adjuntos.length > 1 ? ' (' + (i + 1) + ')' : '') + extension_(f));
+      if (b) urls.push(carp.createFile(b).getUrl());
+    });
+  }
+  var persona = tipo === 'ENTRADA' ? '' : (v.persona || v.usuario || '');
+  var hora = v.hora ? "'" + v.hora : '';   // con ' para que la hoja no lo convierta en fecha
+  lineas.forEach(function (l, i) {
+    var mat = mats[String(l.material)] || { codigo: 'OTRO', nombre: String(l.materialNombre || l.material).trim().toUpperCase(), unidad: l.unidad || '' };
+    anadirFila_('MOVIMIENTOS', { id: v.id + '-' + (i + 1), fecha: fechaES_(fecha), tipo: tipo, material_codigo: String(mat.codigo), material: mat.nombre,
+      cantidad: Number(l.cantidad), unidad: mat.unidad || '', obra: v.obra || '', parte_numero: '', usuario: v.usuario || '', nota: v.nota || '',
+      creado_en: creadoEn, fotos: urls.join(' '), numero: numero, hora: hora, persona: persona, linea: i + 1, anulado: '' });
+  });
+  anadirFila_('VALES', { numero: numero, fecha: fechaES_(fecha), hora: hora, tipo: tipo, obra: v.obra || '', usuario: v.usuario || '', persona: persona,
+    nota: v.nota || '', fotos: urls.join(' '), proveedor: v.proveedor || '', albaran: v.albaran || '', n_lineas: lineas.length,
+    anulado: '', anulado_por: '', anulado_en: '', motivo_anulacion: '', creado_en: creadoEn, id: v.id });
+  avisarStock_(lineas.map(function (l) { return String(l.material); }));
+  if (tipo !== 'ENTRADA') try { porObra_(); } catch (err) { console.error('POR_OBRA: ' + err); }
+  return { ok: true, numero: numero, fotos: urls, n_lineas: lineas.length };
+}
+
+// lista de vales para el admin (el más nuevo primero), con sus líneas; filtros: desde, hasta (aaaa-mm-dd), trabajador, tipo, obra
+function listaVales_(fl) {
+  var iso = function (v) { var t = txtFecha_(v, 'dd/MM/yyyy').split('/'); return t.length === 3 ? t[2] + '-' + t[1] + '-' + t[0] : ''; };
+  var lineas = {};
+  filas_('MOVIMIENTOS').forEach(function (m) {
+    if (!m.numero || !m.linea) return;
+    (lineas[m.numero] = lineas[m.numero] || []).push({ linea: Number(m.linea), material_codigo: String(m.material_codigo), material: m.material,
+      cantidad: m.cantidad, unidad: m.unidad, anulado: si_(m.anulado) });
+  });
+  var q = normal_(fl.trabajador), o = normal_(fl.obra);
+  return filas_('VALES').filter(function (v) {
+    var f = iso(v.fecha);
+    if (fl.desde && f < fl.desde) return false;
+    if (fl.hasta && f > fl.hasta) return false;
+    if (fl.tipo && v.tipo !== fl.tipo) return false;
+    if (q && normal_(v.usuario + ' ' + v.persona).indexOf(q) < 0) return false;
+    if (o && normal_(v.obra).indexOf(o) < 0) return false;
+    return true;
+  }).reverse().slice(0, 300).map(function (v) {
+    return { numero: v.numero, fecha: txtFecha_(v.fecha, 'dd/MM/yyyy'), hora: String(v.hora || ''), tipo: v.tipo, obra: v.obra, usuario: v.usuario,
+      persona: v.persona, nota: v.nota, proveedor: v.proveedor, albaran: v.albaran, n_lineas: v.n_lineas,
+      fotos: String(v.fotos || '').split(' ').filter(function (u) { return u; }), anulado: si_(v.anulado), anulado_por: v.anulado_por,
+      anulado_en: String(v.anulado_en || ''), motivo_anulacion: v.motivo_anulacion,
+      lineas: (lineas[v.numero] || []).sort(function (a, b) { return a.linea - b.linea; }) };
+  });
+}
+
+// anular: marca el vale y sus líneas (nunca borra); el stock y POR_OBRA dejan de contarlas
+function anularVale_(numero, motivo, auth) {
+  if (!String(motivo || '').trim()) throw new Error('Falta el motivo de la anulación');
+  var t = exigirAdmin_(auth);
+  var vales = filas_('VALES'), i = vales.map(function (v) { return v.numero; }).indexOf(numero);
+  if (i < 0) throw new Error('Vale no encontrado: ' + numero);
+  if (si_(vales[i].anulado)) throw new Error('El vale ' + numero + ' ya estaba anulado');
+  ponerEnFila_('VALES', i + 2, { anulado: 'SI', anulado_por: t.nombre, anulado_en: ahora_(), motivo_anulacion: String(motivo).trim() });
+  var codigos = [];
+  filas_('MOVIMIENTOS').forEach(function (m, j) {
+    if (m.numero === numero) { ponerEnFila_('MOVIMIENTOS', j + 2, { anulado: 'SI' }); codigos.push(String(m.material_codigo)); }
+  });
+  try { porObra_(); } catch (err) { console.error('POR_OBRA: ' + err); }
+  avisarStock_(codigos);
+  return { ok: true, numero: numero };
+}
+
+// líneas con material fuera de la lista (OTRO) que el admin debería dar de alta en MATERIALES
+function otrosPendientes_() {
+  var acc = {};
+  filas_('MOVIMIENTOS').forEach(function (m) {
+    if (String(m.material_codigo) !== 'OTRO' || si_(m.anulado)) return;
+    var k = String(m.material);
+    acc[k] = acc[k] || { nombre: k, veces: 0, ultimo: '' };
+    acc[k].veces++; acc[k].ultimo = m.numero || acc[k].ultimo;
+  });
+  return Object.keys(acc).map(function (k) { return acc[k]; });
 }
 
 // últimos movimientos de un material, el más reciente primero
 function movimientosMaterial_(codigo, n, clase) {
   return movFilas_(clase_(clase)).filter(function (f) { return String(f.material_codigo) === String(codigo); })
     .slice(-n).reverse().map(function (f) {
-      return { numero: f.numero || '', hora: String(f.hora || ''), fecha: txtFecha_(f.fecha, 'dd/MM/yyyy'), tipo: f.tipo, cantidad: f.cantidad, unidad: f.unidad, obra: f.obra,
+      return { numero: f.numero || '', linea: f.linea || '', anulado: si_(f.anulado), hora: String(f.hora || ''), fecha: txtFecha_(f.fecha, 'dd/MM/yyyy'), tipo: f.tipo, cantidad: f.cantidad, unidad: f.unidad, obra: f.obra,
         usuario: f.usuario, persona: f.persona || '', nota: f.nota, fotos: String(f.fotos || '').split(' ').filter(function (u) { return u; }) };
     });
 }

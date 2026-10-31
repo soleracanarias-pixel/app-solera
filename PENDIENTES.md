@@ -9,6 +9,8 @@ Cosas pedidas que todavía NO se han hecho. Se borran de aquí cuando estén hec
 - **A la vez: elegir la categoría de cada trabajador en el parte (PEÓN / OFICIAL).** Depende del día o del
   trabajo: a veces un peón hace de oficial y al revés. Por defecto, la de la hoja TRABAJADORES. Es solo para
   el cliente (PDF y facturación), NO cuenta para nóminas ni cambia TRABAJADORES. *(Pedido 30/10/2026, esperar OK.)*
+- PASO 6 (vales, roles, admin) hecho en el repositorio: falta **pegar Code.gs, ejecutar `instalar` y publicar
+  Versión nueva**. Después, permisos propios para encargado (hoy = oficial).
 - Varios almacenes: de momento hay UNO. Si un día hay más, añadir columna "almacen" a MOVIMIENTOS
   y elegirlo en Entrada/Salida/Devolución (no cambiar ahora).
 - Probar la huella en los móviles reales (si da error, la app enseña el motivo: pasárselo a Claude).
