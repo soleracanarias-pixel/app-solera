@@ -217,7 +217,7 @@ Radiografía sacada del código del repositorio (`main`, PASO 6) y de una lectur
 
 ## 6) VERSIONES
 
-- **Publicado en Apps Script (comprobado con clasp el 31/10/2026):** la implementación de la app (`AKfycbxon542…`, la de `config.js`) está en la **versión 9** ("PASO 6d+6e", 01/11/2026), que es **exactamente el `backend/Code.gs` del repositorio** (`ESQUEMA = '11'`). La 8 era el PASO 6b y la 7 el PASO 6.
+- **Publicado en Apps Script (comprobado con clasp el 31/10/2026):** la implementación de la app (`AKfycbxon542…`, la de `config.js`) está en la **versión 9** ("PASO 6d+6e", 31/10/2026), que es **exactamente el `backend/Code.gs` del repositorio** (`ESQUEMA = '11'`). La 8 era el PASO 6b y la 7 el PASO 6.
 - **`instalar` ya se ejecutó** con el PASO 6: roles en TRABAJADORES, fórmulas nuevas de STOCK y pestaña VALES (ya con `tipo_doc` y `estado`). No hace falta repetirlo para el 6b.
 - **Cómo se publica a partir de ahora:** con clasp desde Claude Code (`clasp push`, `clasp create-version`, `clasp update-deployment AKfycbxon542… -V <n>`), o a mano como hasta ahora (pegar, guardar y luego Implementar → Gestionar implementaciones → ✎ → Versión nueva). clasp necesita el inicio de sesión de Mateo, que se guarda en el entorno de la sesión y se pierde al cerrarla.
 - **En la hoja hay datos de prueba de otra sesión:** el trabajador 990 "PRUEBA (Claude)" y el vale A0003 (anulado).
