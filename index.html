@@ -97,6 +97,9 @@ body.ancho main{max-width:1100px}
 body:not(.puede-inv) .solo-inv{display:none!important}
 body.es-trabajador .no-trabajador{display:none!important}
 body:not(.es-mateo) .solo-mateo{display:none!important}
+body:not(.puede-herr) .solo-herr{display:none!important}
+.chip.est{background:#ffebee;color:var(--rojo)}.chip.rep{background:#fff3e0;color:#b26a00}.chip.okp{background:#e3f2fd;color:#1565c0}
+#repMaquinas label{display:flex;gap:8px;align-items:center;color:var(--texto);font-size:15px;margin:6px 0}
 table.rev{width:100%;border-collapse:collapse;margin-top:10px;font-size:14px}
 table.rev th{text-align:left;font-size:12px;color:var(--gris);border-bottom:2px solid var(--borde)}
 table.rev td{border-top:1px solid var(--borde);padding:6px 4px;vertical-align:top}
@@ -311,7 +314,7 @@ a{color:var(--azul)}
       <button class="btn sec peq" id="valeBtnAlbaran">📎 Foto o fichero del albarán/ticket (jpg, png, pdf)</button>
       <div class="ayuda" id="valeAlbaranNombre"></div>
     </div>
-    <div id="movMatBloque"><label id="movMatLabel">Material</label><input type="text" id="movMatTxt" placeholder="Escribe el material…" autocomplete="off"><div class="sugs" id="movMatSugs" style="display:none"></div></div>
+    <div id="movMatBloque"><label id="movMatLabel">Material</label><div class="fila vlin"><div><div style="position:relative"><input type="text" id="movMatTxt" placeholder="Escribe el material…" autocomplete="off"><div class="sugs" id="movMatSugs" style="display:none"></div></div></div><button class="cam" id="movMatCam" title="Escanear el código o el QR de la máquina">📷</button></div></div>
     <div id="valeLineasBloque" style="display:none">
       <label>Materiales</label>
       <div id="valeLineas"></div>
@@ -340,9 +343,39 @@ a{color:var(--azul)}
       <button class="btn peq" id="btnHSalida">⬆ Llevar a obra</button>
       <button class="btn peq verde" id="btnHDevolucion">↩ Devolver</button>
     </div>
-    <button class="btn peq sec" id="btnHEntrada" style="width:100%">⬇ Alta en el almacén (herramienta nueva o comprada)</button>
+    <div class="fila">
+      <button class="btn peq rojo" id="btnHAveria">⚠️ Avería</button>
+      <button class="btn peq sec" id="btnHEntrada">⬇ Alta (nueva o comprada)</button>
+    </div>
   </div>
   <div id="movSitioHER"></div>
+  <!-- reparaciones y OK de altas: solo herramientas = SI (Mateo, Gregorio y Sergio) -->
+  <div class="tarjeta solo-herr" id="herrGestion">
+    <h2>Reparaciones y altas</h2>
+    <div class="fila">
+      <button class="btn peq" id="btnRepEntregar">🔧 Entregar a reparador</button>
+      <button class="btn peq sec" id="btnRepVuelta">↩ Vuelve de reparación</button>
+    </div>
+    <div id="repForm" style="display:none">
+      <label>Máquinas averiadas que se entregan</label><div id="repMaquinas"></div>
+      <label>Reparador</label><select id="repReparador"></select>
+      <label>Fecha</label><input type="date" id="repFecha">
+      <button class="btn sec peq" id="repFirmar">✍️ Firma del reparador (opcional)</button>
+      <div class="firma-prev" id="repFirmaPrev" style="display:none"></div>
+      <button class="btn verde" id="repGuardar">Entregar y hacer recibo</button>
+      <button class="btn peq sec" id="repCancelar" style="width:100%">Cancelar</button>
+    </div>
+    <div id="vueltaForm" style="display:none">
+      <label>Máquina que vuelve</label><select id="vuMaquina"></select>
+      <label>¿Cómo vuelve?</label><select id="vuResultado"><option value="REPARADA">Reparada</option><option value="BAJA">No tiene arreglo → BAJA</option></select>
+      <div id="vuAlmBloque"><label>Almacén donde se deja</label><select id="vuAlmacen"></select></div>
+      <label>Nota</label><input type="text" id="vuNota" placeholder="Qué le han hecho, importe…">
+      <button class="btn verde" id="vuGuardar">Guardar</button>
+      <button class="btn peq sec" id="vuCancelar" style="width:100%">Cancelar</button>
+    </div>
+    <div id="repResultado"></div>
+    <div id="herrPendOk"></div>
+  </div>
   <div class="tarjeta">
     <button class="btn peq sec" id="verHerr" style="width:100%">🔧 ¿Dónde están las herramientas?</button>
     <div id="herrBloque" style="display:none">
@@ -709,6 +742,7 @@ function pintarRol() {
   document.body.classList.toggle('es-admin', admin);
   document.body.classList.toggle('puede-inv', verPestanaInventario());   // pestaña Inventario: Mateo, o quien participe en uno abierto
   document.body.classList.toggle('es-mateo', esMateo());
+  document.body.classList.toggle('puede-herr', puedeHerr());
   document.body.classList.toggle('es-trabajador', rolActual() === 'trabajador');
   pintarPendientesEan();
   if (!admin && S.pantalla === 'vales') cambiar(MODO_ALMACEN ? 'almacen' : 'parte');
@@ -726,7 +760,7 @@ function cambiar(p) {
   document.querySelectorAll('.pantalla').forEach(function (s) { s.classList.toggle('activa', s.id === 'p-' + p); });
   document.querySelectorAll('nav button').forEach(function (b) { b.classList.toggle('activa', b.dataset.p === p); });
   if (p === 'almacen') pintarStock();
-  if (p === 'herramientas') pintarHerr();
+  if (p === 'herramientas') { pintarHerr(); pintarHerrGestion(); }
   document.body.classList.toggle('ancho', p === 'vales' || p === 'inventario');
   if (p === 'inventario') abrirInventario();   // la pantalla de vales, más ancha en el ordenador
   if (p === 'vales' && !S.vales) {   // al abrirla, los últimos 30 días sin pulsar Buscar
@@ -811,8 +845,14 @@ buscador($('movMatTxt'), $('movMatSugs'), function () {
   if (S.movClase !== 'HER') return matsAlmacen();
   var tipos = S.datos.herrTipos || [];
   if (S.movTipo === 'ENTRADA') return tipos;
+  // llevar a obra: solo las disponibles; avería: las que no están ya averiadas, en reparación o de baja; devolver: las que están en obra
+  var hs = (S.datos.herramientas || []).filter(function (h) {
+    var e = h.estado || 'DISPONIBLE';
+    return S.movTipo === 'SALIDA' ? e === 'DISPONIBLE' : S.movTipo === 'AVERIA' ? ['DISPONIBLE', 'EN OBRA'].indexOf(e) >= 0 : S.movTipo === 'DEVOLUCION' ? e === 'EN OBRA' || e === 'DISPONIBLE' : true;
+  });
+  if (S.movTipo === 'AVERIA') return hs;
   // las que ya tienen número y, detrás, cada tipo "sin número" para numerarla en ese momento
-  return (S.datos.herramientas || []).concat(tipos.map(function (t) {
+  return hs.concat(tipos.map(function (t) {
     return { prefijo: t.prefijo, tipo: t.nombre, nuevo: true, nombre: t.nombre + ' · sin número (se le da uno nuevo)' };
   }));
 }, function (m) {
@@ -948,7 +988,7 @@ lienzo.addEventListener('pointerdown', function (e) { dibujando = true; var p = 
 lienzo.addEventListener('pointermove', function (e) { if (!dibujando) return; var p = pos(e); ctx.lineTo(p[0], p[1]); ctx.stroke(); hayTrazo = true; });
 ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (ev) { lienzo.addEventListener(ev, function () { dibujando = false; }); });
 $('firmaLimpiar').onclick = function () { ctx.clearRect(0, 0, lienzo.width, lienzo.height); hayTrazo = false; };
-$('firmaCancelar').onclick = function () { $('modalFirma').classList.remove('activa'); };
+$('firmaCancelar').onclick = function () { S.firmaPara = null; $('modalFirma').classList.remove('activa'); };
 $('firmaOk').onclick = function () {
   if (!hayTrazo) return toast('No hay firma');
   // recortar al trazo
@@ -957,7 +997,8 @@ $('firmaOk').onclick = function () {
   var c = document.createElement('canvas'), m = 10; c.width = x1 - x0 + m * 2; c.height = y1 - y0 + m * 2;
   var cc = c.getContext('2d'); cc.fillStyle = '#fff'; cc.fillRect(0, 0, c.width, c.height);
   cc.drawImage(lienzo, x0 - m, y0 - m, c.width, c.height, 0, 0, c.width, c.height);
-  S.firma = c.toDataURL('image/png'); S.firmadoEn = ahoraES(); pintarFirma();
+  if (S.firmaPara) { var f = S.firmaPara; S.firmaPara = null; f(c.toDataURL('image/png')); }   // firma del reparador (recibo)
+  else { S.firma = c.toDataURL('image/png'); S.firmadoEn = ahoraES(); pintarFirma(); }
   $('modalFirma').classList.remove('activa');
 };
 function pintarFirma() { $('firmaPrev').innerHTML = S.firma ? '<img src="' + S.firma + '">' : 'Sin firma'; }
@@ -1060,11 +1101,15 @@ function mostrarNumeroNuevo() {
 function herrLocal() { return (S.datos && S.datos.herramientas) || []; }
 function pintarHerr() {
   var q = normal($('buscarHerr').value);
-  var lista = herrLocal().filter(function (h) { return !q || normal(h.nombre + ' ' + h.donde + ' ' + h.quien).indexOf(q) >= 0; });
+  var lista = herrLocal().filter(function (h) { return !q || normal(h.nombre + ' ' + h.donde + ' ' + h.quien + ' ' + (h.estado || '') + ' ' + (h.reparador || '')).indexOf(q) >= 0; });
+  var alm = function (c) { return esc(nombreAlmacen(c).split(' · ')[0].replace(/^ALMACÉN /, '')); };
   $('herrLista').innerHTML = lista.length ? lista.map(function (h) {
-    var enObra = h.donde && h.donde !== 'ALMACÉN';
-    return '<div class="item toca" data-cod="' + esc(h.codigo) + '" data-clase="HER"><div><b>' + esc(h.nombre) + '</b><small>' +
-      (enObra ? '📍 ' + esc(h.donde) : 'En almacén') + (h.quien ? ' · ' + esc(h.quien) : '') + (h.desde ? ' · ' + esc(h.desde) : '') + '</small></div></div>';
+    var e = h.estado || (h.donde && h.donde !== 'ALMACÉN' ? 'EN OBRA' : 'DISPONIBLE');
+    var txt = e === 'EN OBRA' ? '📍 ' + esc(h.donde) : e === 'AVERIADA' ? '⚠️ AVERIADA en ' + alm(h.almacen) + (h.averia ? ': ' + esc(h.averia) : '')
+      : e === 'EN REPARACION' ? '🔧 EN REPARACIÓN con ' + esc(h.reparador) + (h.recibo ? ' · recibo ' + esc(h.recibo) : '') : e === 'BAJA' ? 'BAJA' : 'En almacén ' + alm(h.almacen);
+    var chip = e === 'AVERIADA' || e === 'BAJA' ? '<span class="chip est">' + e + '</span>' : e === 'EN REPARACION' ? '<span class="chip rep">EN REPARACIÓN</span>' : h.ok === 'PENDIENTE' ? '<span class="chip okp">PENDIENTE DE OK</span>' : '';
+    return '<div class="item toca" data-cod="' + esc(h.codigo) + '" data-clase="HER"><div><b>' + esc(h.nombre) + '</b><small>' + txt +
+      (e !== 'EN REPARACION' && h.quien ? ' · ' + esc(h.quien) : '') + (h.desde ? ' · ' + esc(h.desde) : '') + (h.ok === 'PENDIENTE' && chip.indexOf('okp') < 0 ? ' · PENDIENTE DE OK' : '') + '</small></div>' + chip + '</div>';
   }).join('') : '<div class="aviso">Todavía no hay ninguna numerada. Se numeran al darlas de alta o la primera vez que se llevan a una obra (elige "… sin número").</div>';
 }
 $('buscarHerr').oninput = pintarHerr;
@@ -1114,9 +1159,10 @@ function abrirMov(tipo, clase) {
   if (her && tipo === 'ENTRADA') { $('movMatLabel').textContent = 'Tipo de herramienta'; $('movMatTxt').placeholder = 'Escribe el tipo (batidora, rubí…)'; }
   $('movBtnFoto').textContent = her ? '📷 Foto de la herramienta (obligatoria)' : '📷 Foto (albarán, material…)';
   S.movTipo = tipo; $('movForm').style.display = '';
-  $('movTitulo').textContent = (her ? { ENTRADA: 'Alta de herramienta en el almacén', SALIDA: 'Llevar herramienta a obra', DEVOLUCION: 'Devolver herramienta al almacén' }
+  $('movTitulo').textContent = (her ? { ENTRADA: 'Alta de herramienta en el almacén', SALIDA: 'Llevar herramienta a obra', DEVOLUCION: 'Devolver herramienta al almacén', AVERIA: '⚠️ Avería de herramienta' }
     : { ENTRADA: 'Entrada al almacén', SALIDA: 'Salida a obra', DEVOLUCION: 'Devolución de obra (vuelve al almacén)' })[tipo];
-  $('movObraBloque').style.display = tipo === 'ENTRADA' ? 'none' : ''; $('movCant').value = ''; $('movNota').value = '';
+  $('movObraBloque').style.display = tipo === 'ENTRADA' || tipo === 'AVERIA' ? 'none' : ''; $('movCant').value = ''; $('movNota').value = '';
+  $('movMatCam').style.display = her && tipo !== 'ENTRADA' ? '' : 'none';
   $('movMatTxt').value = ''; S.movMat = null; S.movCuando = ahoraES();
   $('movCuando').textContent = 'Fecha y hora: ' + S.movCuando + ' · el nº se asigna al enviarlo';
   S.movFotos = []; pintarFotosEn('movFotos', S.movFotos);
@@ -1127,7 +1173,10 @@ function abrirMov(tipo, clase) {
   $('valeLineasBloque').style.display = vale ? '' : 'none';
   $('compraBloque').style.display = vale && tipo === 'ENTRADA' ? '' : 'none';
   // almacén arriba del formulario (por defecto el último de este usuario); en el traspaso, también el de destino
-  $('almBloque').style.display = vale ? '' : 'none';
+  // herramientas: al dejarla (alta, devolver o avería) se elige el almacén; avería: QUIQUIRÁ por defecto
+  var almHer = her && ['ENTRADA', 'DEVOLUCION', 'AVERIA'].indexOf(tipo) >= 0;
+  $('almBloque').style.display = vale || almHer ? '' : 'none';
+  if (almHer) almacenGuardado().then(function (c) { opcionesAlmacen('valeAlmacen', tipo === 'AVERIA' && almacenes().some(function (a) { return a.codigo === 'QUI'; }) ? 'QUI' : c); });
   $('almLabel').textContent = tipo === 'TRASPASO' ? 'Sale del almacén' : 'Almacén';
   $('destinoBloque').style.display = tipo === 'TRASPASO' ? '' : 'none';
   $('movObra').value = ''; $('movObraTxt').value = '';
@@ -1158,7 +1207,11 @@ function abrirMov(tipo, clase) {
     $('movNotaLabel').textContent = tipo === 'RECUPERADO' ? 'Comentario: dónde y cómo se encontró (obligatorio)' : 'Comentario';
     $('movBtnFoto').textContent = '📷 Foto (opcional)';
     if (tipo === 'ENTRADA') pintarDestino();
-  } else { $('movObraLabel').textContent = 'Obra'; $('movNotaLabel').textContent = 'Comentario'; }
+  } else {
+    $('movObraLabel').textContent = 'Obra'; $('movNotaLabel').textContent = tipo === 'AVERIA' ? '¿Qué le pasa? (obligatorio)' : 'Comentario';
+    $('almLabel').textContent = tipo === 'AVERIA' ? '¿En qué almacén la dejas?' : 'Almacén donde se deja';
+    if (tipo === 'AVERIA') $('movBtnFoto').textContent = '📷 Foto de la máquina y de la avería (obligatoria)';
+  }
 }
 var TIPO_VALE = { SALIDA: 'ME LLEVO', DEVOLUCION: 'DEVUELVO', RECUPERADO: 'ENCONTRÉ MATERIAL', ENTRADA: 'COMPRA', COMPRA_OBRA: 'COMPRA A OBRA', AJUSTE: 'AJUSTE (inventario)', TRASPASO: 'TRASPASO', TRASPASO_SALE: 'TRASPASO (sale)', TRASPASO_ENTRA: 'TRASPASO (entra)' };
 $('valeAlmacen').onchange = function () { recordarAlmacen(this.value); pintarResumen(); };
@@ -1297,7 +1350,7 @@ function cargarZXing() {
 function lectorZXing() {
   return cargarZXing().then(function () {
     var Z = window.ZXing, hints = new Map();
-    hints.set(Z.DecodeHintType.POSSIBLE_FORMATS, [Z.BarcodeFormat.EAN_13, Z.BarcodeFormat.EAN_8, Z.BarcodeFormat.UPC_A, Z.BarcodeFormat.UPC_E]);
+    hints.set(Z.DecodeHintType.POSSIBLE_FORMATS, [Z.BarcodeFormat.EAN_13, Z.BarcodeFormat.EAN_8, Z.BarcodeFormat.UPC_A, Z.BarcodeFormat.UPC_E, Z.BarcodeFormat.QR_CODE]);
     hints.set(Z.DecodeHintType.TRY_HARDER, true);
     var r = new Z.MultiFormatReader(); r.setHints(hints);
     return function (lienzo) {
@@ -1309,7 +1362,7 @@ function lectorZXing() {
 function prepararLector() {
   if (!('BarcodeDetector' in window)) return lectorZXing();
   return BarcodeDetector.getSupportedFormats().then(function (sop) {
-    var f = ['ean_13', 'ean_8', 'upc_a', 'upc_e'].filter(function (x) { return sop.indexOf(x) >= 0; });
+    var f = ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'qr_code'].filter(function (x) { return sop.indexOf(x) >= 0; });
     if (!f.length) return lectorZXing();
     var d = new BarcodeDetector({ formats: f });
     return function (lienzo) { return d.detect(lienzo).then(function (r) { return r.length ? r[0].rawValue : null; }, function () { return null; }); };
@@ -1321,7 +1374,8 @@ function pararScan() {
   Scan.stream = null; $('scanVideo').srcObject = null;
 }
 // abre la cámara y devuelve el código leído (o null si se cancela)
-function escanear() {
+// valida: qué código se acepta (por defecto EAN; en Herramientas, el código de la máquina, que algún día irá en un QR: BAT-01)
+function escanear(valida) {
   return new Promise(function (res) {
     var hecho = false;
     var fin = function (c) { if (hecho) return; hecho = true; pararScan(); $('modalScan').classList.remove('activa'); res(c); };
@@ -1330,6 +1384,7 @@ function escanear() {
     $('scanCancelar').onclick = function () { fin(null); };
     $('scanOk').onclick = function () {
       var v = $('scanManual').value.replace(/\D/g, ''), t = $('scanManual').value.trim();
+      if (valida) return valida(t) ? fin(t.toUpperCase()) : toast('No es el código de una máquina (por ejemplo BAT-01)');
       if (eanValido(v)) return fin(v);
       var e = t && eanConocido(t);   // también vale la referencia del fabricante
       if (e) return fin(e.ean);
@@ -1348,7 +1403,7 @@ function escanear() {
         c.width = w; c.height = alto; cx.drawImage(v, 0, (h - alto) / 2, w, alto, 0, 0, w, alto);
         leer(c).then(function (cod) {
           ocupado = false;
-          if (cod && eanValido(cod)) { if (navigator.vibrate) navigator.vibrate(80); fin(cod); }
+          if (cod && (valida ? valida(cod) : eanValido(cod))) { if (navigator.vibrate) navigator.vibrate(80); fin(valida ? String(cod).trim().toUpperCase() : cod); }
         });
       }, 220);
     }).catch(function (e) { $('scanMsg').textContent = 'No se pudo abrir la cámara (' + motivo(e) + '). Escribe el número.'; });
@@ -1826,6 +1881,97 @@ $('invRevision').addEventListener('change', function (e) {
     .then(function () { toast('Corregido', 'ok'); revisarInv(S.revId); }).catch(function (er) { toast(er.message, 'err'); });
 });
 
+// ---------------------------------------------------------------- herramientas: reparaciones y OK de altas (herramientas = SI)
+function puedeHerr() {
+  if (!S.usuario) return false;
+  var t = ((S.datos && S.datos.trabajadores) || []).filter(function (x) { return String(x.codigo) === String(S.usuario.codigo); })[0];
+  return !!(t && t.herramientas);
+}
+// 📷 en Herramientas: lee el código de la máquina (BAT-01), escrito o en un QR (cuando haya pegatinas)
+function esCodigoMaquina(t) { return /^[A-Z]{2,4}-\d{2,}$/i.test(String(t || '').trim()); }
+$('movMatCam').onclick = function () {
+  escanear(esCodigoMaquina).then(function (c) {
+    if (!c) return;
+    var h = (S.datos.herramientas || []).filter(function (x) { return x.codigo === c; })[0];
+    if (!h) return toast('No hay ninguna máquina ' + c);
+    $('movMatTxt').value = h.nombre; $('movMatTxt').dispatchEvent(new Event('input')); $('movMatSugs').style.display = 'none';
+    if (!S.movMat || S.movMat.codigo !== h.codigo) toast(h.nombre + ' no vale para esto (' + (h.estado || '') + ')');
+  });
+};
+function pintarHerrGestion() {
+  if (!puedeHerr()) return;
+  var pend = herrLocal().filter(function (h) { return h.ok === 'PENDIENTE'; });
+  $('herrPendOk').innerHTML = pend.length ? '<label>Máquinas pendientes de OK (' + pend.length + ')</label><div class="lista">' + pend.map(function (h) {
+    return '<div class="item" data-ok="' + esc(h.codigo) + '"><div><b>' + esc(h.nombre) + '</b><small>alta de ' + esc(h.quien) + (h.desde ? ' · ' + esc(h.desde) : '') + (h.foto ? ' · <a href="' + esc(h.foto) + '" target="_blank">📷 foto</a>' : '') + '</small>' +
+      '<div class="fila" style="margin-top:4px"><div><input type="text" class="motivoRech" placeholder="Motivo si se rechaza"></div><button class="btn peq verde okSi" style="flex:0 0 auto">OK</button><button class="btn peq rojo okNo" style="flex:0 0 auto">Rechazar</button></div></div></div>';
+  }).join('') + '</div>' : '';
+}
+$('herrPendOk').onclick = function (e) {
+  var d = e.target.closest('[data-ok]'); if (!d) return;
+  var si = e.target.classList.contains('okSi'), no = e.target.classList.contains('okNo'); if (!si && !no) return;
+  var motivo = d.querySelector('.motivoRech').value.trim();
+  if (no && !motivo) return toast('Escribe el motivo del rechazo');
+  if (!navigator.onLine) return toast('Hace falta cobertura');
+  authAdmin().then(function (auth) { return api('herrOk', { auth: auth, codigo: d.dataset.ok, ok: si, motivo: motivo }); })
+    .then(function () { toast(si ? 'Máquina validada' : 'Alta rechazada', 'ok'); return cargarDatos(true); }).then(function () { pintarHerr(); pintarHerrGestion(); })
+    .catch(function (er) { toast(er.message, 'err'); });
+};
+$('btnRepEntregar').onclick = function () {
+  var av = herrLocal().filter(function (h) { return h.estado === 'AVERIADA'; });
+  $('vueltaForm').style.display = 'none'; $('repResultado').innerHTML = '';
+  if (!av.length) return toast('No hay máquinas averiadas');
+  $('repMaquinas').innerHTML = av.map(function (h) { return '<label><input type="checkbox" value="' + esc(h.codigo) + '" style="width:22px;height:22px"> ' + esc(h.nombre) + ' — ' + esc(h.averia || '') + '</label>'; }).join('');
+  $('repReparador').innerHTML = ((S.datos && S.datos.reparadores) || []).map(function (r) { return '<option>' + esc(r.nombre) + '</option>'; }).join('');
+  $('repFecha').value = hoyISO(); S.firmaRecibo = null; $('repFirmaPrev').style.display = 'none';
+  $('repForm').style.display = '';
+};
+$('repCancelar').onclick = function () { $('repForm').style.display = 'none'; };
+$('repFirmar').onclick = function () {
+  S.firmaPara = function (d) { S.firmaRecibo = d; $('repFirmaPrev').style.display = ''; $('repFirmaPrev').innerHTML = '<img src="' + d + '">'; };
+  abrirFirma(); $('firmaObra').textContent = 'Firma del reparador: ' + $('repReparador').value;
+};
+$('repGuardar').onclick = function () {
+  var cods = Array.prototype.slice.call($('repMaquinas').querySelectorAll('input:checked')).map(function (i) { return i.value; });
+  if (!cods.length) return toast('Marca las máquinas que se entregan');
+  if (!$('repReparador').value) return toast('Falta el reparador (pestaña REPARADORES)');
+  if (!navigator.onLine) return toast('Para hacer el recibo hace falta cobertura');
+  toast('Haciendo el recibo…');
+  authAdmin().then(function (auth) { return api('herrReparar', { auth: auth, codigos: cods, reparador: $('repReparador').value, fecha: $('repFecha').value, firma: S.firmaRecibo || '' }); })
+    .then(function (r) {
+      S.recibo = r; $('repForm').style.display = 'none';
+      $('repResultado').innerHTML = '<div class="aviso ok">Recibo <b>' + esc(r.recibo) + '</b> hecho y guardado en Drive (HERRAMIENTAS/REPARACIONES).</div>' +
+        '<button class="btn" id="repCompartir">📤 Compartir PDF</button>' + (r.pdf_url ? '<a class="btn peq sec" style="width:100%;text-align:center;text-decoration:none" href="' + esc(r.pdf_url) + '" target="_blank">Ver en Drive</a>' : '');
+      $('repCompartir').onclick = compartirRecibo;
+      return cargarDatos(true);
+    }).then(function () { pintarHerr(); }).catch(function (er) { toast(er.message, 'err'); });
+};
+// el recibo no se envía solo: se comparte desde el móvil (WhatsApp, correo…) o se descarga
+function compartirRecibo() {
+  var r = S.recibo, bin = atob(r.pdf), bytes = new Uint8Array(bin.length);
+  for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  var nombre = String(r.nombre).normalize('NFD').replace(/[\u0300-\u036f]/g, '');   // sin tildes: algunos navegadores descartan el nombre
+  var f = new File([bytes], nombre, { type: 'application/pdf' });
+  if (navigator.canShare && navigator.canShare({ files: [f] })) return navigator.share({ files: [f], title: 'Recibo ' + r.recibo }).catch(function () {});
+  var a = document.createElement('a'); a.href = URL.createObjectURL(f); a.download = nombre; document.body.appendChild(a); a.click();
+  setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
+}
+$('btnRepVuelta').onclick = function () {
+  var en = herrLocal().filter(function (h) { return h.estado === 'EN REPARACION'; });
+  $('repForm').style.display = 'none'; $('repResultado').innerHTML = '';
+  if (!en.length) return toast('No hay máquinas en reparación');
+  $('vuMaquina').innerHTML = en.map(function (h) { return '<option value="' + esc(h.codigo) + '">' + esc(h.nombre) + ' · ' + esc(h.reparador) + ' · ' + esc(h.recibo) + '</option>'; }).join('');
+  almacenGuardado().then(function (c) { opcionesAlmacen('vuAlmacen', c); });
+  $('vuResultado').value = 'REPARADA'; $('vuAlmBloque').style.display = ''; $('vuNota').value = '';
+  $('vueltaForm').style.display = '';
+};
+$('vuResultado').onchange = function () { $('vuAlmBloque').style.display = this.value === 'BAJA' ? 'none' : ''; };
+$('vuCancelar').onclick = function () { $('vueltaForm').style.display = 'none'; };
+$('vuGuardar').onclick = function () {
+  if (!navigator.onLine) return toast('Hace falta cobertura');
+  authAdmin().then(function (auth) { return api('herrVuelta', { auth: auth, codigo: $('vuMaquina').value, resultado: $('vuResultado').value, almacen: $('vuAlmacen').value, nota: $('vuNota').value.trim() }); })
+    .then(function () { toast($('vuResultado').value === 'BAJA' ? 'Máquina dada de BAJA' : 'Máquina disponible otra vez', 'ok'); $('vueltaForm').style.display = 'none'; return cargarDatos(true); })
+    .then(function () { pintarHerr(); }).catch(function (er) { toast(er.message, 'err'); });
+};
 $('btnEntrada').onclick = function () { abrirMov('ENTRADA'); };
 $('btnTraspaso').onclick = function () { abrirMov('TRASPASO'); };
 $('btnSalida').onclick = function () { abrirMov('SALIDA'); };
@@ -1834,27 +1980,34 @@ $('btnRecuperado').onclick = function () { abrirMov('RECUPERADO'); };
 $('btnHSalida').onclick = function () { abrirMov('SALIDA', 'HER'); };
 $('btnHDevolucion').onclick = function () { abrirMov('DEVOLUCION', 'HER'); };
 $('btnHEntrada').onclick = function () { abrirMov('ENTRADA', 'HER'); };
+$('btnHAveria').onclick = function () { abrirMov('AVERIA', 'HER'); };
 $('movCancelar').onclick = function () { $('movForm').style.display = 'none'; };
 $('movGuardar').onclick = function () {
   if (S.movClase !== 'HER') return guardarVale();
   var her = S.movClase === 'HER', nombreMat = $('movMatTxt').value.trim(), cant = her ? 1 : +$('movCant').value;
   if (her && !S.movMat) return toast(S.movTipo === 'ENTRADA' ? 'Elige el tipo de la lista' : 'Elige la herramienta de la lista (por su número)');
   if (her && !S.movFotos.length) return toast('Haz una foto de la herramienta');
+  if (her && S.movTipo === 'AVERIA' && !$('movNota').value.trim()) return toast('Escribe qué le pasa');
   if (!nombreMat || !cant) return toast('Escribe material y cantidad');
   // si no se eligió de la lista, va como texto libre (código OTRO, no cuenta en el stock)
   var mat = S.movMat ? String(S.movMat.codigo || '') : 'OTRO', matNombre = S.movMat ? (S.movMat.nuevo ? S.movMat.tipo : S.movMat.nombre) : nombreMat.toUpperCase();
-  var conObra = S.movTipo !== 'ENTRADA';   // salida y devolución van siempre ligadas a una obra
+  var conObra = S.movTipo !== 'ENTRADA' && S.movTipo !== 'AVERIA';   // salida y devolución van siempre ligadas a una obra
+  var almacenHer = her && S.movTipo !== 'SALIDA' ? $('valeAlmacen').value : '';
+  if (almacenHer) recordarAlmacen(almacenHer);
   if (conObra && !$('movObra').value) return toast('Elige la obra');
   var obraSel = $('movObra'), obraTxt = conObra ? obraSel.options[obraSel.selectedIndex].text : '';
   var persona = conObra ? ($('movPersonaTxt').value.trim() || S.usuario.nombre) : '';
-  var mov = { id: uid(), tipo: 'mov', clase: S.movClase, persona: persona, movTipo: S.movTipo, material: mat, materialNombre: matNombre, tipoHer: her && (S.movTipo === 'ENTRADA' || S.movMat.nuevo) ? S.movMat.prefijo : '', codigoNuevo: S.codigoNuevo || '', hora: S.movCuando.slice(11), cantidad: cant, obra: obraTxt, nota: $('movNota').value.trim(), fotos: S.movFotos.slice(), fecha: hoyISO(), usuario: S.usuario.nombre, creadoEn: new Date().toISOString() };
+  var mov = { id: uid(), tipo: 'mov', clase: S.movClase, persona: persona, movTipo: S.movTipo, material: mat, materialNombre: matNombre, tipoHer: her && (S.movTipo === 'ENTRADA' || S.movMat.nuevo) ? S.movMat.prefijo : '', codigoNuevo: S.codigoNuevo || '', almacen: almacenHer, hora: S.movCuando.slice(11), cantidad: cant, obra: obraTxt, nota: $('movNota').value.trim(), fotos: S.movFotos.slice(), fecha: hoyISO(), usuario: S.usuario.nombre, creadoEn: new Date().toISOString() };
   // ajuste optimista del stock local
   if (her && S.codigoNuevo) {   // la nueva entra ya en la lista del móvil, para no repetir su número
     (S.numerosPendientes = S.numerosPendientes || []).push(S.codigoNuevo);
     herrLocal().push({ codigo: S.codigoNuevo, tipo: S.movMat.tipo || S.movMat.nombre, nombre: S.codigoNuevo + ' · ' + (S.movMat.tipo || S.movMat.nombre),
-      donde: S.movTipo === 'SALIDA' ? obraTxt : 'ALMACÉN', quien: persona || S.usuario.nombre, desde: S.movCuando });
+      donde: S.movTipo === 'SALIDA' ? obraTxt : 'ALMACÉN', quien: persona || S.usuario.nombre, desde: S.movCuando, estado: S.movTipo === 'SALIDA' ? 'EN OBRA' : 'DISPONIBLE', almacen: almacenHer, ok: 'PENDIENTE' });
   } else if (her) herrLocal().forEach(function (h) {
-    if (h.codigo === mat) { h.donde = S.movTipo === 'SALIDA' ? obraTxt : 'ALMACÉN'; h.quien = persona || S.usuario.nombre; h.desde = S.movCuando; }
+    if (h.codigo === mat) {
+      h.donde = S.movTipo === 'SALIDA' ? obraTxt : 'ALMACÉN'; h.quien = persona || S.usuario.nombre; h.desde = S.movCuando; h.almacen = almacenHer;
+      h.estado = S.movTipo === 'SALIDA' ? 'EN OBRA' : S.movTipo === 'AVERIA' ? 'AVERIADA' : 'DISPONIBLE'; if (S.movTipo === 'AVERIA') h.averia = $('movNota').value.trim();
+    }
   });
   else stockLocal().forEach(function (m) { if (m.codigo === mat) m.stock += (S.movTipo === 'SALIDA' ? -cant : cant); });
   DB.put('kv', S.datos, 'datos');
@@ -1972,7 +2125,7 @@ function sincronizar() {
           ? api('vale', { vale: { id: it.id, tipo: it.valeTipo, obra: it.obra, persona: it.persona, nota: it.nota, fotos: it.fotos || [], albaranArchivo: it.albaranArchivo || null,
               proveedor: it.proveedor, albaran: it.albaran, tipoDoc: it.tipoDoc || '', lineas: it.lineas, fecha: it.fecha, hora: it.hora, usuario: it.usuario, auth: it.auth || null, almacen: it.almacen || '', almacenDestino: it.almacenDestino || '',
               maquinas: it.maquinas || [], inicio: it.inicio || '', cierre: it.cierre || '' } })
-          : api('movimiento', { mov: { id: it.id, tipo: it.movTipo, material: it.material, cantidad: it.cantidad, obra: it.obra, nota: it.nota, fotos: it.fotos || [], fecha: it.fecha, usuario: it.usuario, materialNombre: it.materialNombre, hora: it.hora, clase: it.clase || 'MAT', persona: it.persona || '', tipoHer: it.tipoHer || '', codigoNuevo: it.codigoNuevo || '' } });
+          : api('movimiento', { mov: { id: it.id, tipo: it.movTipo, material: it.material, cantidad: it.cantidad, obra: it.obra, nota: it.nota, fotos: it.fotos || [], fecha: it.fecha, usuario: it.usuario, materialNombre: it.materialNombre, hora: it.hora, clase: it.clase || 'MAT', persona: it.persona || '', tipoHer: it.tipoHer || '', codigoNuevo: it.codigoNuevo || '', almacen: it.almacen || '' } });
         return llamada.then(function (j) {
           enviados++;
           // confirmación clara con el número

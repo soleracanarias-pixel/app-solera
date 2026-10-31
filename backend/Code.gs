@@ -23,7 +23,7 @@
 var MESES = ['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
 var HOJAS = {
   CONFIG: ['clave','valor'],
-  TRABAJADORES: ['codigo','nombre','categoria','pin','activo','encargado','rol','inventario'],   // rol: admin / encargado / trabajador (la categoría OFICIAL/PEÓN es solo para el parte); inventario SI = hace inventarios y asocia EAN
+  TRABAJADORES: ['codigo','nombre','categoria','pin','activo','encargado','rol','inventario','herramientas'],   // rol: admin / encargado / trabajador (la categoría OFICIAL/PEÓN es solo para el parte); inventario SI = hace inventarios y asocia EAN
   OBRAS: ['codigo','nombre','cliente','activa'],
   MATERIALES: ['codigo','nombre','unidad','stock_min','activo','orden','categoria','codigo_mercadona','en_almacen','alias','uso_base'],   // en_almacen NO = va directo a obra: sale en partes, no en stock ni vales
   PARTES: ['id','numero','fecha','obra_codigo','obra','cliente','creado_por','trabajadores','total_horas','trabajos','materiales','medios','observaciones','firmado','firmante','pdf_url','fotos','creado_en','origen','firmado_en','copia_enviada_a','copia_enviada_en','copia_error'],
@@ -46,9 +46,12 @@ var HOJAS = {
   POR_OBRA: ['obra','material_codigo','material','unidad','salido','devuelto','gastado','recuperado','comprado'],   // comprado = COMPRA_OBRA (directo a obra)
   // herramientas una a una: cada máquina con su número (BAT-01…), que se marca en la propia máquina
   HERR_TIPOS: ['prefijo','tipo','orden'],
-  HERRAMIENTAS: ['codigo','tipo','activo','alta_fecha','alta_por'],
-  HERR_MOV: ['id','fecha','tipo','herramienta_codigo','herramienta','cantidad','unidad','obra','usuario','nota','creado_en','fotos','numero','hora','persona'],
-  HERR_DONDE: ['codigo','herramienta','donde','quien','desde','ultimo_mov','foto']
+  HERRAMIENTAS: ['codigo','tipo','activo','alta_fecha','alta_por','ok','ok_por','ok_en','motivo_rechazo'],   // ok: PENDIENTE (alta de cualquiera) / OK / RECHAZADA
+  // tipo: ENTRADA (alta), SALIDA (a obra), DEVOLUCION, AVERIA, REPARACION (al reparador), VUELTA (reparada), BAJA
+  HERR_MOV: ['id','fecha','tipo','herramienta_codigo','herramienta','cantidad','unidad','obra','usuario','nota','creado_en','fotos','numero','hora','persona','almacen','recibo'],
+  HERR_DONDE: ['codigo','herramienta','donde','quien','desde','ultimo_mov','foto','estado','almacen','ok','averia'],
+  REPARADORES: ['nombre','telefono','email'],
+  REPARACIONES: ['numero','fecha','reparador','maquinas','entregado_por','pdf_url','firmado','creado_en']
 };
 // almacén de materiales (MAT) y de herramientas (HER): mismo funcionamiento, hojas y numeración separadas
 var CLASES = {
@@ -60,7 +63,7 @@ function clase_(c) { return CLASES[c === 'HER' ? 'HER' : 'MAT']; }
 function movFilas_(c) {
   return filas_(c.mov).map(function (f) { f.material_codigo = f[c.cod]; f.material = f[c.nom]; return f; });
 }
-var ESQUEMA = '16';            // subir cuando cambien las columnas de HOJAS
+var ESQUEMA = '17';            // subir cuando cambien las columnas de HOJAS
 var EMAIL_COPIA = 'soleracanarias@gmail.com';
 var CSV_NOMBRE = 'PARTES APP 2026.csv';  // se crea en la carpeta CARPETA_CSV_ID de CONFIG (CLIENTES\PARTES\APP)
 var CSV_COLUMNAS = ['N_PARTE','FECHA','DIA_SEMANA','CLIENTE','OBRA','COD_OBRA_APP','RESP_CLIENTE','RESP_CERT','RESP_SOLERA','MATRICULA',
@@ -150,7 +153,8 @@ function asegurarHojas_(forzar) {
 // almacenes iniciales y vales anteriores al PASO 7 → MAT (La Matanza). Solo rellena lo vacío: se puede repetir.
 var ALMACENES_INICIALES = [
   ['MAT', 'ALMACÉN LA MATANZA', 'C/ Chamiana 21, local L1 (Edificio Chamiana), 38379 La Matanza de Acentejo', 'SI', 'SI'],
-  ['AGU', 'ALMACÉN AGÜIMES', 'C/ Falla 23, Las Rosas, Agüimes (Gran Canaria)', 'SI', 'NO']];
+  ['AGU', 'ALMACÉN AGÜIMES', 'C/ Falla 23, Las Rosas, Agüimes (Gran Canaria)', 'SI', 'NO'],
+  ['QUI', 'ALMACÉN QUIQUIRÁ (OFICINA)', 'C/ Quiquirá, bajo, nº 1, 38300 La Orotava', 'SI', 'NO']];
 function migrarAlmacenes_() {
   // inventario: al crear la columna, SI para Mateo (999) y Gregorio (998)
   var tr = filas_('TRABAJADORES');
@@ -158,8 +162,14 @@ function migrarAlmacenes_() {
     tr.forEach(function (t, i) { if (['999', '998'].indexOf(String(t.codigo)) >= 0) ponerEnFila_('TRABAJADORES', i + 2, { inventario: 'SI' }); });
   // el rol 'oficial' pasa a llamarse 'trabajador' (todos los compañeros tienen los mismos permisos)
   tr.forEach(function (t, i) { if (normal_(t.rol) === 'oficial') ponerEnFila_('TRABAJADORES', i + 2, { rol: 'trabajador' }); });
+  // herramientas: SI para Mateo (999), Gregorio (998) y Sergio (997) al crear la columna
+  if (!tr.some(function (t) { return String(t.herramientas || '').trim(); }))
+    tr.forEach(function (t, i) { if (['999', '998', '997'].indexOf(String(t.codigo)) >= 0) ponerEnFila_('TRABAJADORES', i + 2, { herramientas: 'SI' }); });
+  if (hoja_('REPARADORES').getLastRow() < 2) hoja_('REPARADORES').appendRow(['Bernabé', '', '']);
   var ha = hoja_('ALMACENES');
-  if (ha.getLastRow() < 2) ALMACENES_INICIALES.forEach(function (r) { ha.appendRow(r); });
+  // los almacenes que falten (por código); los que ya están no se tocan
+  var hay = {}; filas_('ALMACENES').forEach(function (a) { hay[String(a.codigo)] = true; });
+  ALMACENES_INICIALES.forEach(function (r) { if (!hay[r[0]]) ha.appendRow(r); });
   ['MOVIMIENTOS', 'VALES'].forEach(function (n) {
     var h = hoja_(n), v = h.getDataRange().getValues(), i = v[0].indexOf('almacen');
     if (i < 0 || v.length < 2) return;
@@ -255,6 +265,9 @@ function doPost(e) {
       case 'invCorregir': lock.waitLock(30000); return json_(invCorregir_(body));
       case 'invCerrar': lock.waitLock(30000); return json_(invCerrar_(body));
       case 'invAnular': lock.waitLock(30000); return json_(invAnular_(body));
+      case 'herrReparar': lock.waitLock(30000); return json_(herrReparar_(body));
+      case 'herrVuelta': lock.waitLock(30000); return json_(herrVuelta_(body));
+      case 'herrOk': lock.waitLock(30000); return json_(herrOk_(body));
       case 'vales': exigirAdmin_(body.auth); return json_({ ok: true, vales: listaVales_(body.filtros || {}) });
       case 'anularVale': exigirAdmin_(body.auth); lock.waitLock(30000); return json_(anularVale_(body.numero, body.motivo, body.auth));
       default: return json_({ ok: false, error: 'Acción desconocida' });
@@ -301,11 +314,12 @@ function bootstrap_() {
   return {
     ok: true,
     trabajadores: filas_('TRABAJADORES').filter(function (f) { return si_(f.activo); })
-      .map(function (f) { return { codigo: f.codigo, nombre: f.nombre, categoria: f.categoria, rol: rolDe_(f), inventario: si_(f.inventario) }; }),
+      .map(function (f) { return { codigo: f.codigo, nombre: f.nombre, categoria: f.categoria, rol: rolDe_(f), inventario: si_(f.inventario), herramientas: si_(f.herramientas) }; }),
     obras: filas_('OBRAS').filter(function (f) { return si_(f.activa); })
       .map(function (f) { return { codigo: String(f.codigo), nombre: f.nombre, cliente: f.cliente }; }),
     materiales: materialesPorUso_(),
     almacenes: almacenes_(),
+    reparadores: filas_('REPARADORES').filter(function (r) { return r.nombre; }).map(function (r) { return { nombre: String(r.nombre), telefono: String(r.telefono || ''), email: String(r.email || '') }; }),
     inventarios: inventariosAbiertos_(),
     eans: filas_('EANS').filter(function (e) { return e.ean && e.material_codigo && String(e.estado) !== 'PENDIENTE'; }).map(function (e) {
       return { ean: String(e.ean), material: String(e.material_codigo), marca: String(e.marca || ''), envase: String(e.nombre_envase || ''), ref: String(e.ref_fabricante || '') }; }),
@@ -379,12 +393,19 @@ function herrDonde_(escribir) {
     u.m = m; if (m.fotos) u.foto = String(m.fotos).split(' ')[0];
   });
   var orden = {}; filas_('HERR_TIPOS').forEach(function (t) { orden[t.prefijo] = Number(t.orden) || 999; });
+  // estado según su último movimiento: DISPONIBLE (en un almacén), EN OBRA, AVERIADA (en un almacén), EN REPARACION (con el reparador) o BAJA
+  var def = null;
   var lista = filas_('HERRAMIENTAS').filter(function (f) { return si_(f.activo); }).map(function (f) {
-    var u = ult[String(f.codigo)] || {}, m = u.m;
-    var fuera = m && m.tipo === 'SALIDA';
+    var u = ult[String(f.codigo)] || {}, m = u.m, tipo = m ? String(m.tipo) : '', alm = m && m.almacen ? String(m.almacen) : (def = def || almacenPorDefecto_());
+    var estado = tipo === 'SALIDA' ? 'EN OBRA' : tipo === 'AVERIA' ? 'AVERIADA' : tipo === 'REPARACION' ? 'EN REPARACION' : tipo === 'BAJA' ? 'BAJA' : 'DISPONIBLE';
+    var enAlm = estado === 'DISPONIBLE' || estado === 'AVERIADA';
     return { codigo: String(f.codigo), tipo: f.tipo, nombre: f.codigo + ' · ' + f.tipo,
-      donde: fuera ? m.obra : 'ALMACÉN', quien: m ? (m.persona || m.usuario || '') : (f.alta_por || ''),
-      desde: m ? txtFecha_(m.fecha, 'dd/MM/yyyy') + (m.hora ? ' ' + m.hora : '') : '', ultimo_mov: m ? m.numero : '', foto: u.foto || '' };
+      donde: estado === 'EN OBRA' ? m.obra : enAlm ? 'ALMACÉN' : estado === 'EN REPARACION' ? 'REPARADOR' : 'BAJA',
+      quien: m ? (m.persona || m.usuario || '') : (f.alta_por || ''),
+      desde: m ? txtFecha_(m.fecha, 'dd/MM/yyyy') + (m.hora ? ' ' + m.hora : '') : '', ultimo_mov: m ? m.numero : '', foto: u.foto || '',
+      estado: estado, almacen: enAlm ? alm : '', ok: String(f.ok || '') === 'PENDIENTE' ? 'PENDIENTE' : 'OK',
+      averia: estado === 'AVERIADA' || estado === 'EN REPARACION' ? String(m.nota || '') : '', reparador: estado === 'EN REPARACION' ? String(m.persona || '') : '',
+      recibo: estado === 'EN REPARACION' ? String(m.recibo || '') : '' };
   }).sort(function (a, b) {
     var pa = a.codigo.split('-')[0], pb = b.codigo.split('-')[0];
     return (orden[pa] || 999) - (orden[pb] || 999) || (a.codigo < b.codigo ? -1 : 1);
@@ -393,14 +414,14 @@ function herrDonde_(escribir) {
     var h = hoja_('HERR_DONDE'), ancho = HOJAS.HERR_DONDE.length;
     if (h.getLastRow() > 1) h.getRange(2, 1, h.getLastRow() - 1, ancho).clearContent();
     if (lista.length) h.getRange(2, 1, lista.length, ancho).setValues(lista.map(function (x) {
-      return [x.codigo, x.tipo, x.donde, x.quien, x.desde, x.ultimo_mov, x.foto]; }));
+      return [x.codigo, x.tipo, x.donde, x.quien, x.desde, x.ultimo_mov, x.foto, x.estado, x.almacen, x.ok, x.averia]; }));
   }
   return lista;
 }
 
 // alta de una máquina nueva: el móvil propone el número (ya escrito en la máquina y visible en la foto);
 // si otro lo ha cogido a la vez, se le da el siguiente libre y se avisa
-function altaHerramienta_(prefijo, usuario, propuesto) {
+function altaHerramienta_(prefijo, usuario, propuesto, conOk) {
   var t = filas_('HERR_TIPOS').filter(function (f) { return String(f.prefijo) === String(prefijo); })[0];
   if (!t) throw new Error('Tipo de herramienta no encontrado');
   var max = 0, usados = {};
@@ -410,7 +431,8 @@ function altaHerramienta_(prefijo, usuario, propuesto) {
   });
   var valido = new RegExp('^' + t.prefijo + '-\\d{2,}$').test(String(propuesto || '')) && !usados[propuesto];
   var codigo = valido ? String(propuesto) : t.prefijo + '-' + ('0' + (max + 1)).slice(-2);
-  anadirFila_('HERRAMIENTAS', { codigo: codigo, tipo: t.tipo, activo: 'SI', alta_fecha: ahora_(), alta_por: usuario || '' });
+  // el alta de cualquiera queda PENDIENTE de OK (Gregorio, Sergio o Mateo); se puede usar mientras tanto
+  anadirFila_('HERRAMIENTAS', { codigo: codigo, tipo: t.tipo, activo: 'SI', alta_fecha: ahora_(), alta_por: usuario || '', ok: conOk ? 'OK' : 'PENDIENTE' });
   return { codigo: codigo, nombre: codigo + ' · ' + t.tipo, unidad: 'ud', cambiado: !!propuesto && codigo !== propuesto };
 }
 
@@ -569,7 +591,14 @@ function movimiento_(m) {
   var n = Number(config_(c.contador)) || 1;
   setConfig_(c.contador, n + 1);
   var numero = c.prefijo + ('000' + n).slice(-4);
-  var tipo = m.tipo === 'ENTRADA' || m.tipo === 'DEVOLUCION' ? m.tipo : 'SALIDA';
+  var tipo = ['ENTRADA', 'DEVOLUCION', 'AVERIA'].indexOf(m.tipo) >= 0 && (her || m.tipo !== 'AVERIA') ? m.tipo : 'SALIDA';
+  if (her && tipo !== 'ENTRADA' && mat.codigo) {
+    var est = (herrPorCodigo_(mat.codigo) || {}).estado;
+    if (tipo === 'SALIDA' && ['AVERIADA', 'EN REPARACION', 'BAJA'].indexOf(est) >= 0) throw new Error(mat.codigo + ' está ' + (est === 'EN REPARACION' ? 'EN REPARACIÓN' : est) + ': no se puede llevar a obra');
+    if (tipo === 'AVERIA' && ['EN REPARACION', 'BAJA'].indexOf(est) >= 0) throw new Error(mat.codigo + ' ya está ' + (est === 'BAJA' ? 'de BAJA' : 'EN REPARACIÓN'));
+  }
+  if (tipo === 'AVERIA' && !String(m.nota || '').trim()) throw new Error('Escribe qué le pasa a la máquina');
+  if (tipo === 'AVERIA' && !(m.fotos && m.fotos.length)) throw new Error('La avería necesita una foto');
   var fecha = m.fecha || new Date().toISOString();
   // fotos en <CARPETA_PARTES>/ALMACEN (o HERRAMIENTAS)/<MES>/ "DD-MM-AAAA A0001 ENTRADA|SALIDA <material> <comentario>.jpg"
   var fotosUrls = [], idCarpeta = config_('CARPETA_PARTES_ID');
@@ -584,7 +613,7 @@ function movimiento_(m) {
   var fila = { id: m.id, fecha: fechaES_(fecha), tipo: tipo, cantidad: her ? 1 : Number(m.cantidad) || 0, unidad: mat.unidad || '', obra: m.obra || '',
     parte_numero: '', usuario: m.usuario || '', nota: m.nota || '', creado_en: ahora_(), fotos: fotosUrls.join(' '), numero: numero,
     hora: m.hora ? "'" + m.hora : '',     // con ' para que la hoja no lo convierta en fecha
-    almacen: her ? '' : comprobarAlmacen_(m.almacen),
+    almacen: tipo === 'SALIDA' ? '' : comprobarAlmacen_(m.almacen || (tipo === 'AVERIA' ? 'QUI' : '')),   // herramientas: dónde la deja (avería: QUIQUIRÁ por defecto)
     persona: tipo === 'ENTRADA' ? '' : (m.persona || m.usuario || '') };   // quién se lo lleva / lo devuelve (usuario = quién lo anota)
   fila[c.cod] = String(mat.codigo); fila[c.nom] = mat.nombre;
   anadirFila_(c.mov, fila);
@@ -742,15 +771,15 @@ function vale_(v, interno) {
 function inventarioMaquinas_(maquinas, v, numero, fecha, almacen, hora, creadoEn) {
   if (!maquinas.length) return [];
   var enAlm = {};
-  herrDonde_(false).forEach(function (h) { if (h.donde === 'ALMACÉN') { var p = h.codigo.split('-')[0]; enAlm[p] = (enAlm[p] || 0) + 1; } });
+  herrDonde_(false).forEach(function (h) { if (h.donde === 'ALMACÉN' && h.almacen === almacen) { var p = h.codigo.split('-')[0]; enAlm[p] = (enAlm[p] || 0) + 1; } });
   var altas = [];
   maquinas.forEach(function (m) {
     var bien = Number(m.bien) || 0, regular = Number(m.regular) || 0, averiada = Number(m.averiada) || 0, total = bien + regular + averiada;
     var faltan = Math.max(0, total - (enAlm[m.prefijo] || 0)), propuestos = m.altas || [], codigos = [];
     for (var i = 0; i < faltan; i++) {
-      var h = altaHerramienta_(m.prefijo, v.usuario, propuestos[i] || '');
+      var h = altaHerramienta_(m.prefijo, v.usuario, propuestos[i] || '', true);
       anadirFila_('HERR_MOV', { id: v.id + '#H|' + h.codigo, fecha: fechaES_(fecha), tipo: 'ENTRADA', herramienta_codigo: h.codigo, herramienta: h.nombre,
-        cantidad: 1, unidad: 'ud', obra: '', usuario: v.usuario || '', nota: 'Alta en el inventario ' + numero, creado_en: creadoEn, fotos: '', numero: numero, hora: hora, persona: '' });
+        cantidad: 1, unidad: 'ud', obra: '', usuario: v.usuario || '', nota: 'Alta en el inventario ' + numero, creado_en: creadoEn, fotos: '', numero: numero, hora: hora, persona: '', almacen: almacen });
       altas.push({ prefijo: m.prefijo, propuesto: propuestos[i] || '', codigo: h.codigo, cambiado: !!propuestos[i] && h.codigo !== propuestos[i] });
       codigos.push(h.codigo);
     }
@@ -907,7 +936,7 @@ function invRevision_(b) {
     m.contado += l.valor; m.lineas.push(l);
   });
   Object.keys(porMat).forEach(function (k) { porMat[k].diferencia = Math.round((porMat[k].contado - porMat[k].stock) * 1000) / 1000; });
-  var enAlm = {}; herrDonde_(false).forEach(function (h) { if (h.donde === 'ALMACÉN') { var p = h.codigo.split('-')[0]; enAlm[p] = (enAlm[p] || 0) + 1; } });
+  var enAlm = {}; herrDonde_(false).forEach(function (h) { if (h.donde === 'ALMACÉN' && h.almacen === inv.almacen) { var p = h.codigo.split('-')[0]; enAlm[p] = (enAlm[p] || 0) + 1; } });
   var vales = filas_('VALES').filter(function (v) { return String(v.inventario || '') === inv.id; }).map(function (v) {
     return { numero: v.numero, tipo: v.tipo, fecha: txtFecha_(v.fecha, 'dd/MM/yyyy'), hora: String(v.hora || ''), obra: v.obra, usuario: v.usuario, anulado: si_(v.anulado) }; });
   var pendientes = []; Object.keys(inv.asignacion).forEach(function (c) { var cod = inv.asignacion[c]; if (!inv.terminados[cod] && pendientes.indexOf(nombres[cod] || cod) < 0) pendientes.push(nombres[cod] || cod); });
@@ -949,6 +978,103 @@ function invAnular_(b) {
   var t = exigirMateo_(b.auth), inv = inventario_(b.id);
   if (inv.estado !== 'ABIERTO') throw new Error('Este inventario ya no está abierto');
   ponerEnFila_('INVENTARIOS', inv.fila, { estado: 'ANULADO', cerrado_por: t.nombre, cerrado_en: "'" + ahora_() });
+  return { ok: true };
+}
+
+// ---------------------------------------------------------------- herramientas: averías, reparador y OK de altas
+// Gestionan reparaciones y validan altas quienes tienen herramientas = SI en TRABAJADORES (Mateo, Gregorio y Sergio).
+function exigirHerr_(auth) {
+  auth = auth || {};
+  var t = filas_('TRABAJADORES').filter(function (f) { return String(f.codigo) === String(auth.codigo) && si_(f.activo); })[0];
+  if (!t || String(t.pin).padStart(4, '0') !== String(auth.pin || '').padStart(4, '0')) throw new Error('Vuelve a entrar con tu PIN para hacer esto');
+  if (!si_(t.herramientas)) throw new Error('Solo Gregorio, Sergio o Mateo pueden hacer esto');
+  return t;
+}
+function herrPorCodigo_(cod) { return herrDonde_(false).filter(function (h) { return h.codigo === String(cod); })[0]; }
+function herrMov_(h, tipo, datos, t) {
+  var n = Number(config_('SIGUIENTE_HERR')) || 1; setConfig_('SIGUIENTE_HERR', n + 1);
+  var numero = 'H' + ('000' + n).slice(-4);
+  anadirFila_('HERR_MOV', Object.assign({ id: Utilities.getUuid(), fecha: fechaES_(new Date().toISOString()), tipo: tipo, herramienta_codigo: h.codigo, herramienta: h.nombre,
+    cantidad: 1, unidad: 'ud', obra: '', usuario: t.nombre, nota: '', creado_en: ahora_(), fotos: '', numero: numero, hora: "'" + Utilities.formatDate(new Date(), 'Atlantic/Canary', 'HH:mm'), persona: '' }, datos));
+  return numero;
+}
+// entregar una o varias máquinas AVERIADAS a un reparador: recibo R0001 en PDF (Drive) y copia en REPARACIONES
+function herrReparar_(b) {
+  var t = exigirHerr_(b.auth), codigos = b.codigos || [], reparador = String(b.reparador || '').trim();
+  if (!codigos.length) throw new Error('Elige al menos una máquina');
+  if (!reparador) throw new Error('Elige el reparador');
+  var maquinas = codigos.map(function (c) {
+    var h = herrPorCodigo_(c);
+    if (!h) throw new Error('Máquina no encontrada: ' + c);
+    if (h.estado !== 'AVERIADA') throw new Error(c + ' no está averiada');
+    return h;
+  });
+  var n = Number(config_('SIGUIENTE_REP')) || 1; setConfig_('SIGUIENTE_REP', n + 1);
+  var recibo = 'R' + ('000' + n).slice(-4), fecha = b.fecha || new Date().toISOString().slice(0, 10);
+  maquinas.forEach(function (h) { herrMov_(h, 'REPARACION', { persona: reparador, recibo: recibo, nota: h.averia, almacen: '' }, t); });
+  var pdf = reciboPdf_(recibo, fecha, reparador, maquinas, t.nombre, b.firma), url = '';
+  var idCarpeta = config_('CARPETA_PARTES_ID');
+  if (idCarpeta) {
+    var carp = subcarpeta_(subcarpeta_(DriveApp.getFolderById(idCarpeta), 'HERRAMIENTAS'), 'REPARACIONES');
+    url = carp.createFile(pdf.setName(fechaNombre_(fecha) + ' ' + recibo + ' ' + reparador.replace(/[\\/:*?"<>|]/g, '-') + '.pdf')).getUrl();
+  }
+  anadirFila_('REPARACIONES', { numero: recibo, fecha: fechaES_(fecha), reparador: reparador, maquinas: maquinas.map(function (h) { return h.codigo + ' (' + h.averia + ')'; }).join(' · '),
+    entregado_por: t.nombre, pdf_url: url, firmado: b.firma ? 'SI' : 'NO', creado_en: ahora_() });
+  try { herrDonde_(true); } catch (err) { console.error('HERR_DONDE: ' + err); }
+  return { ok: true, recibo: recibo, pdf_url: url, pdf: Utilities.base64Encode(pdf.getBytes()), nombre: recibo + ' ' + reparador + '.pdf' };
+}
+// foto de la avería dentro del PDF (si está en Drive)
+function fotoPdf_(url) {
+  try {
+    var id = String(url || '').match(/[-\w]{25,}/); if (!id) return '';
+    var bl = DriveApp.getFileById(id[0]).getBlob();
+    return 'data:' + bl.getContentType() + ';base64,' + Utilities.base64Encode(bl.getBytes());
+  } catch (e) { return ''; }
+}
+function reciboPdf_(recibo, fecha, reparador, maquinas, entregadoPor, firma) {
+  var filas = maquinas.map(function (h) {
+    var f = fotoPdf_(h.foto);
+    return '<tr><td><b>' + esc_(h.codigo) + '</b></td><td>' + esc_(h.tipo) + '</td><td>' + esc_(h.averia) + '</td><td>' + (f ? '<img src="' + f + '" style="height:90px">' : '') + '</td></tr>';
+  }).join('');
+  var html = '<!DOCTYPE html><html><head><meta charset="utf-8"><style>' +
+    'body{font-family:Arial,Helvetica,sans-serif;font-size:11pt;color:#111;margin:18mm 16mm}' +
+    'h1{font-size:18pt;margin:0;letter-spacing:3px;color:#343434}.cab{display:flex;justify-content:space-between;border-bottom:3px solid #f9b526;padding-bottom:6px;margin-bottom:10px}' +
+    '.num{font-size:16pt;font-weight:bold;color:#343434;text-align:right}.emp{font-size:8.5pt;color:#555}' +
+    'table{border-collapse:collapse;width:100%}th,td{border:1px solid #bbb;padding:5px 6px;text-align:left;font-size:10pt;vertical-align:top}th{background:#f4f4f4}' +
+    '.firmas{display:flex;gap:20px;margin-top:16px}.firma{flex:1;border:1px solid #bbb;height:110px;padding:6px;position:relative;text-align:center}.firma small{position:absolute;left:6px;top:4px;color:#555}' +
+    '.pie{font-size:8pt;color:#777;margin-top:10px;text-align:center}</style></head><body>' +
+    '<div class="cab"><div><h1>SOLERA · RECIBO DE REPARACIÓN</h1><div class="emp">' + esc_(config_('EMPRESA')) + '</div></div><div class="num">Nº ' + recibo + '</div></div>' +
+    '<p><b>Fecha:</b> ' + fechaES_(fecha) + ' &nbsp; <b>Reparador:</b> ' + esc_(reparador) + ' &nbsp; <b>Máquinas:</b> ' + maquinas.length + '</p>' +
+    '<table><tr><th>Código</th><th>Máquina</th><th>Avería</th><th>Foto</th></tr>' + filas + '</table>' +
+    '<div class="firmas"><div class="firma"><small>Entregado por SOLERA: ' + esc_(entregadoPor) + '</small></div>' +
+    '<div class="firma"><small>Recibido: ' + esc_(reparador) + '</small><br>' + (firma ? '<img src="' + firma + '" style="height:70px;margin-top:16px">' : '') + '</div></div>' +
+    '<div class="pie">Recibo generado con la app SOLERA el ' + ahora_() + '</div></body></html>';
+  return HtmlService.createHtmlOutput(html).getBlob().getAs('application/pdf');
+}
+// vuelve de reparación: reparada (DISPONIBLE en el almacén que se elija) o sin arreglo (BAJA)
+function herrVuelta_(b) {
+  var t = exigirHerr_(b.auth), h = herrPorCodigo_(b.codigo);
+  if (!h) throw new Error('Máquina no encontrada');
+  if (h.estado !== 'EN REPARACION') throw new Error(h.codigo + ' no está en reparación');
+  var baja = b.resultado === 'BAJA';
+  var numero = herrMov_(h, baja ? 'BAJA' : 'VUELTA', { almacen: baja ? '' : comprobarAlmacen_(b.almacen), recibo: h.recibo, persona: h.reparador, nota: String(b.nota || '').trim() || (baja ? 'Sin arreglo' : 'Reparada') }, t);
+  try { herrDonde_(true); } catch (err) { console.error('HERR_DONDE: ' + err); }
+  return { ok: true, numero: numero };
+}
+// OK o rechazo de una máquina dada de alta por cualquiera (rechazada = sale de la lista)
+function herrOk_(b) {
+  var t = exigirHerr_(b.auth), hecho = false;
+  filas_('HERRAMIENTAS').forEach(function (f, i) {
+    if (hecho || String(f.codigo) !== String(b.codigo)) return;
+    if (b.ok) ponerEnFila_('HERRAMIENTAS', i + 2, { ok: 'OK', ok_por: t.nombre, ok_en: "'" + ahora_() });
+    else {
+      if (!String(b.motivo || '').trim()) throw new Error('Escribe el motivo');
+      ponerEnFila_('HERRAMIENTAS', i + 2, { ok: 'RECHAZADA', ok_por: t.nombre, ok_en: "'" + ahora_(), motivo_rechazo: String(b.motivo).trim(), activo: 'NO' });
+    }
+    hecho = true;
+  });
+  if (!hecho) throw new Error('Máquina no encontrada');
+  try { herrDonde_(true); } catch (err) { console.error('HERR_DONDE: ' + err); }
   return { ok: true };
 }
 

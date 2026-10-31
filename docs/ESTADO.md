@@ -6,19 +6,20 @@ La app está **EN PRUEBAS** (ver `CLAUDE.md`). Lo pendiente está en `PENDIENTES
 - `index.html`: la app entera (SOLERA). Con `?modo=almacen` es **SOLERA Almacén** (`almacen/index.html`, sin la pestaña Parte).
 - `sw.js`: guarda la app en el móvil para abrirla sin cobertura (incluye `lib/`).
 - `lib/zxing-0.21.3.min.js`: lector de códigos de barras para iPhone (Apache 2.0), dentro de la app.
-- `backend/Code.gs`: servidor (Apps Script de la hoja "APP SOLERA"). Publicado en la **versión 14**, igual que el repositorio (`ESQUEMA = '16'`).
+- `backend/Code.gs`: servidor (Apps Script de la hoja "APP SOLERA"). Publicado en la **versión 15**, igual que el repositorio (`ESQUEMA = '17'`).
 - `docs/MATERIALES_PROPUESTA.csv`: lista de materiales aprobada (sin precios).
 
 ## Quién puede qué (columna `rol` de TRABAJADORES)
-- **trabajador** (todos los compañeros, oficiales o peones; la categoría OFICIAL/PEÓN solo se usa en el parte): parte, herramientas y, en Almacén, solo ME LLEVO, DEVUELVO y ENCONTRÉ.
+- **trabajador** (todos los compañeros, oficiales o peones; la categoría OFICIAL/PEÓN solo se usa en el parte): parte; en Almacén, solo ME LLEVO, DEVUELVO y ENCONTRÉ; en Herramientas, llevar, devolver, avería y alta.
 - **encargado:** lo mismo, más "Ver stock".
 - **admin:** además COMPRA (a almacén o a obra), TRASPASO, Ver stock, pestaña Vales y anular.
 - **Inventarios:** los abre, revisa y cierra solo **Mateo (999)**. Cualquiera puede participar si Mateo le asigna categorías.
 - **Columna `inventario` = SI** (Mateo y Gregorio): asociar códigos de barras (también fuera de un inventario).
+- **Columna `herramientas` = SI** (Mateo, Gregorio y Sergio): entregar al reparador, recibir de reparación y dar el OK a las altas de máquinas.
 - El servidor lo comprueba con código + PIN. Quien entra solo con huella tiene que entrar una vez con el PIN para compras, traspasos e inventario.
 
 ## Almacén
-- Dos almacenes (pestaña ALMACENES): **LA MATANZA** (por defecto) y **AGÜIMES**. Cada vale guarda el suyo; el móvil recuerda el último de su dueño.
+- Tres almacenes (pestaña ALMACENES): **LA MATANZA** (por defecto), **AGÜIMES** y **QUIQUIRÁ (OFICINA)**. Cada vale guarda el suyo; el móvil recuerda el último de su dueño.
 - Cada formulario es un **vale** numerado (A0004…) con varias líneas.
 - **ME LLEVO / DEVUELVO / ENCONTRÉ:** material (con 📷 al lado), cantidad, obra (sale la última usada) y GUARDAR. Almacén y persona van puestos en una línea discreta ("cambiar"); comentario y fotos, plegados en "Más" (en ENCONTRÉ el comentario está a la vista porque es obligatorio).
   Toques para un ME LLEVO de 2 materiales: 7 la primera vez (uno escaneado y otro escrito, eligiendo la obra), 5 con la obra ya puesta, 4 si se escanean los dos (más escribir el material y la cantidad).
@@ -38,6 +39,13 @@ La app está **EN PRUEBAS** (ver `CLAUDE.md`). Lo pendiente está en `PENDIENTES
   **"Cerrar y ajustar"** crea el vale AJUSTE con el stock del servidor en ese momento, con fotos; las máquinas que falten se dan de alta y sale la lista para rotular. "Marca no contada = 0" solo en los materiales contados; las categorías sin contar no se tocan. El AJUSTE se anula desde Vales. También se puede **anular** el inventario sin ajustar.
 - Fuera de un inventario no se puede hacer ningún ajuste.
 
+## Herramientas (una a una, con número: BAT-01…)
+- **Estados** ("¿Dónde están?"): en almacén (cuál), en obra, ⚠️ AVERIADA (dónde y qué le pasa), 🔧 EN REPARACIÓN (con quién y nº de recibo), PENDIENTE DE OK y BAJA. Las que había quedaron en LA MATANZA.
+- **Llevar a obra** (solo las disponibles), **Devolver** y **Alta** (eligiendo el almacén; por defecto el del móvil). El alta de cualquiera queda **PENDIENTE DE OK** y se puede usar mientras tanto.
+- **⚠️ Avería** (cualquiera): máquina (o 📷), "¿qué le pasa?" y foto obligatorios, almacén donde la deja (QUIQUIRÁ por defecto). Averiada no se puede llevar a obra.
+- **Reparaciones y altas** (herramientas = SI): "Entregar a reparador" (una o varias averiadas, reparador de la pestaña REPARADORES, fecha y firma opcional) → recibo **R0001…** en PDF (Drive `HERRAMIENTAS/REPARACIONES`, copia en REPARACIONES y botón "📤 Compartir PDF"; no se envía solo). "Vuelve de reparación": reparada (al almacén que se elija) o sin arreglo (BAJA). "Máquinas pendientes de OK": OK o rechazar con motivo (la rechazada sale de la lista).
+- El 📷 de Herramientas ya lee el código de la máquina escrito o en QR (para cuando haya pegatinas); de momento, rotulador.
+
 ## Códigos de barras
 - Lector: primero el del navegador (BarcodeDetector, Android) y si no ZXing (iPhone), que va dentro de la app y se guarda en el móvil al instalar/actualizar, al abrirla con cobertura y con "Preparar". Sin cámara se escribe el número o la referencia del fabricante.
 - Pestaña **EANS** (ean, material_codigo, marca, nombre_envase, proveedor, ref_fabricante, estado, sugerido, visto_en). Los materiales también se encuentran escribiendo la referencia del fabricante.
@@ -46,7 +54,7 @@ La app está **EN PRUEBAS** (ver `CLAUDE.md`). Lo pendiente está en `PENDIENTES
 - Los artículos de proveedor (`MATERIALES APP.csv` y las tablas de precios) **no traen EAN**; `ref_fabricante` se puede rellenar a mano en EANS.
 
 ## Pestañas de la hoja
-CONFIG, TRABAJADORES (+ `rol`, `inventario`), OBRAS, MATERIALES (+ `codigo_mercadona`, `en_almacen`, `alias`, `uso_base`), PARTES, PARTES_LINEAS, MOVIMIENTOS (+ `almacen`, `contado`, `marca`, `stock_antes`), VALES (+ `almacen`, `almacen_destino`, `inicio`, `cierre`, `inventario`), STOCK (fórmulas, con `stock_MAT` y `stock_AGU`), POR_OBRA, ALMACENES, EANS, INVENTARIOS (id, almacen, nombre, fecha, abierto/cerrado por y en, estado ABIERTO/CERRADO/ANULADO, participantes, asignacion, terminados, fotos, vale), INV_LINEAS (lo contado: quién, cuándo, corregido), INV_MAQUINAS, FIRMANTES, HERR_TIPOS, HERRAMIENTAS, HERR_MOV, HERR_DONDE, MATERIALES_ANTES_6D (copia de seguridad) y "Hoja 1" (vacía, no se usa).
+CONFIG, TRABAJADORES (+ `rol`, `inventario`, `herramientas`), OBRAS, MATERIALES (+ `codigo_mercadona`, `en_almacen`, `alias`, `uso_base`), PARTES, PARTES_LINEAS, MOVIMIENTOS (+ `almacen`, `contado`, `marca`, `stock_antes`), VALES (+ `almacen`, `almacen_destino`, `inicio`, `cierre`, `inventario`), STOCK (fórmulas, con `stock_MAT`, `stock_AGU` y `stock_QUI`), POR_OBRA, ALMACENES, EANS, INVENTARIOS (id, almacen, nombre, fecha, abierto/cerrado por y en, estado ABIERTO/CERRADO/ANULADO, participantes, asignacion, terminados, fotos, vale), INV_LINEAS (lo contado: quién, cuándo, corregido), INV_MAQUINAS, FIRMANTES, HERR_TIPOS, HERRAMIENTAS (+ `ok`, `ok_por`, `ok_en`, `motivo_rechazo`), HERR_MOV (+ `almacen`, `recibo`), HERR_DONDE (+ `estado`, `almacen`, `ok`, `averia`), REPARADORES, REPARACIONES, MATERIALES_ANTES_6D (copia de seguridad) y "Hoja 1" (vacía, no se usa).
 Las pestañas y columnas nuevas se crean solas en la primera llamada. `instalar()` solo hace falta si se añade un almacén (columna en STOCK).
 
 ## Publicar
@@ -55,4 +63,5 @@ clasp desde Claude Code (necesita que Mateo inicie sesión en cada sesión nueva
 ## Fallos conocidos
 - Huella: en el móvil de Mateo da error; falta ver el motivo en un móvil real.
 - La cámara para escanear necesita permiso del navegador la primera vez (en iPhone, desde la app instalada o Safari). Sin cámara se puede escribir el número.
-- Herramientas: sin almacén (dónde está = ALMACÉN u obra). Si dos móviles numeran a la vez, el servidor da otro número y avisa "⚠️ CAMBIADO".
+- Herramientas: si dos móviles numeran a la vez, el servidor da otro número y avisa "⚠️ CAMBIADO".
+- Entregar al reparador, la vuelta y el OK necesitan cobertura (se hacen desde la oficina).
