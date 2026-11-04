@@ -31,7 +31,7 @@ var HOJAS = {
   MOVIMIENTOS: ['id','fecha','tipo','material_codigo','material','cantidad','unidad','obra','parte_numero','usuario','nota','creado_en','fotos','numero','hora','persona','linea','anulado','almacen','contado','marca','stock_antes','movil_de','recibido_en'],   // movil_de: código del dueño del móvil desde el que se anotó; recibido_en: cuándo llegó al servidor (fecha y hora = cuando se abrió el formulario)
   //   // contado y stock_antes (del servidor): solo en AJUSTE
   // un vale de almacén = una fila aquí + sus líneas en MOVIMIENTOS (mismo numero, linea 1, 2, 3…)
-  VALES: ['numero','fecha','hora','tipo','obra','usuario','persona','nota','fotos','proveedor','albaran','n_lineas','anulado','anulado_por','anulado_en','motivo_anulacion','creado_en','id','tipo_doc','estado','almacen','almacen_destino','inicio','cierre','inventario','movil_de','recibido_en'],   // inicio y cierre: del inventario (AJUSTE); inventario: hecho con un inventario abierto (o el AJUSTE)   // estado (compras): PENDIENTE_LEER (metida "solo foto", sin líneas ni stock) / CONFIRMADA (con líneas: ya suma stock); almacen_destino solo en TRASPASO
+  VALES: ['numero','fecha','hora','tipo','obra','usuario','persona','nota','fotos','proveedor','albaran','n_lineas','anulado','anulado_por','anulado_en','motivo_anulacion','creado_en','id','tipo_doc','estado','almacen','almacen_destino','inicio','cierre','inventario','movil_de','recibido_en','revisar','nota_revisar'],   // revisar SI = "Me he equivocado" o aviso de la cola: Mateo lo mira (nota_revisar) y lo marca revisado   // inicio y cierre: del inventario (AJUSTE); inventario: hecho con un inventario abierto (o el AJUSTE)   // estado (compras): PENDIENTE_LEER (metida "solo foto", sin líneas ni stock) / CONFIRMADA (con líneas: ya suma stock); almacen_destino solo en TRASPASO
   // almacenes físicos (MAT = La Matanza, AGU = Agüimes); en la app se ve 'NOMBRE · dirección corta', el código solo en la hoja
   ALMACENES: ['codigo','nombre','direccion','activo','por_defecto'],
   // códigos de barras (EAN) de los envases: qué material y qué marca son
@@ -65,9 +65,9 @@ function clase_(c) { return CLASES[c === 'HER' ? 'HER' : 'MAT']; }
 function movFilas_(c) {
   return filas_(c.mov).map(function (f) { f.material_codigo = f[c.cod]; f.material = f[c.nom]; return f; });
 }
-var ESQUEMA = '21';
+var ESQUEMA = '22';   // 22: revisar y nota_revisar en VALES
 // número de la versión publicada en Apps Script (subirlo en cada publicación, igual que VERSION_WEB de index.html)
-var VERSION_SERVIDOR = 25;            // subir cuando cambien las columnas de HOJAS
+var VERSION_SERVIDOR = 26;            // subir cuando cambien las columnas de HOJAS
 var EMAIL_COPIA = 'soleracanarias@gmail.com';
 var CSV_NOMBRE = 'PARTES APP 2026.csv';  // se crea en la carpeta CARPETA_CSV_ID de CONFIG (CLIENTES\PARTES\APP)
 var CSV_COLUMNAS = ['N_PARTE','FECHA','DIA_SEMANA','CLIENTE','OBRA','COD_OBRA_APP','RESP_CLIENTE','RESP_CERT','RESP_SOLERA','MATRICULA',
@@ -299,6 +299,7 @@ function doPost(e) {
       case 'vales': return json_(valesPara_(body.auth, body.filtros || {}));
       case 'anularVale': exigirAdmin_(body.auth); lock.waitLock(30000); return json_(anularVale_(body.numero, body.motivo, body.auth));
       case 'valeCompletar': lock.waitLock(30000); return json_(valeCompletar_(body));
+      case 'avisoCola': lock.waitLock(30000); return json_(avisoCola_(body));
       default: return json_({ ok: false, error: 'Acción desconocida' });
     }
   } catch (err) {
@@ -909,6 +910,35 @@ function valeCompletar_(b) {
     nota: (String(v.nota || '') ? String(v.nota) + ' · ' : '') + 'Líneas metidas por ' + t.nombre + ' el ' + creadoEn });
   trasLineas_(tipo, numero, lineas, t.nombre);
   return { ok: true, numero: numero, n_lineas: lineas.length };
+}
+// "Avisar a Mateo" desde la cola del móvil: algo que el servidor no aceptó (albarán repetido, material que no existe…)
+// se apunta en VALES como vale ANULADO (nunca entra en el stock) con revisar = SI y el motivo, para que Mateo lo vea en
+// Vales ("Solo para revisar") y en el Resumen. Las líneas van a MOVIMIENTOS también anuladas. Lo de máquinas y andamios, como tipo AVISO.
+function avisoCola_(b) {
+  var t = exigirTrabajador_(b.auth, 'avisar a Mateo'), it = b.item || {};
+  if (!it.id) throw new Error('Aviso sin id');
+  var id = 'aviso-' + it.id, ya = filas_('VALES').filter(function (f) { return String(f.id) === id; })[0];
+  if (ya) return { ok: true, repetido: true, numero: ya.numero };
+  var esVale = it.tipo === 'vale', tipo = esVale && TIPOS_VALE.indexOf(String(it.valeTipo)) >= 0 ? String(it.valeTipo) : 'AVISO';
+  var n = Number(config_('SIGUIENTE_MOV')) || 1; setConfig_('SIGUIENTE_MOV', n + 1);
+  var numero = 'A' + ('000' + n).slice(-4), creadoEn = ahora_(), fecha = it.fecha || new Date().toISOString();
+  var motivo = String(b.motivo || 'no aceptado por el servidor').trim(), texto = String(b.texto || '').trim();
+  var que = esVale ? '' : (it.tipo === 'andamios' ? 'Andamios ' + (it.mov && it.mov.tipo || '') + ' ' + ((it.mov && it.mov.lineas) || []).map(function (l) { return l.cantidad + ' ' + l.prefijo; }).join(', ')
+    : 'Máquina ' + (it.movTipo || '') + ' ' + (it.materialNombre || it.material || '') + (it.codigoNuevo ? ' (' + it.codigoNuevo + ')' : ''));
+  var notaRev = 'AVISO de ' + t.nombre + ': ' + (texto || 'no se pudo enviar') + ' · El servidor dijo: ' + motivo + (que ? ' · ' + que : '');
+  var hora = it.hora ? "'" + it.hora : '', almacen = String(it.almacen || ''), obra = String(it.obra || (it.mov && it.mov.obra) || '');
+  var mats = {}; filas_('MATERIALES').forEach(function (f) { mats[String(f.codigo)] = f; });
+  var lineas = esVale ? (it.lineas || []).filter(function (l) { return l && (l.material || l.materialNombre) && Number(l.cantidad) > 0; }) : [];
+  escribirLineas_({ id: id, tipo: tipo === 'TRASPASO' ? 'AVISO' : tipo, fecha: fechaES_(fecha), obra: obra, usuario: t.nombre, nota: 'AVISO: ' + (texto || motivo), creadoEn: creadoEn, fotos: '',
+    numero: numero, hora: hora, persona: String(it.persona || ''), almacen: almacen, destino: '', movilDe: String(it.movilDe || '') }, lineas, mats);
+  // las líneas quedan anuladas desde el principio (no cuentan en el stock)
+  filas_('MOVIMIENTOS').forEach(function (m, i) { if (String(m.numero) === numero) ponerEnFila_('MOVIMIENTOS', i + 2, { anulado: 'SI' }); });
+  anadirFila_('VALES', { numero: numero, fecha: fechaES_(fecha), hora: hora, tipo: tipo, obra: obra, usuario: t.nombre, persona: String(it.persona || ''),
+    nota: 'AVISO: ' + (texto || motivo) + (que ? ' · ' + que : ''), fotos: '', proveedor: String(it.proveedor || ''), albaran: String(it.albaran || ''), n_lineas: lineas.length,
+    anulado: 'SI', anulado_por: 'servidor', anulado_en: creadoEn, motivo_anulacion: 'No aceptado por el servidor: ' + motivo, creado_en: creadoEn, id: id,
+    movil_de: String(it.movilDe || ''), recibido_en: creadoEn, tipo_doc: '', estado: '', almacen: almacen, almacen_destino: String(it.almacenDestino || ''),
+    inicio: '', cierre: '', inventario: '', revisar: 'SI', nota_revisar: notaRev });
+  return { ok: true, numero: numero };
 }
 // compras metidas "solo foto" que aún no tienen líneas (para el Resumen y el aviso diario)
 function albaranesPendientes_() {
