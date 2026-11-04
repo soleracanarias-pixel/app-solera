@@ -67,7 +67,7 @@ function movFilas_(c) {
 }
 var ESQUEMA = '21';
 // número de la versión publicada en Apps Script (subirlo en cada publicación, igual que VERSION_WEB de index.html)
-var VERSION_SERVIDOR = 24;            // subir cuando cambien las columnas de HOJAS
+var VERSION_SERVIDOR = 25;            // subir cuando cambien las columnas de HOJAS
 var EMAIL_COPIA = 'soleracanarias@gmail.com';
 var CSV_NOMBRE = 'PARTES APP 2026.csv';  // se crea en la carpeta CARPETA_CSV_ID de CONFIG (CLIENTES\PARTES\APP)
 var CSV_COLUMNAS = ['N_PARTE','FECHA','DIA_SEMANA','CLIENTE','OBRA','COD_OBRA_APP','RESP_CLIENTE','RESP_CERT','RESP_SOLERA','MATRICULA',
@@ -128,8 +128,18 @@ function instalar() {
       MENOS.map(function (t) { return suma(t, a.codigo); }).join('+') + ')))');
   });
   try { porObra_(); } catch (e) {}
+  instalarDisparadores();
   SpreadsheetApp.getUi().alert('APP SOLERA instalada. Rellena TRABAJADORES, OBRAS, MATERIALES y CARPETA_PARTES_ID en CONFIG; luego publica como aplicación web.');
 }
+// disparadores diarios (se pueden rehacer a mano desde el editor): 18:30 resumen por correo
+function instalarDisparadores() {
+  var quiero = { resumenDiario: { hora: 18, minuto: 30 } };
+  ScriptApp.getProjectTriggers().forEach(function (t) { if (quiero[t.getHandlerFunction()]) ScriptApp.deleteTrigger(t); });
+  Object.keys(quiero).forEach(function (fn) {
+    ScriptApp.newTrigger(fn).timeBased().atHour(quiero[fn].hora).nearMinute(quiero[fn].minuto).everyDays(1).inTimezone('Atlantic/Canary').create();
+  });
+}
+function resumenDiario() { return resumenDiario_(); }   // el disparador llama a esta (las funciones con _ no salen en el editor)
 
 // crea las pestañas que falten y añade al final las columnas nuevas (p. ej. FIRMANTES, firmado_en)
 function asegurarHojas_(forzar) {
@@ -1491,6 +1501,44 @@ function movimientosMaterial_(codigo, n, clase) {
       return { numero: f.numero || '', linea: f.linea || '', anulado: si_(f.anulado), hora: String(f.hora || ''), fecha: txtFecha_(f.fecha, 'dd/MM/yyyy'), tipo: f.tipo, cantidad: f.cantidad, unidad: f.unidad, obra: f.obra,
         usuario: f.usuario, persona: f.persona || '', nota: f.nota, almacen: String(f.almacen || ''), marca: String(f.marca || ''), fotos: String(f.fotos || '').split(' ').filter(function (u) { return u; }) };
     });
+}
+
+// ---------------------------------------------------------------- resumen diario por correo (18:30)
+// A AVISOS_EMAIL (CONFIG; vacío = no se envía) y solo si hay novedades desde el último envío (la "firma" de lo pendiente
+// se guarda en ScriptProperties RESUMEN_DIARIO_FIRMA). Se puede lanzar a mano con resumenDiario().
+function resumenDiarioDatos_() {
+  var st = stock_(), herr = herrDonde_(false), hoy = Date.now();
+  var dias = function (h) { var ms = msDe_(h.desde); return ms ? Math.floor((hoy - ms) / 86400000) : 0; };
+  return {
+    negativos: st.filter(function (m) { return m.stock < 0 || Object.keys(m.porAlmacen || {}).some(function (a) { return m.porAlmacen[a] < 0; }); })
+      .map(function (m) { return m.nombre + ' (' + m.codigo + '): ' + m.stock + ' ' + (m.unidad || ''); }),
+    otros: otrosPendientes_().map(function (o) { return o.nombre + ' (' + o.veces + ' vez/veces, último vale ' + (o.ultimo || '?') + ')'; }),
+    eans: filas_('EANS').filter(function (e) { return e.ean && String(e.estado) === 'PENDIENTE'; }).map(function (e) { return String(e.ean) + (e.sugerido ? ' (eligieron ' + e.sugerido + ')' : '') + (e.visto_en ? ' · ' + e.visto_en : ''); }),
+    albaranes: albaranesPendientes_().map(function (a) { return a.numero + ' · ' + a.proveedor + ' ' + a.albaran + ' · ' + a.destino + ' · ' + a.usuario; }),
+    averiadas: herr.filter(function (h) { return h.estado === 'AVERIADA'; }).map(function (h) { return h.nombre + (h.averia ? ': ' + h.averia : ''); }),
+    reparacion: herr.filter(function (h) { return h.estado === 'EN REPARACION' && dias(h) > 15; }).map(function (h) { return h.nombre + ' · ' + h.reparador + (h.recibo ? ' (' + h.recibo + ')' : '') + ' · ' + dias(h) + ' días'; }),
+    pendientesOk: herr.filter(function (h) { return h.ok === 'PENDIENTE'; }).map(function (h) { return h.nombre + ' · alta de ' + h.quien; }),
+    inventarios: inventariosAbiertos_().map(function (i) { return i.nombre + ' · ' + i.participantes.map(function (p) { return p.nombre; }).join(', '); })
+  };
+}
+var RESUMEN_TITULOS_ = { negativos: 'Stock en negativo', otros: 'Materiales OTRO sin dar de alta', eans: 'Códigos de barras pendientes de asociar', albaranes: 'Albaranes pendientes de leer',
+  averiadas: 'Máquinas averiadas', reparacion: 'Máquinas más de 15 días en reparación', pendientesOk: 'Máquinas pendientes de OK', inventarios: 'Inventarios abiertos' };
+function resumenDiario_() {
+  var email = String(config_('AVISOS_EMAIL') || '').trim();
+  if (!email) return { ok: false, motivo: 'AVISOS_EMAIL vacío: no se envía' };
+  var d = resumenDiarioDatos_(), props = PropertiesService.getScriptProperties();
+  var firma = JSON.stringify(d), hay = Object.keys(d).some(function (k) { return d[k].length; });
+  if (!hay) { props.setProperty('RESUMEN_DIARIO_FIRMA', firma); return { ok: true, enviado: false, motivo: 'Nada pendiente' }; }
+  if (props.getProperty('RESUMEN_DIARIO_FIRMA') === firma) return { ok: true, enviado: false, motivo: 'Sin novedades desde el último envío' };
+  var n = 0, cuerpo = Object.keys(RESUMEN_TITULOS_).filter(function (k) { return d[k].length; }).map(function (k) {
+    n += d[k].length;
+    return RESUMEN_TITULOS_[k] + ' (' + d[k].length + ')\n' + d[k].map(function (x) { return '- ' + x; }).join('\n');
+  }).join('\n\n');
+  MailApp.sendEmail({ to: email, name: 'APP SOLERA', subject: 'APP SOLERA · Resumen del día: ' + n + ' cosa(s) pendiente(s)',
+    body: 'Pendientes en la app a ' + ahora_() + ':\n\n' + cuerpo + '\n\nSolo se envía cuando hay cambios desde el último resumen. Aviso automático de la app SOLERA.' });
+  props.setProperty('RESUMEN_DIARIO_FIRMA', firma);
+  props.setProperty('RESUMEN_DIARIO_ENVIADO', ahora_());
+  return { ok: true, enviado: true, pendientes: n };
 }
 
 // aviso por correo cuando un material baja al stock mínimo (solo al cruzarlo, no en cada salida)

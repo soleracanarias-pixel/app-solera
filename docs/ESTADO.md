@@ -8,8 +8,8 @@ La app está **EN PRUEBAS** (ver `CLAUDE.md`). Lo pendiente está en `PENDIENTES
 - `index.html`: la app entera. **Un solo icono instalable: "SOLERA"** (`manifest.json`). `?modo=almacen` sigue funcionando por compatibilidad (arranca en Almacén, sin Parte); `almacen/` ya no se ofrece para instalar, pero sigue abriendo la app para quien lo tenga instalado.
 - `sw.js`: guarda la app en el móvil para abrirla sin cobertura (incluye `lib/`).
 - `lib/zxing-0.21.3.min.js`: lector de códigos de barras para iPhone (Apache 2.0), dentro de la app.
-- `backend/Code.gs`: servidor (Apps Script de la hoja "APP SOLERA"). Repositorio en la **versión 24** (`ESQUEMA = '21'`); publicada en Apps Script la 22 (pendiente de publicar).
-- **Versión a la vista:** abajo, en pequeño, en la entrada y en la app: "web v24 · servidor 24 · esquema 21". `VERSION_WEB` (index.html) y `VERSION_SERVIDOR` (Code.gs) = nº de versión publicada en Apps Script; se suben a la vez en cada publicación. Si no coinciden, sale "⚠️ actualiza la app" (al tocarlo, recarga).
+- `backend/Code.gs`: servidor (Apps Script de la hoja "APP SOLERA"). Repositorio en la **versión 25** (`ESQUEMA = '21'`); publicada en Apps Script la 22 (pendiente de publicar).
+- **Versión a la vista:** abajo, en pequeño, en la entrada y en la app: "web v25 · servidor 25 · esquema 21". `VERSION_WEB` (index.html) y `VERSION_SERVIDOR` (Code.gs) = nº de versión publicada en Apps Script; se suben a la vez en cada publicación. Si no coinciden, sale "⚠️ actualiza la app" (al tocarlo, recarga).
 - `docs/MATERIALES_PROPUESTA.csv`: lista de materiales aprobada (sin precios).
 
 ## Interruptores (pestaña CONFIG; se crean a NO)
@@ -37,6 +37,10 @@ La app está **EN PRUEBAS** (ver `CLAUDE.md`). Lo pendiente está en `PENDIENTES
 - Pestaña **Resumen**, la primera al entrar en el ordenador (en el móvil no se abre sola). Necesita conexión.
 - Tarjetas con contador (y los primeros nombres) que llevan a su pantalla: stock en negativo, bajo mínimo (`stock_min` de MATERIALES), OTRO sin dar de alta y códigos pendientes (→ Almacén / Ver stock), máquinas pendientes de OK, averiadas y en reparación con los días que lleva (→ Herramientas) e inventarios abiertos (→ Inventario).
 - Debajo, **"Últimos 20 movimientos"** de almacén y herramientas: hora, tipo, material o máquina, cantidad, obra o almacén, persona y anotado por (y "móvil de …" si se anotó desde el móvil de otro).
+
+## Avisos automáticos
+- **Resumen diario por correo (18:30):** disparador `resumenDiario` (lo crea `instalar()` o, a mano, `instalarDisparadores()` desde el editor). Envía a `AVISOS_EMAIL` de CONFIG (vacío = no envía) y **solo si hay novedades** desde el último envío (firma en ScriptProperties `RESUMEN_DIARIO_FIRMA`): stock en negativo, OTRO sin dar de alta, EAN pendientes, albaranes pendientes de leer, máquinas averiadas, más de 15 días en reparación, altas pendientes de OK e inventarios abiertos. Si no hay nada pendiente no envía.
+- **Stock mínimo:** correo al cruzar el `stock_min` (como hasta ahora).
 
 ## Móvil de quién y fechas
 - **Dueño del móvil:** el primero que entra con su PIN en ese móvil. Si entra otro, el dueño no cambia; se cambia en Enviados ("Este móvil es de … · Este móvil es mío").
