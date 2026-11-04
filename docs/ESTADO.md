@@ -8,8 +8,8 @@ La app está **EN PRUEBAS** (ver `CLAUDE.md`). Lo pendiente está en `PENDIENTES
 - `index.html`: la app entera. **Un solo icono instalable: "SOLERA"** (`manifest.json`). `?modo=almacen` sigue funcionando por compatibilidad (arranca en Almacén, sin Parte); `almacen/` ya no se ofrece para instalar, pero sigue abriendo la app para quien lo tenga instalado.
 - `sw.js`: guarda la app en el móvil para abrirla sin cobertura (incluye `lib/`).
 - `lib/zxing-0.21.3.min.js`: lector de códigos de barras para iPhone (Apache 2.0), dentro de la app.
-- `backend/Code.gs`: servidor (Apps Script de la hoja "APP SOLERA"). Repositorio en la **versión 25** (`ESQUEMA = '21'`); publicada en Apps Script la 22 (pendiente de publicar).
-- **Versión a la vista:** abajo, en pequeño, en la entrada y en la app: "web v25 · servidor 25 · esquema 21". `VERSION_WEB` (index.html) y `VERSION_SERVIDOR` (Code.gs) = nº de versión publicada en Apps Script; se suben a la vez en cada publicación. Si no coinciden, sale "⚠️ actualiza la app" (al tocarlo, recarga).
+- `backend/Code.gs`: servidor (Apps Script de la hoja "APP SOLERA"). Repositorio en la **versión 26** (`ESQUEMA = '21'`); publicada en Apps Script la 22 (pendiente de publicar).
+- **Versión a la vista:** abajo, en pequeño, en la entrada y en la app: "web v26 · servidor 26 · esquema 21". `VERSION_WEB` (index.html) y `VERSION_SERVIDOR` (Code.gs) = nº de versión publicada en Apps Script; se suben a la vez en cada publicación. Si no coinciden, sale "⚠️ actualiza la app" (al tocarlo, recarga).
 - `docs/MATERIALES_PROPUESTA.csv`: lista de materiales aprobada (sin precios).
 
 ## Interruptores (pestaña CONFIG; se crean a NO)
@@ -21,6 +21,7 @@ La app está **EN PRUEBAS** (ver `CLAUDE.md`). Lo pendiente está en `PENDIENTES
 - Cuando la app va como almacén (PARTES_ACTIVOS = NO o `?modo=almacen`): letra base 18 px, títulos de campo 15 px y ayudas 14 px.
 - Cantidades (vales, materiales del parte y andamios) con botones − y + de 48 px a los lados.
 - **"Letra grande"** en Enviados: lo sube todo un 15 % (se guarda en el móvil).
+- **En el ordenador (pantalla de más de 900 px)**, "Ver stock" y "¿Dónde están las herramientas?" salen como **tabla ordenable** (tocar una cabecera ordena; otra vez, al revés) con botón **"Copiar tabla"** (tabulado: se pega en Excel tal cual). En el stock: categoría, material, código, unidad, stock del almacén elegido (o una columna por almacén y el total con "Todos"), mínimo y aviso; al tocar una fila, sus marcas y últimos movimientos. En herramientas: código, máquina, estado, dónde, cantidad (andamios), quién, desde, avería, recibo y OK, con el enlace Historial. En el móvil no cambia nada.
 
 ## Quién puede qué (columna `rol` de TRABAJADORES)
 - **trabajador** (todos los compañeros, oficiales o peones; la categoría OFICIAL/PEÓN solo se usa en el parte): parte; en Almacén, solo ME LLEVO, DEVUELVO y ENCONTRÉ; en Herramientas, "¿Dónde queda una máquina?" (incluye avería y alta) y Andamios.

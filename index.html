@@ -152,6 +152,17 @@ body:not(.es-mateo) .solo-mateo{display:none!important}
 html,body{overflow-x:hidden}
 .lista .item>div:first-child{min-width:0;flex:1}
 .lista .item b{overflow-wrap:anywhere}
+/* pantallas anchas (>900 px): "Ver stock" y "¿Dónde están las herramientas?" como tabla ordenable con "Copiar tabla" */
+table.tabla{width:100%;border-collapse:collapse;font-size:14px;margin-top:6px}
+table.tabla th{text-align:left;font-size:12px;color:var(--gris);border-bottom:2px solid var(--borde);padding:8px 6px;cursor:pointer;user-select:none;white-space:nowrap;min-height:0}
+table.tabla th.activa{color:var(--azul)}
+table.tabla td{border-top:1px solid var(--borde);padding:6px;vertical-align:top}
+table.tabla td.n,table.tabla th.n{text-align:right}
+table.tabla tr.neg td.n{color:var(--rojo);font-weight:700}
+table.tabla tr.toca{cursor:pointer}
+table.tabla tr.toca:hover td{background:#fffbea}
+.tabla-cab{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:8px;font-size:13px;color:var(--gris)}
+.tabla-cab .btn.peq{margin-top:0}
 details.cat-stock{border-bottom:1px solid var(--borde)}
 details.cat-stock>summary{display:flex;justify-content:space-between;gap:8px;padding:12px 2px;font-weight:600;color:var(--azul);cursor:pointer;list-style:none}
 details.cat-stock>summary::-webkit-details-marker{display:none}
@@ -693,7 +704,7 @@ a{color:var(--azul)}
 'use strict';
 var CFG = window.SOLERA_CONFIG || {};
 // número de esta versión de la app (el mismo que VERSION_SERVIDOR de Code.gs: se sube a la vez en cada publicación)
-var VERSION_WEB = 25;
+var VERSION_WEB = 26;
 var $ = function (id) { return document.getElementById(id); };
 
 // ---------------------------------------------------------------- almacenamiento local (IndexedDB)
@@ -1021,7 +1032,7 @@ function cambiar(p) {
   if (p === 'resumen') cargarResumen();
   if (p === 'enviados') pintarDueno();
   if (p === 'herramientas') { pintarHerr(); pintarHerrGestion(); }
-  document.body.classList.toggle('ancho', p === 'vales' || p === 'inventario' || p === 'resumen');
+  document.body.classList.toggle('ancho', p === 'vales' || p === 'inventario' || p === 'resumen' || (pantallaAncha() && (p === 'almacen' || p === 'herramientas')));
   if (p === 'inventario') abrirInventario();   // la pantalla de vales, más ancha en el ordenador
   if (p === 'vales' && !S.vales) {   // al abrirla, los últimos 30 días sin pulsar Buscar
     var d = new Date(); d.setDate(d.getDate() - 30);
@@ -1316,12 +1327,62 @@ function textoBusquedaMat(m, mat) {
   var eans = ((S.datos && S.datos.eans) || []).concat(S.eansLocal || []).filter(function (e) { return e.material === m.codigo; });
   return [m.nombre, m.codigo].concat(String(mat.alias || '').split(','), String(mat.refs || '').split(','), eans.map(function (e) { return e.ean; }), eans.map(function (e) { return e.ref || ''; }));
 }
+// ---- tablas en el ordenador (>900 px): ordenables al tocar la cabecera y "Copiar tabla" (tabulado, para pegar en Excel). En el móvil no cambia nada.
+function pantallaAncha() { return !!(window.matchMedia && window.matchMedia('(min-width:901px)').matches); }
+S.tablaOrden = {};
+// cols: [{ k, t, num }]; filas: [{ v: { k: valor }, html: { k: html opcional }, clase, attrs }]; repintar(): vuelve a pintar al cambiar el orden
+function pintarTabla(caja, clave, cols, filas, repintar) {
+  var o = S.tablaOrden[clave] || { k: cols[0].k, asc: true }; S.tablaOrden[clave] = o;
+  var col = cols.filter(function (c) { return c.k === o.k; })[0] || cols[0];
+  var orden = filas.slice().sort(function (a, b) {
+    var x = a.v[col.k], y = b.v[col.k], r = col.num ? (Number(x) || 0) - (Number(y) || 0) : String(x == null ? '' : x).localeCompare(String(y == null ? '' : y), 'es');
+    return o.asc ? r : -r;
+  });
+  caja.innerHTML = '<div class="tabla-cab"><span>' + orden.length + ' fila(s) · toca una cabecera para ordenar</span><button type="button" class="btn peq sec copiar">Copiar tabla</button></div>' +
+    '<table class="tabla"><thead><tr>' + cols.map(function (c) { return '<th data-k="' + esc(c.k) + '" class="' + (c.num ? 'n' : '') + (c.k === col.k ? ' activa' : '') + '">' + esc(c.t) + (c.k === col.k ? (o.asc ? ' ▲' : ' ▼') : '') + '</th>'; }).join('') + '</tr></thead><tbody>' +
+    orden.map(function (f) { return '<tr class="' + (f.clase || '') + '"' + (f.attrs || '') + '>' + cols.map(function (c) { return '<td class="' + (c.num ? 'n' : '') + '">' + (f.html && f.html[c.k] != null ? f.html[c.k] : esc(f.v[c.k] == null ? '' : f.v[c.k])) + '</td>'; }).join('') + '</tr>'; }).join('') + '</tbody></table>';
+  caja.querySelectorAll('th').forEach(function (th) { th.onclick = function () { if (o.k === th.dataset.k) o.asc = !o.asc; else { o.k = th.dataset.k; o.asc = true; } repintar(); }; });
+  caja.querySelector('.copiar').onclick = function () {
+    var txt = [cols.map(function (c) { return c.t; }).join('\t')].concat(orden.map(function (f) { return cols.map(function (c) { return String(f.v[c.k] == null ? '' : f.v[c.k]).replace(/[\t\n]+/g, ' '); }).join('\t'); })).join('\n');
+    copiarTexto(txt).then(function () { toast('Tabla copiada: pégala en Excel', 'ok'); }, function () { toast('No se pudo copiar', 'err'); });
+  };
+}
+function copiarTexto(txt) {
+  if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(txt);
+  return new Promise(function (res, rej) {
+    var t = document.createElement('textarea'); t.value = txt; t.style.position = 'fixed'; t.style.opacity = '0'; document.body.appendChild(t); t.select();
+    var ok = false; try { ok = document.execCommand('copy'); } catch (e) {} t.remove(); ok ? res() : rej();
+  });
+}
+function pintarStockTabla(lista, mats, alm) {
+  var alms = almacenes();
+  var cols = [{ k: 'categoria', t: 'Categoría' }, { k: 'nombre', t: 'Material' }, { k: 'codigo', t: 'Código' }, { k: 'unidad', t: 'Ud.' }];
+  if (alm) cols.push({ k: 'stock', t: 'Stock', num: true });
+  else { alms.forEach(function (a) { cols.push({ k: 'a_' + a.codigo, t: a.nombre.replace(/^ALMACÉN /, ''), num: true }); }); cols.push({ k: 'stock', t: 'Total', num: true }); }
+  cols.push({ k: 'stock_min', t: 'Mínimo', num: true }, { k: 'aviso', t: 'Aviso' });
+  var filas = lista.map(function (m) {
+    var n = stockEn(m, alm), v = { categoria: (mats[m.codigo] || {}).categoria || 'OTROS', nombre: m.nombre, codigo: m.codigo, unidad: m.unidad, stock: n, stock_min: m.stock_min || '', aviso: m.stock_min > 0 && m.stock <= m.stock_min ? 'PEDIR' : (n < 0 ? 'NEGATIVO' : '') };
+    alms.forEach(function (a) { v['a_' + a.codigo] = (m.porAlmacen || {})[a.codigo] || 0; });
+    return { v: v, clase: 'toca' + (n < 0 ? ' neg' : ''), attrs: ' data-cod="' + esc(m.codigo) + '"' };
+  });
+  if (!S.tablaOrden.stock) S.tablaOrden.stock = { k: 'stock', asc: true };   // los negativos arriba
+  pintarTabla($('stockLista'), 'stock', cols, filas, pintarStock);
+  $('stockLista').insertAdjacentHTML('afterbegin', otrosPendHtml());
+}
+// admin: materiales metidos como OTRO que habría que dar de alta en MATERIALES (plegado)
+function otrosPendHtml() {
+  var otros = (S.datos && S.datos.otros) || [];
+  if (rolActual() !== 'admin' || !otros.length) return '';
+  return '<details class="aviso otro-pend"><summary><b>Pendientes de dar de alta en MATERIALES (' + otros.length + ')</b></summary>' +
+    otros.map(function (o) { return esc(o.nombre) + ' <small style="display:inline">(' + o.veces + ' vez/veces' + (o.ultimo ? ', último vale ' + esc(o.ultimo) : '') + ')</small>'; }).join('<br>') + '</details>';
+}
 function pintarStock() {
   var q = normal($('buscarMat').value).split(/[^a-z0-9,]+/).filter(Boolean), alm = $('stockAlmacen').value;
   var mats = {}; ((S.datos && S.datos.materiales) || []).forEach(function (m) { mats[m.codigo] = m; });
   var lista = stockLocal().filter(function (m) {
     return !q.length || textoBusquedaMat(m, mats[m.codigo] || {}).some(function (t) { return t && encaja(q, String(t)); });
   });
+  if (pantallaAncha() && lista.length) return pintarStockTabla(lista, mats, alm);
   var cats = {};
   lista.forEach(function (m) { var c = (mats[m.codigo] || {}).categoria || 'OTROS'; (cats[c] = cats[c] || []).push(m); });
   var linea = function (m) {
@@ -1338,10 +1399,7 @@ function pintarStock() {
       (cero.length ? '<details class="ceros"' + (q.length ? ' open' : '') + '><summary>A cero (' + cero.length + ')</summary>' + cero.map(linea).join('') + '</details>' : '') + '</details>';
   }).join('');
   $('stockLista').innerHTML = h || '<div class="aviso">' + (q.length ? 'Ningún material con ese nombre o código.' : 'Sin materiales. Pulsa "Actualizar listas" en Enviados.') + '</div>';
-  // admin: materiales metidos como OTRO que habría que dar de alta en MATERIALES (plegado)
-  var otros = (S.datos && S.datos.otros) || [];
-  if (rolActual() === 'admin' && otros.length) $('stockLista').innerHTML = '<details class="aviso otro-pend"><summary><b>Pendientes de dar de alta en MATERIALES (' + otros.length + ')</b></summary>' +
-    otros.map(function (o) { return esc(o.nombre) + ' <small style="display:inline">(' + o.veces + ' vez/veces' + (o.ultimo ? ', último vale ' + esc(o.ultimo) : '') + ')</small>'; }).join('<br>') + '</details>' + $('stockLista').innerHTML;
+  $('stockLista').insertAdjacentHTML('afterbegin', otrosPendHtml());
 }
 $('stockLista').addEventListener('toggle', function (e) {
   var d = e.target; if (d.classList && d.classList.contains('cat-stock') && !$('buscarMat').value.trim()) S.stockAbiertas[d.dataset.cat] = d.open;
@@ -1401,10 +1459,33 @@ function pintarHerrAgrupado(q) {
     }).join('') + '</details>';
   }).join('') || '<div class="aviso">Nada con ese nombre.</div>';
 }
+function pintarHerrTabla(q) {
+  var alm = function (c) { return nombreAlmacen(c).split(' · ')[0].replace(/^ALMACÉN /, ''); }, filas = [];
+  herrLocal().forEach(function (h) {
+    var e = h.estado || 'DISPONIBLE', donde = e === 'EN OBRA' ? h.donde : e === 'DISPONIBLE' || e === 'AVERIADA' ? alm(h.almacen) : e === 'CON PERSONA' ? h.quien : e === 'EN REPARACION' ? 'Reparador ' + (h.reparador || '') : 'Baja';
+    var v = { codigo: h.codigo, tipo: h.tipo, estado: e === 'EN REPARACION' ? 'EN REPARACIÓN' : e, donde: donde, quien: h.quien || '', desde: h.desde || '', cantidad: 1,
+      averia: h.averia || '', recibo: h.recibo || '', ok: h.ok === 'PENDIENTE' ? 'PENDIENTE' : 'OK' };
+    if (q && normal(Object.keys(v).map(function (k) { return v[k]; }).join(' ')).indexOf(q) < 0) return;
+    filas.push({ v: v, html: { codigo: '<b>' + esc(h.codigo) + '</b>' + botonHist({ cod: h.codigo }) }, clase: e === 'AVERIADA' || e === 'BAJA' ? 'neg' : '' });
+  });
+  ((S.datos && S.datos.andamios) || []).forEach(function (a) {
+    var pon = function (sitio, n, d) { var v = { codigo: a.prefijo, tipo: a.tipo, estado: 'ANDAMIOS', donde: sitio, quien: '', desde: '', cantidad: n, averia: '', recibo: '', ok: a.pendiente ? 'PENDIENTE' : 'OK' };
+      if (q && normal(a.tipo + ' ' + sitio).indexOf(q) < 0) return;
+      filas.push({ v: v, html: { codigo: '<b>' + esc(a.prefijo) + '</b>' + botonHist(d) } }); };
+    Object.keys(a.porObra).forEach(function (o) { if (a.porObra[o]) pon(o, a.porObra[o], { pref: a.prefijo, sitio: o }); });
+    Object.keys(a.porAlmacen).forEach(function (c) { if (a.porAlmacen[c]) pon(alm(c), a.porAlmacen[c], { pref: a.prefijo, sitio: c }); });
+  });
+  if (!filas.length) { $('herrLista').innerHTML = '<div class="aviso">Nada con ese nombre.</div>'; return; }
+  pintarTabla($('herrLista'), 'herr', [{ k: 'codigo', t: 'Código' }, { k: 'tipo', t: 'Máquina' }, { k: 'estado', t: 'Estado' }, { k: 'donde', t: 'Dónde' }, { k: 'cantidad', t: 'Cant.', num: true },
+    { k: 'quien', t: 'Quién' }, { k: 'desde', t: 'Desde' }, { k: 'averia', t: 'Avería' }, { k: 'recibo', t: 'Recibo' }, { k: 'ok', t: 'OK' }], filas, pintarHerr);
+}
 function pintarHerr() {
   var q = normal($('buscarHerr').value);
   pintarMisHerr();
-  if (puedeHerr() || rolActual() === 'admin') { $('herrLista').innerHTML = pintarHerrAgrupado(q); return; }
+  if (puedeHerr() || rolActual() === 'admin') {
+    if (pantallaAncha()) return pintarHerrTabla(q);
+    $('herrLista').innerHTML = pintarHerrAgrupado(q); return;
+  }
   var lista = herrLocal().filter(function (h) { return !q || normal(h.nombre + ' ' + h.donde + ' ' + h.quien + ' ' + (h.estado || '') + ' ' + (h.reparador || '')).indexOf(q) >= 0; });
   var alm = function (c) { return esc(nombreAlmacen(c).split(' · ')[0].replace(/^ALMACÉN /, '')); };
   $('herrLista').innerHTML = lista.length ? lista.map(function (h) {
@@ -1428,11 +1509,14 @@ function desgloseMarcas(cod) {
   return '<div><b>Por marca</b></div>' + ks.sort().map(function (mc) { return '<div class="marca"><span>' + esc(mc || 'sin marca') + '</span><b>' + suma[mc] + ' ' + esc(m.unidad) + '</b></div>'; }).join('');
 }
 function verHistorial(e) {
-  var it = e.target.closest('.item.toca'); if (!it) return;
+  var it = e.target.closest('.item.toca, tr.toca'); if (!it) return;
   var sig = it.nextElementSibling;
   if (sig && sig.classList.contains('historial')) { sig.remove(); return; }
-  var h = document.createElement('div'); h.className = 'historial'; h.textContent = 'Cargando movimientos…';
-  it.after(h);
+  var h;
+  if (it.tagName === 'TR') {   // en la tabla del ordenador: una fila debajo con el historial
+    var tr = document.createElement('tr'); tr.className = 'historial'; tr.innerHTML = '<td colspan="' + it.children.length + '"></td>'; it.after(tr); h = tr.firstChild; h.className = 'historial';
+  } else { h = document.createElement('div'); h.className = 'historial'; it.after(h); }
+  h.textContent = 'Cargando movimientos…';
   var marcas = it.dataset.clase === 'HER' ? '' : desgloseMarcas(it.dataset.cod);
   if (marcas) h.innerHTML = marcas + '<div>Cargando movimientos…</div>';
   if (!navigator.onLine) { h.textContent = 'Sin conexión: el historial se ve con cobertura.'; return; }
@@ -2806,6 +2890,8 @@ $('btnSync').onclick = function () { if (!navigator.onLine) return toast('Sin co
 document.querySelectorAll('nav button').forEach(function (b) { b.onclick = function () { cambiar(b.dataset.p); }; });
 window.addEventListener('online', function () { estadoRed(); sincronizar(); });
 window.addEventListener('offline', estadoRed);
+// al pasar de ancho a estrecho (o al revés) en el ordenador, "Ver stock" y las herramientas se repintan como lista o tabla
+window.addEventListener('resize', function () { clearTimeout(S.resizeT); S.resizeT = setTimeout(function () { if (S.pantalla === 'almacen') pintarStock(); if (S.pantalla === 'herramientas') pintarHerr(); }, 250); });
 
 // aviso de versión nueva: compara la página publicada con la que se cargó (no recarga sola para no perder lo que se rellena)
 var paginaCargada = null;
