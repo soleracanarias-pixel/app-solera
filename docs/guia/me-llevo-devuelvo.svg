@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 120" width="640" height="240"><style>.d-linea{fill:none;stroke:#343434;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}.d-flecha{fill:none;stroke:#f9b526;stroke-width:5;stroke-linecap:round;stroke-linejoin:round}.d-flecha.d-verde{stroke:#2e7d32}.d-flecha.d-rojot{stroke:#c62828}
+.d-txt{font:700 12px Arial,sans-serif;fill:#343434;text-anchor:middle}.d-ambar{fill:#9a6a00}.d-verdet{fill:#2e7d32}.d-op rect{fill:#fff;stroke:#343434;stroke-width:2}.d-op text{font:700 13px Arial,sans-serif;fill:#343434;text-anchor:middle}.d-op text.izq{text-anchor:start}.d-op.d-rojo rect{stroke:#c62828}.d-op.d-rojo text{fill:#c62828}</style><rect width="100%" height="100%" fill="#fff"/>
+      <rect x="10" y="40" width="80" height="60" rx="4" class="d-linea"/><path d="M10 40l40-28 40 28" class="d-linea"/><text x="50" y="80" class="d-txt">ALMACÉN</text>
+      <path d="M232 100h80M244 100V58h56v42M256 58V40h32v18" class="d-linea"/><text x="272" y="84" class="d-txt">OBRA</text>
+      <path d="M100 52h120" class="d-flecha"/><path d="M210 44l12 8-12 8" class="d-flecha"/><text x="160" y="42" class="d-txt d-ambar">ME LLEVO</text>
+      <path d="M220 88H100" class="d-flecha d-verde"/><path d="M110 80l-12 8 12 8" class="d-flecha d-verde"/><text x="160" y="112" class="d-txt d-verdet">DEVUELVO</text>
+    </svg>

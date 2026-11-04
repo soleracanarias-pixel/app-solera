@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 110" width="640" height="220"><style>.d-linea{fill:none;stroke:#343434;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}.d-flecha{fill:none;stroke:#f9b526;stroke-width:5;stroke-linecap:round;stroke-linejoin:round}.d-flecha.d-verde{stroke:#2e7d32}.d-flecha.d-rojot{stroke:#c62828}
+.d-txt{font:700 12px Arial,sans-serif;fill:#343434;text-anchor:middle}.d-ambar{fill:#9a6a00}.d-verdet{fill:#2e7d32}.d-op rect{fill:#fff;stroke:#343434;stroke-width:2}.d-op text{font:700 13px Arial,sans-serif;fill:#343434;text-anchor:middle}.d-op text.izq{text-anchor:start}.d-op.d-rojo rect{stroke:#c62828}.d-op.d-rojo text{fill:#c62828}</style><rect width="100%" height="100%" fill="#fff"/>
+      <rect x="20" y="10" width="54" height="92" rx="8" class="d-linea"/><path d="M38 92h18" class="d-linea"/>
+      <path d="M32 40c10-10 20-10 30 0M37 48c6-6 14-6 20 0" class="d-linea"/><path d="M30 30l34 34" class="d-flecha d-rojot"/>
+      <text x="47" y="80" class="d-txt">guardado</text>
+      <path d="M90 56h60" class="d-flecha"/><path d="M142 49l10 7-10 7" class="d-flecha"/>
+      <rect x="166" y="10" width="54" height="92" rx="8" class="d-linea"/><path d="M184 92h18" class="d-linea"/>
+      <path d="M178 40c10-10 20-10 30 0M183 48c6-6 14-6 20 0M189 55c2-2 6-2 8 0" class="d-linea"/><text x="193" y="80" class="d-txt">enviado</text>
+      <path d="M244 56l16 16 36-36" class="d-flecha d-verde"/>
+    </svg>

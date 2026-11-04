@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 130" width="640" height="260"><style>.d-linea{fill:none;stroke:#343434;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}.d-flecha{fill:none;stroke:#f9b526;stroke-width:5;stroke-linecap:round;stroke-linejoin:round}.d-flecha.d-verde{stroke:#2e7d32}.d-flecha.d-rojot{stroke:#c62828}
+.d-txt{font:700 12px Arial,sans-serif;fill:#343434;text-anchor:middle}.d-ambar{fill:#9a6a00}.d-verdet{fill:#2e7d32}.d-op rect{fill:#fff;stroke:#343434;stroke-width:2}.d-op text{font:700 13px Arial,sans-serif;fill:#343434;text-anchor:middle}.d-op text.izq{text-anchor:start}.d-op.d-rojo rect{stroke:#c62828}.d-op.d-rojo text{fill:#c62828}</style><rect width="100%" height="100%" fill="#fff"/>
+      <rect x="20" y="40" width="70" height="44" rx="6" class="d-linea"/><path d="M90 52h18v20H90M34 84v14M76 84v14" class="d-linea"/><text x="55" y="67" class="d-txt">BAT-01</text>
+      <path d="M118 62h34" class="d-flecha"/><path d="M144 55l10 7-10 7" class="d-flecha"/>
+      <g class="d-op"><rect x="166" y="4" width="146" height="22" rx="11"/><text x="239" y="19">Conmigo</text></g>
+      <g class="d-op"><rect x="166" y="29" width="146" height="22" rx="11"/><text x="239" y="44">En obra</text></g>
+      <g class="d-op"><rect x="166" y="54" width="146" height="22" rx="11"/><text x="239" y="69">En almacén</text></g>
+      <g class="d-op d-rojo"><rect x="166" y="79" width="146" height="22" rx="11"/><text x="239" y="94">Averiada</text></g>
+      <g class="d-op"><rect x="166" y="104" width="146" height="22" rx="11"/><text x="239" y="119">A un compañero</text></g>
+    </svg>
