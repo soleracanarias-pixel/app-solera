@@ -67,7 +67,7 @@ function movFilas_(c) {
 }
 var ESQUEMA = '21';
 // número de la versión publicada en Apps Script (subirlo en cada publicación, igual que VERSION_WEB de index.html)
-var VERSION_SERVIDOR = 22;            // subir cuando cambien las columnas de HOJAS
+var VERSION_SERVIDOR = 23;            // subir cuando cambien las columnas de HOJAS
 var EMAIL_COPIA = 'soleracanarias@gmail.com';
 var CSV_NOMBRE = 'PARTES APP 2026.csv';  // se crea en la carpeta CARPETA_CSV_ID de CONFIG (CLIENTES\PARTES\APP)
 var CSV_COLUMNAS = ['N_PARTE','FECHA','DIA_SEMANA','CLIENTE','OBRA','COD_OBRA_APP','RESP_CLIENTE','RESP_CERT','RESP_SOLERA','MATRICULA',
@@ -286,7 +286,7 @@ function doPost(e) {
       case 'resumen': return json_(resumen_(body.auth));
       case 'andamios': lock.waitLock(30000); return json_(andamiosMov_(body.mov));
       case 'herrTipoAprobar': lock.waitLock(30000); return json_(herrTipoAprobar_(body));
-      case 'vales': exigirAdmin_(body.auth); return json_({ ok: true, vales: listaVales_(body.filtros || {}) });
+      case 'vales': return json_(valesPara_(body.auth, body.filtros || {}));
       case 'anularVale': exigirAdmin_(body.auth); lock.waitLock(30000); return json_(anularVale_(body.numero, body.motivo, body.auth));
       default: return json_({ ok: false, error: 'Acción desconocida' });
     }
@@ -304,7 +304,7 @@ function login_(b) {
   return { ok: true, trabajador: { codigo: t.codigo, nombre: t.nombre, categoria: t.categoria, encargado: si_(t.encargado), rol: rolDe_(t) } };
 }
 // rol del trabajador: el de la columna rol; si está vacía, 999 = admin, encargado=SI → encargado, resto → oficial
-// (de momento encargado tiene los mismos permisos que oficial)
+// encargado: además TRASPASO y la pestaña Vales (los suyos y los de su cuadrilla), sin anular; el stock solo con ver_stock = SI
 function rolDe_(t) {
   var r = normal_(t.rol);
   if (r === 'admin' || r === 'encargado' || r === 'trabajador') return r;
@@ -326,6 +326,25 @@ function exigirAdmin_(auth) {
   if (!t || String(t.pin).padStart(4, '0') !== String(auth.pin || '').padStart(4, '0')) throw new Error('Solo el administrador puede hacer esto (vuelve a entrar con tu PIN)');
   if (rolDe_(t) !== 'admin') throw new Error('Solo el administrador puede hacer esto');
   return t;
+}
+// cualquier trabajador activo con su código y PIN (para lo que puede hacer cada uno en su nombre)
+function exigirTrabajador_(auth, que) {
+  auth = auth || {};
+  var t = filas_('TRABAJADORES').filter(function (f) { return String(f.codigo) === String(auth.codigo) && si_(f.activo); })[0];
+  if (!t || String(t.pin).padStart(4, '0') !== String(auth.pin || '').padStart(4, '0')) throw new Error('Vuelve a entrar con tu PIN' + (que ? ' para ' + que : ''));
+  return t;
+}
+// encargado: TRASPASO y pestaña Vales (solo los suyos y los de su cuadrilla), sin anular. El admin, todo.
+function exigirAdminOEncargado_(auth, que) {
+  var t = exigirTrabajador_(auth, que);
+  var r = rolDe_(t);
+  if (r !== 'admin' && r !== 'encargado') throw new Error('Solo el administrador o un encargado puede' + (que ? ' ' + que : ' hacer esto'));
+  return t;
+}
+// cuadrilla de un encargado: él mismo y los que coincidieron con él en vales (misma obra y día) en los últimos 30 días
+function cuadrillaDe_(t) {
+  var yo = String(t.nombre), c = companeros_()[yo] || [];
+  return [yo].concat(c);
 }
 
 // "Ver stock": admin y quien tenga ver_stock = SI (con su PIN). El rol encargado ya no lo da.
@@ -721,7 +740,7 @@ function porObra_(c) {
 
 // ---------------------------------------------------------------- vales de almacén (varias líneas, un número)
 // ENTRADA = COMPRA al almacén, COMPRA_OBRA = compra que va directa a una obra (no toca el stock), AJUSTE = inventario.
-// Solo admin: ENTRADA, COMPRA_OBRA y TRASPASO. AJUSTE: solo quien tiene inventario = SI.
+// Solo admin: ENTRADA y COMPRA_OBRA. TRASPASO: admin o encargado. AJUSTE: solo quien tiene inventario = SI.
 var TIPOS_VALE = ['ENTRADA', 'COMPRA_OBRA', 'SALIDA', 'DEVOLUCION', 'RECUPERADO', 'TRASPASO', 'AJUSTE'];
 var SOLO_ADMIN = ['ENTRADA', 'COMPRA_OBRA', 'TRASPASO'], SIN_PERSONA = ['ENTRADA', 'COMPRA_OBRA', 'TRASPASO', 'AJUSTE'];
 function extension_(dataUrl) {
@@ -735,7 +754,9 @@ function vale_(v, interno) {
   if (ya) return { ok: true, repetido: true, numero: ya.numero };
   var tipo = String(v.tipo || '');
   if (TIPOS_VALE.indexOf(tipo) < 0) throw new Error('Tipo de vale no válido: ' + tipo);
-  if (SOLO_ADMIN.indexOf(tipo) >= 0) exigirAdmin_(v.auth);
+  // compras: solo admin; traspaso: admin o encargado
+  if (tipo === 'TRASPASO') exigirAdminOEncargado_(v.auth, 'hacer traspasos');
+  else if (SOLO_ADMIN.indexOf(tipo) >= 0) exigirAdmin_(v.auth);
   if (tipo === 'AJUSTE' && !interno) throw new Error('Los ajustes solo se hacen cerrando un inventario (lo abre y lo cierra Mateo)');
   var compra = tipo === 'ENTRADA' || tipo === 'COMPRA_OBRA';
   if (compra) {
@@ -1334,7 +1355,20 @@ function fotoVale_(f) {
   return { ok: true, url: url };
 }
 
-// lista de vales para el admin (el más nuevo primero), con sus líneas; filtros: desde, hasta (aaaa-mm-dd), trabajador, tipo, obra
+// pestaña Vales: el admin ve todos; el encargado solo los suyos y los de su cuadrilla (sin contado ni stock_antes, para no ver stock)
+function valesPara_(auth, fl) {
+  var t = exigirAdminOEncargado_(auth, 'ver los vales');
+  if (rolDe_(t) === 'admin') return { ok: true, vales: listaVales_(fl), admin: true };
+  var cuadrilla = cuadrillaDe_(t).map(normal_);
+  var vales = listaVales_(fl).filter(function (v) {
+    return cuadrilla.indexOf(normal_(v.usuario)) >= 0 || cuadrilla.indexOf(normal_(v.persona)) >= 0;
+  }).map(function (v) {
+    v.lineas.forEach(function (l) { l.contado = ''; l.stock_antes = ''; });
+    return v;
+  });
+  return { ok: true, vales: vales, admin: false, cuadrilla: cuadrillaDe_(t) };
+}
+// lista de vales (el más nuevo primero), con sus líneas; filtros: desde, hasta (aaaa-mm-dd), trabajador, tipo, obra
 function listaVales_(fl) {
   var iso = function (v) { var t = txtFecha_(v, 'dd/MM/yyyy').split('/'); return t.length === 3 ? t[2] + '-' + t[1] + '-' + t[0] : ''; };
   var lineas = {};

@@ -99,6 +99,8 @@ body.letra-almacen label{font-size:15px}
 body.letra-almacen .ayuda{font-size:14px}
 body.letra-grande{zoom:1.15}
 body:not(.es-admin) .solo-admin{display:none!important}
+body:not(.es-admin):not(.es-encargado) .solo-gestion{display:none!important}   /* admin o encargado: TRASPASO y pestaña Vales */
+.ayuda-vales{font-size:13px;color:var(--gris);margin:4px 0 8px}
 .botones-alm .btn.grande{font-size:19px;padding:16px;margin-top:8px}
 .botones-alm .btn.grande:first-child{margin-top:0}
 #btnSalida,#btnDevolucion,#btnDondeQueda{min-height:60px;font-size:20px}
@@ -350,7 +352,7 @@ a{color:var(--azul)}
     <button class="btn grande verde" id="btnDevolucion">↩ DEVUELVO</button>
     <button class="btn peq sec" id="btnRecuperado" style="width:100%">🔎 ¿Ha aparecido material sin albarán?</button>
     <button class="btn grande sec solo-admin" id="btnEntrada">🧾 COMPRA (admin)</button>
-    <button class="btn grande sec solo-admin" id="btnTraspaso">🔁 TRASPASO (admin)</button>
+    <button class="btn grande sec solo-gestion" id="btnTraspaso">🔁 TRASPASO</button>
   </div>
   <div class="tarjeta" id="eanPendientes" style="display:none"></div>
   <div id="movSitioMAT"></div>
@@ -569,10 +571,11 @@ a{color:var(--azul)}
   </div>
 </section>
 
-<!-- VALES (solo admin) -->
+<!-- VALES (admin: todos; encargado: los suyos y los de su cuadrilla, sin anular) -->
 <section class="pantalla" id="p-vales">
   <div class="tarjeta">
     <h2>Vales de almacén</h2>
+    <div class="ayuda-vales" id="valesAyuda" style="display:none"></div>
     <label>Buscar</label><input type="text" id="fBuscar" placeholder="Nº de vale, material, marca, comentario o proveedor…">
     <div class="filtros">
       <div><label>Desde</label><input type="date" id="fDesde"></div>
@@ -616,7 +619,7 @@ a{color:var(--azul)}
   <button data-p="almacen"><svg viewBox="0 0 24 24"><path d="M3 9l9-6 9 6v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/><path d="M8 21v-8h8v8"/></svg>Almacén</button>
   <button data-p="herramientas"><svg viewBox="0 0 24 24"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.4-.6-.6-2.4z"/></svg>Herramientas</button>
   <button data-p="inventario" class="solo-inv"><svg viewBox="0 0 24 24"><path d="M9 4h6v3H9zM7 5H5v16h14V5h-2"/><path d="M8 12l2 2 4-4M8 17h8"/></svg>Inventario</button>
-  <button data-p="vales" class="solo-admin"><svg viewBox="0 0 24 24"><path d="M6 2h12v20l-3-2-3 2-3-2-3 2z"/><path d="M9 7h6M9 11h6M9 15h4"/></svg>Vales</button>
+  <button data-p="vales" class="solo-gestion"><svg viewBox="0 0 24 24"><path d="M6 2h12v20l-3-2-3 2-3-2-3 2z"/><path d="M9 7h6M9 11h6M9 15h4"/></svg>Vales</button>
   <button data-p="enviados"><svg viewBox="0 0 24 24"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4z"/></svg>Enviados<span class="punto" id="pendNum" style="display:none"></span></button>
 </nav>
 
@@ -688,7 +691,7 @@ a{color:var(--azul)}
 'use strict';
 var CFG = window.SOLERA_CONFIG || {};
 // número de esta versión de la app (el mismo que VERSION_SERVIDOR de Code.gs: se sube a la vez en cada publicación)
-var VERSION_WEB = 22;
+var VERSION_WEB = 23;
 var $ = function (id) { return document.getElementById(id); };
 
 // ---------------------------------------------------------------- almacenamiento local (IndexedDB)
@@ -982,6 +985,8 @@ function pintarModo() {
   document.body.classList.toggle('sin-partes', !verPartes());
   document.body.classList.toggle('letra-almacen', MODO_ALMACEN || !(S.datos && S.datos.partes_activos));
 }
+// pestaña Vales y TRASPASO: admin y encargado (el servidor lo comprueba con código + PIN)
+function puedeVales() { var r = rolActual(); return r === 'admin' || r === 'encargado'; }
 function pintarRol() {
   var admin = rolActual() === 'admin';
   pintarModo();
@@ -990,12 +995,13 @@ function pintarRol() {
   if (!puedeResumen() && S.pantalla === 'resumen') cambiar(pantallaInicio());
   if (!verPartes() && S.pantalla === 'parte') cambiar('almacen');
   document.body.classList.toggle('es-admin', admin);
+  document.body.classList.toggle('es-encargado', rolActual() === 'encargado');
   document.body.classList.toggle('puede-inv', verPestanaInventario());   // pestaña Inventario: Mateo, o quien participe en uno abierto
   document.body.classList.toggle('es-mateo', esMateo());
   document.body.classList.toggle('puede-herr', puedeHerr());
   document.body.classList.toggle('es-trabajador', rolActual() === 'trabajador');
   pintarPendientesEan();
-  if (!admin && S.pantalla === 'vales') cambiar(pantallaInicio());
+  if (!puedeVales() && S.pantalla === 'vales') cambiar(pantallaInicio());
   if (!verPestanaInventario() && S.pantalla === 'inventario') cambiar('almacen');
 }
 function mostrarApp() {
@@ -1614,7 +1620,7 @@ function guardarVale() {
   var conPin = compra || tipo === 'TRASPASO';
   (conPin ? DB.get('kv', 'pin-' + S.usuario.codigo) : Promise.resolve(null)).then(function (pin) {
     if (conPin) {
-      if (!pin) return toast('Para registrar compras o traspasos, sal y vuelve a entrar con tu PIN', 'err');
+          if (!pin) return toast('Para registrar compras o traspasos, sal y vuelve a entrar con tu PIN', 'err');
       vale.auth = { codigo: S.usuario.codigo, pin: pin };
     }
     // stock del móvil hasta que llegue el del servidor: total y por almacén
@@ -2563,8 +2569,13 @@ function buscarVales() {
   $('valesLista').innerHTML = '<div class="aviso">Buscando…</div>';
   authAdmin().then(function (auth) {
     return api('vales', { auth: auth, filtros: { desde: $('fDesde').value, hasta: $('fHasta').value, trabajador: $('fTrab').value.trim(), tipo: $('fTipo').value, almacen: $('fAlm').value, obra: $('fObra').value.trim(), buscar: $('fBuscar').value.trim() } });
-  }).then(function (j) { S.vales = j.vales; pintarVales(); })
-    .catch(function (e) { $('valesLista').innerHTML = '<div class="aviso err">' + esc(e.message) + '</div>'; });
+  }).then(function (j) {
+    S.vales = j.vales; S.valesAdmin = j.admin !== false;
+    // encargado: solo sus vales y los de su cuadrilla (quienes coincidieron con él en vales en los últimos 30 días)
+    $('valesAyuda').style.display = S.valesAdmin ? 'none' : '';
+    $('valesAyuda').textContent = S.valesAdmin ? '' : 'Ves tus vales y los de tu cuadrilla (' + (j.cuadrilla || []).join(', ') + '). Para anular uno, díselo a Mateo.';
+    pintarVales();
+  }).catch(function (e) { $('valesLista').innerHTML = '<div class="aviso err">' + esc(e.message) + '</div>'; });
 }
 // dónde va o de dónde sale cada vale: almacén, obra o los dos (las compras dicen su destino)
 function lugarVale(x) {
@@ -2602,7 +2613,7 @@ $('valesLista').onclick = function (e) {
     (x.movil_de ? '<div>Anotado por ' + esc(x.usuario) + ' desde el móvil de <b>' + esc(x.movil_de) + '</b></div>' : '') +
     (x.fotos.length ? '<div>' + x.fotos.map(function (u, i) { return '<a href="' + esc(u) + '" target="_blank">📎 adjunto ' + (i + 1) + '</a>'; }).join(' · ') + '</div>' : '') +
     (x.anulado ? '<div style="color:var(--rojo)">ANULADO por ' + esc(x.anulado_por) + ' el ' + esc(x.anulado_en) + ': ' + esc(x.motivo_anulacion) + '</div>'
-      : '<div class="fila" style="margin-top:6px"><div><input type="text" class="motivo" placeholder="Motivo de la anulación (obligatorio)"></div><button class="btn peq rojo anular" style="flex:0 0 auto">ANULAR</button></div>');
+      : S.valesAdmin ? '<div class="fila" style="margin-top:6px"><div><input type="text" class="motivo" placeholder="Motivo de la anulación (obligatorio)"></div><button class="btn peq rojo anular" style="flex:0 0 auto">ANULAR</button></div>' : '');
   it.after(d);
   var b = d.querySelector('.anular');
   if (b) b.onclick = function () {

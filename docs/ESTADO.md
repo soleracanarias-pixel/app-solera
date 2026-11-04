@@ -8,8 +8,8 @@ La app está **EN PRUEBAS** (ver `CLAUDE.md`). Lo pendiente está en `PENDIENTES
 - `index.html`: la app entera. **Un solo icono instalable: "SOLERA"** (`manifest.json`). `?modo=almacen` sigue funcionando por compatibilidad (arranca en Almacén, sin Parte); `almacen/` ya no se ofrece para instalar, pero sigue abriendo la app para quien lo tenga instalado.
 - `sw.js`: guarda la app en el móvil para abrirla sin cobertura (incluye `lib/`).
 - `lib/zxing-0.21.3.min.js`: lector de códigos de barras para iPhone (Apache 2.0), dentro de la app.
-- `backend/Code.gs`: servidor (Apps Script de la hoja "APP SOLERA"). Publicado en la **versión 22**, igual que el repositorio (`ESQUEMA = '21'`).
-- **Versión a la vista:** abajo, en pequeño, en la entrada y en la app: "web v22 · servidor 22 · esquema 21". `VERSION_WEB` (index.html) y `VERSION_SERVIDOR` (Code.gs) = nº de versión publicada en Apps Script; se suben a la vez en cada publicación. Si no coinciden, sale "⚠️ actualiza la app" (al tocarlo, recarga).
+- `backend/Code.gs`: servidor (Apps Script de la hoja "APP SOLERA"). Repositorio en la **versión 23** (`ESQUEMA = '21'`); publicada en Apps Script la 22 (pendiente de publicar la 23).
+- **Versión a la vista:** abajo, en pequeño, en la entrada y en la app: "web v23 · servidor 23 · esquema 21". `VERSION_WEB` (index.html) y `VERSION_SERVIDOR` (Code.gs) = nº de versión publicada en Apps Script; se suben a la vez en cada publicación. Si no coinciden, sale "⚠️ actualiza la app" (al tocarlo, recarga).
 - `docs/MATERIALES_PROPUESTA.csv`: lista de materiales aprobada (sin precios).
 
 ## Interruptores (pestaña CONFIG; se crean a NO)
@@ -24,7 +24,7 @@ La app está **EN PRUEBAS** (ver `CLAUDE.md`). Lo pendiente está en `PENDIENTES
 
 ## Quién puede qué (columna `rol` de TRABAJADORES)
 - **trabajador** (todos los compañeros, oficiales o peones; la categoría OFICIAL/PEÓN solo se usa en el parte): parte; en Almacén, solo ME LLEVO, DEVUELVO y ENCONTRÉ; en Herramientas, "¿Dónde queda una máquina?" (incluye avería y alta) y Andamios.
-- **encargado:** de momento, lo mismo que trabajador (ya no da "Ver stock").
+- **encargado:** lo mismo que trabajador y además **TRASPASO** y la pestaña **Vales**, donde ve solo sus vales y los de su cuadrilla (los que coincidieron con él en vales, misma obra y día, en los últimos 30 días), sin "contado" ni "había" y sin poder anular (para anular, Mateo). Sigue sin "Ver stock" salvo `ver_stock = SI`. El servidor lo comprueba con código + PIN.
 - **admin:** además COMPRA (a almacén o a obra), TRASPASO, Ver stock, Resumen, pestaña Vales (con "Buscar" por nº, material, marca, comentario y proveedor; cada vale enseña su primera línea) y anular, y la pestaña Parte aunque PARTES_ACTIVOS = NO.
 - **Columna `ver_stock` = SI** (Mateo, Gregorio y Sergio): "Ver stock". El stock solo llega al móvil (bootstrap, con código + PIN) de admin y de quien tenga ver_stock = SI; al salir se borra del móvil.
 - **Inventarios:** los abre, revisa y cierra solo **Mateo (999)**. Cualquiera puede participar si Mateo le asigna categorías.
