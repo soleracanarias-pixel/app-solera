@@ -8,8 +8,9 @@ La app está **EN PRUEBAS** (ver `CLAUDE.md`). Lo pendiente está en `PENDIENTES
 - `index.html` + `css/app.css` + `js/*.js` (base, parte, almacen, inventario, herramientas, admin): la app (mapa de ficheros en `CLAUDE.md`). **Un solo icono instalable: "SOLERA"** (`manifest.json`). `?modo=almacen` sigue funcionando por compatibilidad (arranca en Almacén, sin Parte); `almacen/` ya no se ofrece para instalar, pero sigue abriendo la app para quien lo tenga instalado.
 - `sw.js`: guarda la app en el móvil para abrirla sin cobertura (index.html, css, js y `lib/`; caché `solera-v20`).
 - `lib/zxing-0.21.3.min.js`: lector de códigos de barras para iPhone (Apache 2.0), dentro de la app.
-- `backend/Code.gs`: servidor (Apps Script de la hoja "APP SOLERA"). Repositorio en la **versión 33** (`ESQUEMA = '22'`); publicada en Apps Script la 22 (de la 23 a la 33, pendientes de publicar a mano: en esta sesión no hay clasp).
-- **Versión a la vista:** abajo, en pequeño, en la entrada y en la app: "web v33 · servidor 33 · esquema 22". `VERSION_WEB` (index.html) y `VERSION_SERVIDOR` (Code.gs) = nº de versión publicada en Apps Script; se suben a la vez en cada publicación. Si no coinciden, sale "⚠️ actualiza la app" (al tocarlo, recarga).
+- `backend/Code.gs`: servidor (Apps Script de la hoja "APP SOLERA"). Repositorio en la **versión 34** (`ESQUEMA = '22'`); publicada en Apps Script la 22 (de la 23 a la 34, pendientes de publicar a mano: en esta sesión no hay clasp).
+- **Versión a la vista:** abajo, en pequeño, en la entrada y en la app: "web v34 · servidor 34 · esquema 22". `VERSION_WEB` (index.html) y `VERSION_SERVIDOR` (Code.gs) = nº de versión publicada en Apps Script; se suben a la vez en cada publicación. Si no coinciden, sale "⚠️ actualiza la app" (al tocarlo, recarga).
+- `tests/` y `package.json`: pruebas con `npm test` (servidor con dobles en memoria, QR y estructura del front). Hay que pasarlas antes de publicar.
 - `docs/MATERIALES_PROPUESTA.csv`: lista de materiales aprobada (sin precios).
 
 ## Interruptores (pestaña CONFIG; se crean a NO)

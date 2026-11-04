@@ -5,7 +5,7 @@ fs.readdirSync(__dirname).filter(function (f) { return /\.test\.js$/.test(f); })
   var casos = require(path.join(__dirname, f));
   Object.keys(casos).forEach(function (n) {
     try { casos[n](); bien++; console.log('  ok   ' + f + ' › ' + n); }
-    catch (e) { mal++; console.log('  MAL  ' + f + ' › ' + n + '\n       ' + (e && e.stack || e).toString().split('\n').slice(0, 30).join('\n       ')); }
+    catch (e) { mal++; console.log('  MAL  ' + f + ' › ' + n + '\n       ' + (e && e.stack || e).toString().split('\n').slice(0, 12).join('\n       ')); }
   });
 });
 console.log('\n' + bien + ' bien, ' + mal + ' mal');

@@ -33,13 +33,19 @@ Pendientes: ver `PENDIENTES.md`.
 - `js/admin.js`: pestaña Vales (buscar, completar, revisar, anular) y Resumen. Deja `window.SOLERA_TEST` para las pruebas.
 - `sw.js`: caché para abrir sin cobertura. **Si se añade un fichero, meterlo en FICHEROS y subir CACHE.** El aviso de versión
   nueva compara index.html, css/app.css y js/*.js (`FICHEROS_APP` en base.js).
-- `backend/Code.gs`: servidor (Apps Script). `tests/`: pruebas (`npm test`).
+- `backend/Code.gs`: servidor (Apps Script).
+- `tests/`: `npm test` (correr.js) → `servidor.test.js` (stock de todos los tipos y anulación, permisos, numeración, inventario,
+  disparadores y copia), `qr.test.js` (pegatinas) y `web.test.js` (estructura del front). `arnes.js`: los dobles y una app de prueba.
 Backend: `backend/Code.gs` se publica en el proyecto de Apps Script 10WOhx5Egs-LIBxwB0I2Y3omVTityZeJhcYBEHCuS564jE2oLFyBw-gsK
 (fichero `Código`), en la implementación existente AKfycbxon542bV7Jt6RAfU7SZgfVZoNnHs9OipjbzVr7Rpu0RUT3QJWRr6KS_grmkNE64ELp
 (la de config.js), nunca en una nueva. Dos formas:
 - clasp (necesita que Mateo inicie sesión): `clasp clone <id>`, copiar Code.gs a Código.js, `clasp push --force`,
   `clasp create-version "<desc>"`, `clasp update-deployment <deploymentId> -V <n>`.
 - A mano: pegar, guardar e Implementar → Gestionar implementaciones → ✎ → Versión nueva (nunca "Nueva implementación").
+**Antes de publicar, `npm install` (la primera vez) y `npm test`: tiene que salir "0 mal".** Las pruebas (`tests/`) cargan
+`backend/Code.gs` con dobles en memoria (`tests/arnes.js`: hojas, Drive, correo, HtmlService, propiedades, lock, disparadores y
+Utilities), nunca con la hoja real; y comprueban la estructura de `js/*.js` y el QR de las pegatinas (jsqr). Si se cambia algo del
+stock, los permisos, la numeración o el inventario, añadir su prueba en `tests/servidor.test.js`.
 En cada publicación, subir a la vez `VERSION_WEB` (index.html) y `VERSION_SERVIDOR` (Code.gs) al nº de la versión nueva de Apps Script
 (la app lo enseña abajo y avisa "actualiza la app" si no coinciden).
 Si cambia ESQUEMA, las pestañas y columnas nuevas se crean solas en la primera llamada; `instalar` solo hace falta
