@@ -17,7 +17,7 @@ Cosas pedidas que todavía NO se han hecho. Se borran de aquí cuando estén hec
   trabajo: a veces un peón hace de oficial y al revés. Por defecto, la de la hoja TRABAJADORES. Es solo para
   el cliente (PDF y facturación), NO cuenta para nóminas ni cambia TRABAJADORES. *(Pedido 30/10/2026, esperar OK.)*
 - Después de publicar: ejecutar **`instalarDisparadores()`** una vez desde el editor (resumen 18:30 y copia de seguridad 23:00) y comprobar al día siguiente CONFIG ULTIMA_COPIA.
-- **Publicar a mano en Apps Script** las versiones 23 a 32 (Code.gs del repositorio) y poner VERSION_WEB / VERSION_SERVIDOR al nº real que dé Apps Script.
+- **Publicar a mano en Apps Script** las versiones 23 a 33 (Code.gs del repositorio) y poner VERSION_WEB / VERSION_SERVIDOR al nº real que dé Apps Script.
 - Publicado hasta la versión 22 (31/10/2026): revisión UX, 48 px, letra de almacén, − y +, Letra grande, HUELLA y PARTES_ACTIVOS (NO), ver_stock, Resumen, Buscar en Vales, movil_de y fecha del formulario. Probarlo en un móvil real.
 - **Sin publicar aún (04/11/2026):** v23 permisos propios del encargado (TRASPASO y Vales de su cuadrilla); v24 COMPRA "solo foto" (PENDIENTE_LEER + Completar líneas); v25 resumen diario por correo a las 18:30; v26 tablas ordenables con "Copiar tabla" en el ordenador. Publicar Code.gs, subir la versión en Apps Script y **ejecutar `instalarDisparadores()` una vez desde el editor** (crea el disparador de las 18:30).
 - Activar los partes para todos (CONFIG PARTES_ACTIVOS = SI) cuando Mateo lo decida; la huella (HUELLA = SI) cuando se vea el fallo en un móvil real.

@@ -15,6 +15,25 @@ La app está EN PRUEBAS. Hasta que Mateo diga lo contrario:
 - Borrar datos o ficheros: solo con permiso explícito de Mateo.
 
 Pendientes: ver `PENDIENTES.md`.
+
+## Mapa de ficheros
+- `index.html`: solo el HTML de las pantallas (más un `<script>` pequeño en la cabecera: MODO_ALMACEN y manifest). Carga
+  `config.js`, luego **por este orden** `js/base.js`, `js/parte.js`, `js/almacen.js`, `js/inventario.js`, `js/herramientas.js`,
+  `js/admin.js` y al final `arrancar()`. Son scripts normales que comparten el ámbito global: un fichero solo puede usar AL CARGAR
+  lo de los anteriores (dentro de funciones, cualquier cosa). `npm test` (tests/web.test.js) lo comprueba, y también que no haya
+  nombres repetidos, nada sin declarar ni funciones huérfanas.
+- `css/app.css`: todos los estilos.
+- `js/base.js`: CFG, `VERSION_WEB`, `$`, IndexedDB (`DB`), estado `S`, toast/preguntar, iconos (`ico`), API, login, dueño del móvil
+  y huella, permisos (rolActual, puede…), cambiar de pantalla, listas y buscador, fotos, "Preparar para ir sin cobertura", la cola
+  (sincronizar, banda amarilla, Enviados, Me he equivocado), aviso de versión nueva y `arrancar()`.
+- `js/parte.js`: parte de trabajo (trabajadores, materiales, firmantes, firma, guardar).
+- `js/almacen.js`: vales (ME LLEVO, DEVUELVO, ENCONTRÉ, COMPRA, TRASPASO), Ver stock, lector y códigos de barras (EAN).
+- `js/inventario.js`: inventario como evento (contar, entregar, abrir, revisar y cerrar).
+- `js/herramientas.js`: reparaciones, pegatinas, andamios y ¿Dónde queda una máquina?
+- `js/admin.js`: pestaña Vales (buscar, completar, revisar, anular) y Resumen. Deja `window.SOLERA_TEST` para las pruebas.
+- `sw.js`: caché para abrir sin cobertura. **Si se añade un fichero, meterlo en FICHEROS y subir CACHE.** El aviso de versión
+  nueva compara index.html, css/app.css y js/*.js (`FICHEROS_APP` en base.js).
+- `backend/Code.gs`: servidor (Apps Script). `tests/`: pruebas (`npm test`).
 Backend: `backend/Code.gs` se publica en el proyecto de Apps Script 10WOhx5Egs-LIBxwB0I2Y3omVTityZeJhcYBEHCuS564jE2oLFyBw-gsK
 (fichero `Código`), en la implementación existente AKfycbxon542bV7Jt6RAfU7SZgfVZoNnHs9OipjbzVr7Rpu0RUT3QJWRr6KS_grmkNE64ELp
 (la de config.js), nunca en una nueva. Dos formas:

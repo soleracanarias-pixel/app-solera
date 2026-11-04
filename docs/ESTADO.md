@@ -5,11 +5,11 @@ La app está **EN PRUEBAS** (ver `CLAUDE.md`). Lo pendiente está en `PENDIENTES
 > ⚠️ **Stock ficticio de prueba en LA MATANZA:** AJUSTE **A0004** ("FICTICIO – ANULAR ANTES DEL INVENTARIO REAL", del inventario "INVENTARIO FICTICIO PRUEBAS 31/10/2026", contado por el 990 PRUEBA) y ME LLEVO **A0005** del 990 (CEM-425 en −3). **Hay que anular los dos en Vales antes del primer inventario real.** AGÜIMES y QUIQUIRÁ, sin tocar.
 
 ## Ficheros
-- `index.html`: la app entera. **Un solo icono instalable: "SOLERA"** (`manifest.json`). `?modo=almacen` sigue funcionando por compatibilidad (arranca en Almacén, sin Parte); `almacen/` ya no se ofrece para instalar, pero sigue abriendo la app para quien lo tenga instalado.
-- `sw.js`: guarda la app en el móvil para abrirla sin cobertura (incluye `lib/`).
+- `index.html` + `css/app.css` + `js/*.js` (base, parte, almacen, inventario, herramientas, admin): la app (mapa de ficheros en `CLAUDE.md`). **Un solo icono instalable: "SOLERA"** (`manifest.json`). `?modo=almacen` sigue funcionando por compatibilidad (arranca en Almacén, sin Parte); `almacen/` ya no se ofrece para instalar, pero sigue abriendo la app para quien lo tenga instalado.
+- `sw.js`: guarda la app en el móvil para abrirla sin cobertura (index.html, css, js y `lib/`; caché `solera-v20`).
 - `lib/zxing-0.21.3.min.js`: lector de códigos de barras para iPhone (Apache 2.0), dentro de la app.
-- `backend/Code.gs`: servidor (Apps Script de la hoja "APP SOLERA"). Repositorio en la **versión 32** (`ESQUEMA = '22'`); publicada en Apps Script la 22 (de la 23 a la 32, pendientes de publicar a mano: en esta sesión no hay clasp).
-- **Versión a la vista:** abajo, en pequeño, en la entrada y en la app: "web v32 · servidor 32 · esquema 22". `VERSION_WEB` (index.html) y `VERSION_SERVIDOR` (Code.gs) = nº de versión publicada en Apps Script; se suben a la vez en cada publicación. Si no coinciden, sale "⚠️ actualiza la app" (al tocarlo, recarga).
+- `backend/Code.gs`: servidor (Apps Script de la hoja "APP SOLERA"). Repositorio en la **versión 33** (`ESQUEMA = '22'`); publicada en Apps Script la 22 (de la 23 a la 33, pendientes de publicar a mano: en esta sesión no hay clasp).
+- **Versión a la vista:** abajo, en pequeño, en la entrada y en la app: "web v33 · servidor 33 · esquema 22". `VERSION_WEB` (index.html) y `VERSION_SERVIDOR` (Code.gs) = nº de versión publicada en Apps Script; se suben a la vez en cada publicación. Si no coinciden, sale "⚠️ actualiza la app" (al tocarlo, recarga).
 - `docs/MATERIALES_PROPUESTA.csv`: lista de materiales aprobada (sin precios).
 
 ## Interruptores (pestaña CONFIG; se crean a NO)
