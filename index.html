@@ -134,6 +134,9 @@ body:not(.es-admin):not(.es-encargado) .solo-gestion{display:none!important}   /
 .vale-item .det td{border-top:1px solid var(--borde);padding:4px 6px}
 .anulado b{text-decoration:line-through;color:var(--gris)}
 .chip.anul{background:#ffebee;color:var(--rojo)}
+.chip.revisar{background:var(--rojo);color:#fff;font-weight:700}
+.chips-vale{display:flex;flex-direction:column;gap:4px;align-items:flex-end}
+.nota-revisar{margin-top:6px;padding:8px;border-radius:8px;background:#f1f8e9;border:1px solid #c5e1a5}.nota-revisar.abierta{background:#ffebee;border-color:#ef9a9a}
 .otro-pend{background:#fff8e1}
 /* pantalla de vales en el ordenador: más ancha */
 body.ancho main{max-width:1100px}
@@ -604,6 +607,7 @@ a{color:var(--azul)}
       <div><label>Almacén</label><select id="fAlm"><option value="">Todos</option></select></div>
       <div><label>Obra</label><input type="text" id="fObra" placeholder="maj, merc…"></div>
     </div>
+    <label class="interruptor"><input type="checkbox" id="fRevisar"> Solo para revisar</label>
     <button class="btn peq" id="btnBuscarVales">Buscar</button>
   </div>
   <div class="tarjeta lista" id="valesLista"><div class="aviso">Pulsa "Buscar".</div></div>
@@ -710,7 +714,7 @@ a{color:var(--azul)}
 'use strict';
 var CFG = window.SOLERA_CONFIG || {};
 // número de esta versión de la app (el mismo que VERSION_SERVIDOR de Code.gs: se sube a la vez en cada publicación)
-var VERSION_WEB = 27;
+var VERSION_WEB = 28;
 var $ = function (id) { return document.getElementById(id); };
 
 // ---------------------------------------------------------------- almacenamiento local (IndexedDB)
@@ -2702,7 +2706,7 @@ function buscarVales() {
   if (!navigator.onLine) return toast('Los vales se ven con conexión');
   $('valesLista').innerHTML = '<div class="aviso">Buscando…</div>';
   authAdmin().then(function (auth) {
-    return api('vales', { auth: auth, filtros: { desde: $('fDesde').value, hasta: $('fHasta').value, trabajador: $('fTrab').value.trim(), tipo: $('fTipo').value, almacen: $('fAlm').value, obra: $('fObra').value.trim(), buscar: $('fBuscar').value.trim() } });
+    return api('vales', { auth: auth, filtros: { desde: $('fDesde').value, hasta: $('fHasta').value, trabajador: $('fTrab').value.trim(), tipo: $('fTipo').value, almacen: $('fAlm').value, obra: $('fObra').value.trim(), buscar: $('fBuscar').value.trim(), revisar: $('fRevisar').checked } });
   }).then(function (j) {
     S.vales = j.vales; S.valesAdmin = j.admin !== false;
     // encargado: solo sus vales y los de su cuadrilla (quienes coincidieron con él en vales en los últimos 30 días)
@@ -2725,11 +2729,13 @@ function pintarVales() {
     return '<div class="item toca vale-item' + (x.anulado ? ' anulado' : '') + '" data-i="' + i + '"><div><b>Nº ' + esc(x.numero) + ' · ' + esc(TIPO_VALE[x.tipo] || x.tipo) + ' · ' + esc(x.fecha) + ' ' + esc(x.hora) + '</b><small>' +
       lugarVale(x) + (x.proveedor ? ' · ' + esc(x.proveedor) : '') + (x.persona ? ' · ' + esc(x.persona) : '') + ' · anotado por ' + esc(x.usuario) + (x.movil_de ? ' <i>desde el móvil de ' + esc(x.movil_de) + '</i>' : '') + ' · ' + x.n_lineas + ' línea(s)' + (x.fotos.length ? ' · 📷 ' + x.fotos.length : '') + '</small>' +
       (x.lineas.length ? '<div class="vale-l1">' + esc(x.lineas[0].material) + (x.lineas[0].marca ? ' · ' + esc(x.lineas[0].marca) : '') + ' · ' + esc(x.lineas[0].cantidad) + ' ' + esc(x.lineas[0].unidad || '') + (x.lineas.length > 1 ? ' <small>(+' + (x.lineas.length - 1) + ' más)</small>' : '') + '</div>' : '') + '</div>' +
-      (x.anulado ? '<span class="chip anul">ANULADO</span>' : x.estado === 'PENDIENTE_LEER' ? '<span class="chip pend">PENDIENTE DE LEER</span>' : '') + '</div>';
+      '<span class="chips-vale">' + (x.revisar === 'SI' ? '<span class="chip revisar">REVISAR</span>' : '') +
+      (x.anulado ? '<span class="chip anul">ANULADO</span>' : x.estado === 'PENDIENTE_LEER' ? '<span class="chip pend">PENDIENTE DE LEER</span>' : '') + '</span></div>';
   }).join('') : '<div class="aviso">No hay vales con esos filtros.</div>';
 }
 $('btnBuscarVales').onclick = buscarVales;
 $('fBuscar').onkeydown = function (e) { if (e.key === 'Enter') buscarVales(); };
+$('fRevisar').onchange = buscarVales;
 $('valesLista').onclick = function (e) {
   if (e.target.closest('.det')) return;
   var it = e.target.closest('.vale-item'); if (!it) return;
@@ -2745,6 +2751,8 @@ $('valesLista').onclick = function (e) {
     (x.proveedor ? '<div>Proveedor: <b>' + esc(x.proveedor) + '</b> · ' + (x.tipo_doc === 'TICKET' ? 'Ticket' : 'Albarán') + ': <b>' + esc(x.albaran) + '</b>' + (x.estado ? ' · ' + esc(x.estado === 'PENDIENTE_LEER' ? 'pendiente de leer' : x.estado) : '') + '</div>' : '') +
     (x.estado === 'PENDIENTE_LEER' && !x.anulado && S.valesAdmin ? '<div class="completar"><label>Líneas del albarán</label><div class="compLineas"></div><button class="btn sec peq compOtra">+ otra línea</button><button class="btn verde peq compGuardar" style="margin-left:8px">Completar líneas</button></div>' : '') +
     (x.nota ? '<div>Comentario: ' + esc(x.nota) + '</div>' : '') +
+    (x.nota_revisar ? '<div class="nota-revisar' + (x.revisar === 'SI' ? ' abierta' : '') + '"><b>' + (x.revisar === 'SI' ? 'Para revisar' : 'Revisado') + ':</b> ' + esc(x.nota_revisar).split(' | ').join('<br>') + '</div>' : '') +
+    (x.revisar === 'SI' && S.valesAdmin ? '<div class="fila" style="margin-top:6px"><div><input type="text" class="notaRevisado" placeholder="Qué se ha hecho (opcional)"></div><button class="btn peq verde revisado" style="flex:0 0 auto">Revisado</button></div>' : '') +
     (x.movil_de ? '<div>Anotado por ' + esc(x.usuario) + ' desde el móvil de <b>' + esc(x.movil_de) + '</b></div>' : '') +
     (x.fotos.length ? '<div>' + x.fotos.map(function (u, i) { return '<a href="' + esc(u) + '" target="_blank">📎 adjunto ' + (i + 1) + '</a>'; }).join(' · ') + '</div>' : '') +
     (x.anulado ? '<div style="color:var(--rojo)">ANULADO por ' + esc(x.anulado_por) + ' el ' + esc(x.anulado_en) + ': ' + esc(x.motivo_anulacion) + '</div>'
@@ -2772,6 +2780,13 @@ $('valesLista').onclick = function (e) {
       });
     };
   }
+  var rv = d.querySelector('.revisado');
+  if (rv) rv.onclick = function () {
+    if (!navigator.onLine) return toast('Hace falta cobertura', 'err');
+    authAdmin().then(function (auth) { return api('valeRevisado', { auth: auth, numero: x.numero, texto: d.querySelector('.notaRevisado').value.trim() }); })
+      .then(function () { toast('Vale ' + x.numero + ' revisado', 'ok'); buscarVales(); })
+      .catch(function (e) { toast('No se pudo marcar: ' + e.message, 'err'); });
+  };
   var b = d.querySelector('.anular');
   if (b) b.onclick = function () {
     var motivo = d.querySelector('.motivo').value.trim();
@@ -2857,7 +2872,7 @@ function sincronizar() {
           else if (it.tipo === 'parte') toast('Parte Nº ' + j.numero + ' guardado', 'ok');
           if (it.tipo === 'vale') delete pendientes[it.id];
           var cambiadas = (j.altas || []).filter(function (a) { return a.cambiado; });
-          var h = { id: it.id, tipo: it.tipo, fecha: it.fecha, obra: it.obraNombre || it.obra, numero: j.numero || '', pdf_url: j.pdf_url || '', firmado: !!it.firma, enviadoEn: new Date().toISOString(), copia: j.copia_enviada_a || '', copiaError: j.copia_error || '', nFotos: it.nFotos || 0, resumen: it.tipo === 'vale' ? 'Vale · ' + TIPO_VALE[it.valeTipo] + ' · ' + (it.soloFoto ? 'solo foto, pendiente de leer' : it.lineas.length + (it.lineas.length === 1 ? ' línea' : ' líneas')) + (it.obra ? ' · ' + it.obra : (it.proveedor ? ' · ' + it.proveedor : ''))
+          var h = { id: it.id, tipo: it.tipo, fecha: it.fecha, obra: it.obraNombre || it.obra, numero: j.numero || '', usuario: it.usuario || '', pdf_url: j.pdf_url || '', firmado: !!it.firma, enviadoEn: new Date().toISOString(), copia: j.copia_enviada_a || '', copiaError: j.copia_error || '', nFotos: it.nFotos || 0, resumen: it.tipo === 'vale' ? 'Vale · ' + TIPO_VALE[it.valeTipo] + ' · ' + (it.soloFoto ? 'solo foto, pendiente de leer' : it.lineas.length + (it.lineas.length === 1 ? ' línea' : ' líneas')) + (it.obra ? ' · ' + it.obra : (it.proveedor ? ' · ' + it.proveedor : ''))
               + ((j.altas || []).length ? ' · altas: ' + j.altas.map(function (a) { return a.codigo; }).join(', ') : '')
               + (cambiadas.length ? ' · ⚠️ CAMBIADO: ' + cambiadas.map(function (a) { return a.propuesto + ' → ' + a.codigo; }).join(', ') + ' (corrige el número en la máquina)' : '')
               + (j.cambios ? ' · ⚠️ el stock había cambiado: ajuste calculado con el del servidor' : '')
@@ -2920,6 +2935,24 @@ function tituloCola(it) {
   if (it.tipo === 'vale') return (it.valeTipo === 'AJUSTE' ? 'Inventario · ' + esc(nombreAlmacen(it.almacen).split(' · ')[0]) + ' · ' + (it.nFotos || 0) + ' foto(s)' : 'Vale · ' + TIPO_VALE[it.valeTipo]) + ' · ' + (it.soloFoto ? 'solo foto' : it.lineas.length + ' línea(s)') + (it.obra ? ' · ' + esc(it.obra) : '');
   return (it.clase === 'HER' ? 'Herramientas · ' : 'Almacén · ') + esc(it.movTipo) + ' ' + it.cantidad + ' ' + esc(it.materialNombre || it.material);
 }
+// "Me he equivocado": solo en los vales de almacén de hoy que anotó quien ha entrado (el servidor lo vuelve a comprobar)
+function puedeEquivocado(h) {
+  return h.tipo === 'vale' && /^A\d+$/.test(String(h.numero || '')) && !h.aviso && !h.revisar && h.fecha === hoyISO() && !!S.usuario && (!h.usuario || h.usuario === S.usuario.nombre);
+}
+$('histLista').onclick = function (e) {
+  var b = e.target.closest('.equivocado'); if (!b) return;
+  DB.get('hist', b.dataset.id).then(function (h) {
+    if (!h) return;
+    preguntar('Vale ' + h.numero + ': ¿qué está mal?\nMateo lo revisa y lo corrige. No se borra nada.', 'Avisar', 'Cancelar', 'Por ejemplo: eran 3 sacos, no 5 · era otra obra (opcional)').then(function (r) {
+      if (!r) return;
+      if (!navigator.onLine) return toast('Hace falta cobertura', 'err');
+      authAdmin().then(function (auth) { return api('valeRevisar', { auth: auth, numero: h.numero, texto: r.texto }); }).then(function () {
+        h.revisar = true; return DB.put('hist', h);
+      }).then(function () { toast('Avisado: Mateo revisará el vale ' + h.numero, 'ok'); pintarEnviados(); })
+        .catch(function (er) { toast('No se pudo avisar: ' + er.message, 'err'); });
+    });
+  });
+};
 function pintarEnviados() {
   pintarListasFecha();
   Promise.all([DB.all('cola'), DB.all('hist')]).then(function (r) {
@@ -2945,7 +2978,9 @@ function pintarEnviados() {
   DB.all('hist').then(function (h) {
     h.sort(function (a, b) { return a.enviadoEn < b.enviadoEn ? 1 : -1; }); h = h.slice(0, 50);
     $('histLista').innerHTML = h.length ? h.map(function (it) {
-      if (it.tipo === 'mov' || it.tipo === 'vale') return '<div class="item"><div><b>' + (it.numero ? 'Nº ' + esc(it.numero) + ' · ' : 'Almacén · ') + esc(it.resumen) + '</b><small>' + fechaES(it.fecha) + (it.hora ? ' ' + esc(it.hora) : '') + '</small></div>' + (it.aviso ? '<span class="chip pend">avisado</span>' : '<span class="chip ok">ok</span>') + '</div>';
+      if (it.tipo === 'mov' || it.tipo === 'vale') return '<div class="item' + (puedeEquivocado(it) ? ' err-serv' : '') + '"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><div><b>' + (it.numero ? 'Nº ' + esc(it.numero) + ' · ' : 'Almacén · ') + esc(it.resumen) + '</b><small>' + fechaES(it.fecha) + (it.hora ? ' ' + esc(it.hora) : '') + '</small></div>' +
+        (it.aviso ? '<span class="chip pend">avisado</span>' : it.revisar ? '<span class="chip revisar">REVISAR</span>' : '<span class="chip ok">ok</span>') + '</div>' +
+        (puedeEquivocado(it) ? '<div class="cola-bot"><button class="btn peq sec equivocado" data-id="' + esc(it.id) + '">Me he equivocado</button></div>' : '') + '</div>';
       return '<div class="item"><div><b>Nº ' + esc(it.numero) + ' · ' + esc(it.obra) + '</b><small>' + fechaES(it.fecha) + (it.firmado ? ' · firmado' : ' · sin firma') + (it.copia ? ' · copia enviada a ' + esc(it.copia) : '') + (it.copiaError ? ' · <span style="color:var(--rojo)">copia no enviada</span>' : '') + '</small></div>' + (it.pdf_url ? '<a class="chip ok" href="' + esc(it.pdf_url) + '" target="_blank">PDF</a>' : '<span class="chip ok">ok</span>') + '</div>';
     }).join('') : '<div class="aviso">Aún no hay partes enviados desde este móvil.</div>';
   });
@@ -3024,6 +3059,7 @@ function pintarResumenAdmin() {
     { k: 'negativos', t: 'Stock en negativo', n: j.negativos.length, mal: true, d: lista(j.negativos, function (m) { return m.nombre + ' ' + m.stock; }) },
     { k: 'bajos', t: 'Bajo mínimo', n: j.bajos.length, d: lista(j.bajos, function (m) { return m.nombre + ' ' + m.stock + '/' + m.stock_min; }) },
     { k: 'otros', t: 'OTRO sin dar de alta', n: j.otros.length, d: lista(j.otros, function (o) { return o.nombre || o.material || ''; }) },
+    { k: 'revisar', t: 'Para revisar', n: (j.revisar || []).length, mal: true, d: lista(j.revisar || [], function (v) { return v.numero + ' ' + v.usuario; }) },
     { k: 'albaranes', t: 'Albaranes pendientes de leer', n: (j.albaranes || []).length, d: lista(j.albaranes || [], function (a) { return a.proveedor + ' ' + a.albaran; }) },
     { k: 'eans', t: 'Códigos pendientes', n: j.eans.length, d: lista(j.eans, function (e) { return e.ean; }) },
     { k: 'ok', t: 'Máquinas pendientes de OK', n: j.pendientesOk.length, d: lista(j.pendientesOk, function (h) { return h.codigo; }) },
@@ -3047,6 +3083,10 @@ $('resTarjetas').onclick = function (e) {
   var k = b.dataset.k, abrirStock = function () { cambiar('almacen'); if ($('stockBloque').style.display === 'none') $('verStock').onclick(); $('stockAlmacen').value = ''; pintarStock(); $('stockBloque').scrollIntoView({ block: 'start' }); };
   if (k === 'negativos' || k === 'bajos' || k === 'otros') return abrirStock();
   if (k === 'eans') { cambiar('almacen'); return $('eanPendientes').scrollIntoView({ block: 'start' }); }
+  if (k === 'revisar') {
+    if (!puedeVales()) return toast('Los vales para revisar los ve Mateo');
+    S.vales = S.vales || []; cambiar('vales'); ['fTipo', 'fDesde', 'fHasta', 'fTrab', 'fObra', 'fBuscar', 'fAlm'].forEach(function (id) { $(id).value = ''; }); $('fRevisar').checked = true; return buscarVales();
+  }
   if (k === 'albaranes') { S.vales = S.vales || []; cambiar('vales'); $('fTipo').value = 'PENDIENTE_LEER'; $('fDesde').value = ''; $('fHasta').value = ''; return buscarVales(); }
   if (k === 'inventarios') { if (verPestanaInventario()) cambiar('inventario'); else toast('Los inventarios los lleva Mateo'); return; }
   cambiar('herramientas');

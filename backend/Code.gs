@@ -67,7 +67,7 @@ function movFilas_(c) {
 }
 var ESQUEMA = '22';   // 22: revisar y nota_revisar en VALES
 // número de la versión publicada en Apps Script (subirlo en cada publicación, igual que VERSION_WEB de index.html)
-var VERSION_SERVIDOR = 27;            // subir cuando cambien las columnas de HOJAS
+var VERSION_SERVIDOR = 28;            // subir cuando cambien las columnas de HOJAS
 var EMAIL_COPIA = 'soleracanarias@gmail.com';
 var CSV_NOMBRE = 'PARTES APP 2026.csv';  // se crea en la carpeta CARPETA_CSV_ID de CONFIG (CLIENTES\PARTES\APP)
 var CSV_COLUMNAS = ['N_PARTE','FECHA','DIA_SEMANA','CLIENTE','OBRA','COD_OBRA_APP','RESP_CLIENTE','RESP_CERT','RESP_SOLERA','MATRICULA',
@@ -300,6 +300,8 @@ function doPost(e) {
       case 'anularVale': exigirAdmin_(body.auth); lock.waitLock(30000); return json_(anularVale_(body.numero, body.motivo, body.auth));
       case 'valeCompletar': lock.waitLock(30000); return json_(valeCompletar_(body));
       case 'avisoCola': lock.waitLock(30000); return json_(avisoCola_(body));
+      case 'valeRevisar': lock.waitLock(30000); return json_(valeRevisar_(body));
+      case 'valeRevisado': lock.waitLock(30000); return json_(valeRevisado_(body));
       default: return json_({ ok: false, error: 'Acción desconocida' });
     }
   } catch (err) {
@@ -1493,6 +1495,7 @@ function listaVales_(fl) {
     if (fl.hasta && f > fl.hasta) return false;
     if (fl.tipo === 'PENDIENTE_LEER') { if (String(v.estado) !== 'PENDIENTE_LEER' || si_(v.anulado)) return false; }
     else if (fl.tipo && v.tipo !== fl.tipo) return false;
+    if (fl.revisar && String(v.revisar) !== 'SI') return false;
     if (fl.almacen && String(v.almacen) !== fl.almacen && String(v.almacen_destino) !== fl.almacen) return false;
     if (q && normal_(v.usuario + ' ' + v.persona).indexOf(q) < 0) return false;
     if (o && normal_(v.obra).indexOf(o) < 0) return false;
@@ -1503,10 +1506,39 @@ function listaVales_(fl) {
       inicio: String(v.inicio || ''), cierre: String(v.cierre || ''), maquinas: maq[v.numero] || [], albaran: v.albaran, tipo_doc: v.tipo_doc || '', estado: v.estado || '', n_lineas: v.n_lineas,
       fotos: String(v.fotos || '').split(' ').filter(function (u) { return u; }), anulado: si_(v.anulado), anulado_por: v.anulado_por,
       anulado_en: String(v.anulado_en || ''), motivo_anulacion: v.motivo_anulacion, movil_de: movilOtro_(v),
+      revisar: String(v.revisar || ''), nota_revisar: String(v.nota_revisar || ''),
       lineas: (lineas[v.numero] || []).sort(function (a, b) { return a.linea - b.linea; }) };
   });
 }
 
+// "Me he equivocado" (Enviados): quien anotó el vale, solo el mismo día, lo marca para que Mateo lo revise. No cambia el stock.
+function valeRevisar_(b) {
+  var t = exigirTrabajador_(b.auth, 'avisar de un error'), numero = String(b.numero || '');
+  var vales = filas_('VALES'), i = vales.map(function (v) { return String(v.numero); }).indexOf(numero);
+  if (i < 0) throw new Error('Vale no encontrado: ' + numero);
+  var v = vales[i], hoy = Utilities.formatDate(new Date(), 'Atlantic/Canary', 'dd/MM/yyyy');
+  if (normal_(v.usuario) !== normal_(t.nombre)) throw new Error('Solo quien anotó el vale ' + numero + ' puede decir que se ha equivocado');
+  if (txtFecha_(v.fecha, 'dd/MM/yyyy') !== hoy && txtFecha_(v.recibido_en || v.creado_en, 'dd/MM/yyyy') !== hoy) throw new Error('El vale ' + numero + ' no es de hoy: díselo a Mateo');
+  if (si_(v.anulado)) throw new Error('El vale ' + numero + ' ya está anulado');
+  var texto = String(b.texto || '').trim() || 'me he equivocado';
+  var nota = (String(v.nota_revisar || '') ? String(v.nota_revisar) + ' | ' : '') + 'ERROR de ' + t.nombre + ' (' + ahora_() + '): ' + texto;
+  ponerEnFila_('VALES', i + 2, { revisar: 'SI', nota_revisar: nota });
+  return { ok: true, numero: numero };
+}
+// el admin lo da por revisado: revisar pasa a REVISADO y se apunta quién y cuándo (no se borra nada)
+function valeRevisado_(b) {
+  var t = exigirAdmin_(b.auth), numero = String(b.numero || '');
+  var vales = filas_('VALES'), i = vales.map(function (v) { return String(v.numero); }).indexOf(numero);
+  if (i < 0) throw new Error('Vale no encontrado: ' + numero);
+  if (String(vales[i].revisar) !== 'SI') throw new Error('El vale ' + numero + ' no está para revisar');
+  var extra = String(b.texto || '').trim();
+  ponerEnFila_('VALES', i + 2, { revisar: 'REVISADO', nota_revisar: String(vales[i].nota_revisar || '') + ' | revisado por ' + t.nombre + ' (' + ahora_() + ')' + (extra ? ': ' + extra : '') });
+  return { ok: true, numero: numero };
+}
+function paraRevisar_() {
+  return filas_('VALES').filter(function (v) { return String(v.revisar) === 'SI'; }).reverse().map(function (v) {
+    return { numero: String(v.numero), tipo: String(v.tipo), usuario: String(v.usuario || ''), nota_revisar: String(v.nota_revisar || '') }; });
+}
 // anular: marca el vale y sus líneas (nunca borra); el stock y POR_OBRA dejan de contarlas
 function anularVale_(numero, motivo, auth) {
   if (!String(motivo || '').trim()) throw new Error('Falta el motivo de la anulación');
@@ -1753,6 +1785,6 @@ function resumen_(auth) {
     negativos: negativos, bajos: bajos, otros: otrosPendientes_(), eans: eans.map(function (e) { return { ean: String(e.ean), sugerido: String(e.sugerido || '') }; }),
     pendientesOk: herr.filter(function (h) { return h.ok === 'PENDIENTE'; }).map(function (h) { return { codigo: h.codigo, nombre: h.nombre, quien: h.quien }; }),
     averiadas: herr.filter(function (h) { return h.estado === 'AVERIADA'; }).map(function (h) { return { codigo: h.codigo, nombre: h.nombre, averia: h.averia, almacen: nomAlm[h.almacen] || h.almacen }; }),
-    reparacion: rep, inventarios: inventariosAbiertos_(), albaranes: albaranesPendientes_(),
+    reparacion: rep, inventarios: inventariosAbiertos_(), albaranes: albaranesPendientes_(), revisar: paraRevisar_(),
     movimientos: movs.slice(0, 20).map(function (m) { delete m.orden; delete m.i; return m; }) };
 }
