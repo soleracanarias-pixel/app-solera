@@ -16,15 +16,13 @@ Cosas pedidas que todavía NO se han hecho. Se borran de aquí cuando estén hec
 - **A la vez: elegir la categoría de cada trabajador en el parte (PEÓN / OFICIAL).** Depende del día o del
   trabajo: a veces un peón hace de oficial y al revés. Por defecto, la de la hoja TRABAJADORES. Es solo para
   el cliente (PDF y facturación), NO cuenta para nóminas ni cambia TRABAJADORES. *(Pedido 30/10/2026, esperar OK.)*
-- **Publicar a mano en Apps Script** las versiones 23 a 29 (Code.gs del repositorio) y poner VERSION_WEB / VERSION_SERVIDOR al nº real que dé Apps Script.
+- **Publicar a mano en Apps Script** las versiones 23 a 30 (Code.gs del repositorio) y poner VERSION_WEB / VERSION_SERVIDOR al nº real que dé Apps Script.
 - Publicado hasta la versión 22 (31/10/2026): revisión UX, 48 px, letra de almacén, − y +, Letra grande, HUELLA y PARTES_ACTIVOS (NO), ver_stock, Resumen, Buscar en Vales, movil_de y fecha del formulario. Probarlo en un móvil real.
 - **Sin publicar aún (04/11/2026):** v23 permisos propios del encargado (TRASPASO y Vales de su cuadrilla); v24 COMPRA "solo foto" (PENDIENTE_LEER + Completar líneas); v25 resumen diario por correo a las 18:30; v26 tablas ordenables con "Copiar tabla" en el ordenador. Publicar Code.gs, subir la versión en Apps Script y **ejecutar `instalarDisparadores()` una vez desde el editor** (crea el disparador de las 18:30).
 - Activar los partes para todos (CONFIG PARTES_ACTIVOS = SI) cuando Mateo lo decida; la huella (HUELLA = SI) cuando se vea el fallo en un móvil real.
 - Probar la huella en los móviles reales con HUELLA = SI (si da error, la app enseña el motivo: pasárselo a Claude).
 - Foto para reconocer el material (propuesta; decidir con Fable si se hace y con qué servicio).
-- Herramientas: de momento se numeran con ROTULADOR (Edding 750 / uni PX-20) al hacer la foto.
-  Más adelante: pegatinas con QR (rotuladora Brother con cinta TZe-S o imprenta), PDF de pegatinas
-  desde HERRAMIENTAS (el 📷 de Herramientas ya lee el código de la máquina en QR).
+- Herramientas: el PDF de pegatinas con QR ya está (v30). Falta elegir dónde imprimirlas (rotuladora Brother con cinta TZe-S o imprenta), ajustar PEGATINA_MM a la cinta y probar que la cámara las lee en un móvil real.
 - **Meter material desde la foto de una factura o albarán: NO en la app del móvil.** Es para Mateo o Gregorio,
   como algo aparte (de momento, pasándole la foto a Claude; más adelante, quizá una app de escritorio
   ligada al sistema). *(30/10/2026)*

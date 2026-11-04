@@ -67,7 +67,7 @@ function movFilas_(c) {
 }
 var ESQUEMA = '22';   // 22: revisar y nota_revisar en VALES
 // número de la versión publicada en Apps Script (subirlo en cada publicación, igual que VERSION_WEB de index.html)
-var VERSION_SERVIDOR = 29;            // subir cuando cambien las columnas de HOJAS
+var VERSION_SERVIDOR = 30;            // subir cuando cambien las columnas de HOJAS
 var EMAIL_COPIA = 'soleracanarias@gmail.com';
 var CSV_NOMBRE = 'PARTES APP 2026.csv';  // se crea en la carpeta CARPETA_CSV_ID de CONFIG (CLIENTES\PARTES\APP)
 var CSV_COLUMNAS = ['N_PARTE','FECHA','DIA_SEMANA','CLIENTE','OBRA','COD_OBRA_APP','RESP_CLIENTE','RESP_CERT','RESP_SOLERA','MATRICULA',
@@ -188,6 +188,7 @@ function migrarAlmacenes_() {
     tr.forEach(function (t, i) { if (['999', '998', '997'].indexOf(String(t.codigo)) >= 0) ponerEnFila_('TRABAJADORES', i + 2, { ver_stock: 'SI' }); });
   // interruptores de la app (NO por defecto): HUELLA (ofrecer y usar la huella) y PARTES_ACTIVOS (pestaña Parte para todos)
   ['HUELLA', 'PARTES_ACTIVOS'].forEach(function (k) { if (!filas_('CONFIG').some(function (f) { return f.clave === k; })) setConfig_(k, 'NO'); });
+  if (!filas_('CONFIG').some(function (f) { return f.clave === 'PEGATINA_MM'; })) setConfig_('PEGATINA_MM', '50x25');   // tamaño de las pegatinas de máquinas (ancho x alto, mm)
   if (hoja_('REPARADORES').getLastRow() < 2) hoja_('REPARADORES').appendRow(['Bernabé', '', '']);
   var ha = hoja_('ALMACENES');
   // los almacenes que falten (por código); los que ya están no se tocan
@@ -295,6 +296,7 @@ function doPost(e) {
       case 'herrHistorial': return json_(herrHistorial_(body));
       case 'resumen': return json_(resumen_(body.auth));
       case 'andamios': lock.waitLock(30000); return json_(andamiosMov_(body.mov));
+      case 'pegatinas': return json_(pegatinas_(body));
       case 'herrTipoAprobar': lock.waitLock(30000); return json_(herrTipoAprobar_(body));
       case 'vales': return json_(valesPara_(body.auth, body.filtros || {}));
       case 'anularVale': exigirAdmin_(body.auth); lock.waitLock(30000); return json_(anularVale_(body.numero, body.motivo, body.auth));
@@ -1789,4 +1791,178 @@ function resumen_(auth) {
     averiadas: herr.filter(function (h) { return h.estado === 'AVERIADA'; }).map(function (h) { return { codigo: h.codigo, nombre: h.nombre, averia: h.averia, almacen: nomAlm[h.almacen] || h.almacen }; }),
     reparacion: rep, inventarios: inventariosAbiertos_(), albaranes: albaranesPendientes_(), revisar: paraRevisar_(),
     movimientos: movs.slice(0, 20).map(function (m) { delete m.orden; delete m.i; return m; }) };
+}
+
+// ---------------------------------------------------------------- pegatinas con QR (gestores)
+// QR propio (sin librerías): modo byte, nivel de corrección M, versiones 1 a 10 (hasta 213 bytes). Devuelve la matriz (true = negro).
+var QR_M = { 1: [10, [[1, 16]]], 2: [16, [[1, 28]]], 3: [26, [[1, 44]]], 4: [18, [[2, 32]]], 5: [24, [[2, 43]]], 6: [16, [[4, 27]]], 7: [18, [[4, 31]]],
+  8: [22, [[2, 38], [2, 39]]], 9: [22, [[3, 36], [2, 37]]], 10: [26, [[4, 43], [1, 44]]] };
+var QR_ALIN = { 1: [], 2: [6, 18], 3: [6, 22], 4: [6, 26], 5: [6, 30], 6: [6, 34], 7: [6, 22, 38], 8: [6, 24, 42], 9: [6, 26, 46], 10: [6, 28, 50] };
+function qrGfMul_(x, y) { var z = 0; for (var i = 7; i >= 0; i--) { z = (z << 1) ^ ((z >>> 7) * 0x11D); z ^= ((y >>> i) & 1) * x; } return z & 0xFF; }
+function qrRs_(datos, grado) {
+  var div = [], i, j, raiz = 1;
+  for (i = 0; i < grado; i++) div.push(0);
+  div[grado - 1] = 1;
+  for (i = 0; i < grado; i++) {
+    for (j = 0; j < grado; j++) { div[j] = qrGfMul_(div[j], raiz); if (j + 1 < grado) div[j] ^= div[j + 1]; }
+    raiz = qrGfMul_(raiz, 0x02);
+  }
+  var res = div.map(function () { return 0; });
+  datos.forEach(function (b) {
+    var f = b ^ res.shift(); res.push(0);
+    for (var k = 0; k < grado; k++) res[k] ^= qrGfMul_(div[k], f);
+  });
+  return res;
+}
+function qrMatriz_(texto) {
+  var bytes = [], s = unescape(encodeURIComponent(String(texto))), v, i, j;
+  for (i = 0; i < s.length; i++) bytes.push(s.charCodeAt(i));
+  var capacidad = function (ver) { return QR_M[ver][1].reduce(function (a, g) { return a + g[0] * g[1]; }, 0); };
+  for (v = 1; v <= 10; v++) if (4 + (v < 10 ? 8 : 16) + 8 * bytes.length <= capacidad(v) * 8) break;
+  if (v > 10) throw new Error('Texto demasiado largo para el QR');
+  // bits: modo byte (0100), longitud, datos, terminador y relleno
+  var bits = [], pon = function (val, n) { for (var k = n - 1; k >= 0; k--) bits.push((val >>> k) & 1); };
+  pon(4, 4); pon(bytes.length, v < 10 ? 8 : 16); bytes.forEach(function (b) { pon(b, 8); });
+  var total = capacidad(v) * 8;
+  pon(0, Math.min(4, total - bits.length)); while (bits.length % 8) bits.push(0);
+  for (var pad = 0xEC; bits.length < total; pad ^= 0xEC ^ 0x11) pon(pad, 8);
+  var cw = []; for (i = 0; i < bits.length; i += 8) { var b = 0; for (j = 0; j < 8; j++) b = (b << 1) | bits[i + j]; cw.push(b); }
+  // bloques con su corrección de errores, intercalados
+  var ec = QR_M[v][0], bloques = [], pos = 0;
+  QR_M[v][1].forEach(function (g) { for (var n = 0; n < g[0]; n++) { var d = cw.slice(pos, pos + g[1]); pos += g[1]; bloques.push({ d: d, e: qrRs_(d, ec) }); } });
+  var fin = [], maxD = Math.max.apply(null, bloques.map(function (x) { return x.d.length; }));
+  for (i = 0; i < maxD; i++) bloques.forEach(function (x) { if (i < x.d.length) fin.push(x.d[i]); });
+  for (i = 0; i < ec; i++) bloques.forEach(function (x) { fin.push(x.e[i]); });
+  // matriz: m[fila][columna]; f = módulos fijos (patrones)
+  var n = 17 + 4 * v, m = [], f = [];
+  for (i = 0; i < n; i++) { m.push([]); f.push([]); for (j = 0; j < n; j++) { m[i].push(false); f[i].push(false); } }
+  var fijo = function (x, y, negro) { m[y][x] = !!negro; f[y][x] = true; };
+  for (i = 0; i < n; i++) { fijo(6, i, i % 2 === 0); fijo(i, 6, i % 2 === 0); }
+  [[3, 3], [n - 4, 3], [3, n - 4]].forEach(function (c) {
+    for (var dy = -4; dy <= 4; dy++) for (var dx = -4; dx <= 4; dx++) {
+      var x = c[0] + dx, y = c[1] + dy, d = Math.max(Math.abs(dx), Math.abs(dy));
+      if (x >= 0 && x < n && y >= 0 && y < n) fijo(x, y, d !== 2 && d !== 4);
+    }
+  });
+  var al = QR_ALIN[v], ult = al.length - 1;
+  for (i = 0; i <= ult; i++) for (j = 0; j <= ult; j++) {
+    if ((i === 0 && j === 0) || (i === 0 && j === ult) || (i === ult && j === 0)) continue;
+    for (var ay = -2; ay <= 2; ay++) for (var ax = -2; ax <= 2; ax++) fijo(al[i] + ax, al[j] + ay, Math.max(Math.abs(ax), Math.abs(ay)) !== 1);
+  }
+  var formato = function (mask) {
+    var dato = (0 << 3) | mask, r = dato;   // nivel M = 00
+    for (var k = 0; k < 10; k++) r = (r << 1) ^ ((r >>> 9) * 0x537);
+    var fb = ((dato << 10) | r) ^ 0x5412, bit = function (k) { return ((fb >>> k) & 1) === 1; };
+    for (k = 0; k <= 5; k++) fijo(8, k, bit(k));
+    fijo(8, 7, bit(6)); fijo(8, 8, bit(7)); fijo(7, 8, bit(8));
+    for (k = 9; k < 15; k++) fijo(14 - k, 8, bit(k));
+    for (k = 0; k < 8; k++) fijo(n - 1 - k, 8, bit(k));
+    for (k = 8; k < 15; k++) fijo(8, n - 15 + k, bit(k));
+    fijo(8, n - 8, true);
+  };
+  formato(0);
+  if (v >= 7) {
+    var r = v; for (i = 0; i < 12; i++) r = (r << 1) ^ ((r >>> 11) * 0x1F25);
+    var vb = (v << 12) | r;
+    for (i = 0; i < 18; i++) { var bt = ((vb >>> i) & 1) === 1, a = n - 11 + i % 3, c2 = Math.floor(i / 3); fijo(a, c2, bt); fijo(c2, a, bt); }
+  }
+  // datos en zigzag desde abajo a la derecha (la columna 6 es la de tiempo)
+  var k2 = 0;
+  for (var der = n - 1; der >= 1; der -= 2) {
+    if (der === 6) der = 5;
+    for (var vert = 0; vert < n; vert++) for (j = 0; j < 2; j++) {
+      var x2 = der - j, arriba = ((der + 1) & 2) === 0, y2 = arriba ? n - 1 - vert : vert;
+      if (!f[y2][x2] && k2 < fin.length * 8) { m[y2][x2] = ((fin[k2 >>> 3] >>> (7 - (k2 & 7))) & 1) === 1; k2++; }
+    }
+  }
+  // máscara: la de menos penalización (filas/columnas iguales, bloques 2x2 y proporción de negro)
+  var cond = [function (x, y) { return (x + y) % 2 === 0; }, function (x, y) { return y % 2 === 0; }, function (x) { return x % 3 === 0; }, function (x, y) { return (x + y) % 3 === 0; },
+    function (x, y) { return (Math.floor(x / 3) + Math.floor(y / 2)) % 2 === 0; }, function (x, y) { return x * y % 2 + x * y % 3 === 0; },
+    function (x, y) { return (x * y % 2 + x * y % 3) % 2 === 0; }, function (x, y) { return ((x + y) % 2 + x * y % 3) % 2 === 0; }];
+  var aplicar = function (mk) { for (var y = 0; y < n; y++) for (var x = 0; x < n; x++) if (!f[y][x] && cond[mk](x, y)) m[y][x] = !m[y][x]; };
+  var castigo = function () {
+    var p = 0, negros = 0, x, y, run;
+    for (y = 0; y < n; y++) { run = 1; for (x = 1; x < n; x++) { if (m[y][x] === m[y][x - 1]) { run++; if (run === 5) p += 3; else if (run > 5) p++; } else run = 1; } }
+    for (x = 0; x < n; x++) { run = 1; for (y = 1; y < n; y++) { if (m[y][x] === m[y - 1][x]) { run++; if (run === 5) p += 3; else if (run > 5) p++; } else run = 1; } }
+    for (y = 0; y < n - 1; y++) for (x = 0; x < n - 1; x++) if (m[y][x] === m[y][x + 1] && m[y][x] === m[y + 1][x] && m[y][x] === m[y + 1][x + 1]) p += 3;
+    for (y = 0; y < n; y++) for (x = 0; x < n; x++) if (m[y][x]) negros++;
+    return p + Math.floor(Math.abs(negros * 20 - n * n * 10) / (n * n)) * 10;
+  };
+  var mejor = 0, menor = Infinity;
+  for (var mk = 0; mk < 8; mk++) { aplicar(mk); formato(mk); var c = castigo(); if (c < menor) { menor = c; mejor = mk; } aplicar(mk); }
+  aplicar(mejor); formato(mejor);
+  return m;
+}
+// PNG en blanco y negro (sin compresión: bloques "stored" de zlib), con margen de 4 módulos. Devuelve los bytes (0..255).
+function qrPng_(matriz, escala) {
+  escala = escala || 8;
+  var n = matriz.length, lado = (n + 8) * escala, crud = [], x, y;
+  for (y = 0; y < lado; y++) {
+    crud.push(0);
+    var my = Math.floor(y / escala) - 4;
+    for (x = 0; x < lado; x++) { var mx = Math.floor(x / escala) - 4; crud.push(my >= 0 && my < n && mx >= 0 && mx < n && matriz[my][mx] ? 0 : 255); }
+  }
+  var z = [0x78, 0x01], a1 = 1, a2 = 0;
+  for (var i = 0; i < crud.length; i += 65535) {
+    var trozo = crud.slice(i, i + 65535), L = trozo.length;
+    z.push(i + 65535 >= crud.length ? 1 : 0, L & 255, L >>> 8, ~L & 255, (~L >>> 8) & 255);
+    for (var k = 0; k < L; k++) { z.push(trozo[k]); a1 = (a1 + trozo[k]) % 65521; a2 = (a2 + a1) % 65521; }
+  }
+  var ad = ((a2 << 16) | a1) >>> 0; z.push(ad >>> 24, (ad >>> 16) & 255, (ad >>> 8) & 255, ad & 255);
+  var crcT = []; for (i = 0; i < 256; i++) { var c = i; for (k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; crcT.push(c >>> 0); }
+  var u32 = function (v) { return [v >>> 24, (v >>> 16) & 255, (v >>> 8) & 255, v & 255]; };
+  var trozoPng = function (tipo, datos) {
+    var t = tipo.split('').map(function (ch) { return ch.charCodeAt(0); }), todo = t.concat(datos), c = 0xFFFFFFFF;
+    for (var q = 0; q < todo.length; q++) c = crcT[(c ^ todo[q]) & 255] ^ (c >>> 8);
+    return u32(datos.length).concat(todo, u32((c ^ 0xFFFFFFFF) >>> 0));
+  };
+  var ihdr = u32(lado).concat(u32(lado), [8, 0, 0, 0, 0]);   // 8 bits, escala de grises
+  return [137, 80, 78, 71, 13, 10, 26, 10].concat(trozoPng('IHDR', ihdr), trozoPng('IDAT', z), trozoPng('IEND', []));
+}
+function base64_(bytes) {
+  var T = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/', out = '';
+  for (var i = 0; i < bytes.length; i += 3) {
+    var a = bytes[i], b = bytes[i + 1], c = bytes[i + 2], v = (a << 16) | ((b || 0) << 8) | (c || 0);
+    out += T[v >>> 18] + T[(v >>> 12) & 63] + (b === undefined ? '=' : T[(v >>> 6) & 63]) + (c === undefined ? '=' : T[v & 63]);
+  }
+  return out;
+}
+// tamaño de la pegatina en mm (CONFIG PEGATINA_MM, "50x25" por defecto)
+function tamPegatina_() {
+  var m = String(config_('PEGATINA_MM') || '').match(/(\d+(?:[.,]\d+)?)\s*[x×*]\s*(\d+(?:[.,]\d+)?)/i);
+  var w = m ? parseFloat(m[1].replace(',', '.')) : 50, h = m ? parseFloat(m[2].replace(',', '.')) : 25;
+  return { w: w >= 15 && w <= 200 ? w : 50, h: h >= 10 && h <= 200 ? h : 25 };
+}
+// máquinas que llevan pegatina: las de control UNIDAD, activas, que no están de BAJA (filtro opcional: códigos o tipos)
+function maquinasPegatina_(filtro) {
+  var cant = {}; filas_('HERR_TIPOS').forEach(function (t) { if (String(t.control || '').toUpperCase() === 'CANTIDAD') cant[String(t.prefijo)] = true; });
+  var qs = String(filtro || '').toUpperCase().split(/[\s,;]+/).filter(function (w) { return w; });
+  return herrDonde_(false).filter(function (h) {
+    if (h.estado === 'BAJA' || cant[h.codigo.split('-')[0]]) return false;
+    return !qs.length || qs.some(function (q) { return h.codigo === q || h.codigo.split('-')[0] === q; });
+  });
+}
+function pegatinasHtml_(maqs, tam) {
+  var lado = Math.min(tam.h - 3, tam.w * 0.5), letra = Math.max(3.5, Math.min(tam.h * 0.3, (tam.w - lado - 5) / 4.2));
+  var pegs = maqs.map(function (h) {
+    var png = 'data:image/png;base64,' + base64_(qrPng_(qrMatriz_(h.codigo), 6));
+    return '<div class="peg"><table><tr><td class="qr"><img src="' + png + '"></td><td class="tx"><div class="cod">' + esc_(h.codigo) + '</div><div class="tipo">' + esc_(h.tipo) + '</div><div class="marca">SOLERA</div></td></tr></table></div>';
+  }).join('');
+  return '<!DOCTYPE html><html><head><meta charset="utf-8"><style>' +
+    '@page{size:' + tam.w + 'mm ' + tam.h + 'mm;margin:0}html,body{margin:0;padding:0}body{font-family:Arial,Helvetica,sans-serif;color:#000}' +
+    '.peg{width:' + tam.w + 'mm;height:' + tam.h + 'mm;overflow:hidden;page-break-after:always;box-sizing:border-box;padding:1.5mm}' +
+    'table{border-collapse:collapse;width:100%;height:100%}td{padding:0;vertical-align:middle}td.qr{width:' + lado + 'mm}td.qr img{width:' + lado + 'mm;height:' + lado + 'mm;display:block}' +
+    'td.tx{padding-left:2mm}.cod{font-size:' + letra.toFixed(1) + 'mm;font-weight:bold;line-height:1;white-space:nowrap}.tipo{font-size:' + Math.max(2.4, letra * 0.38).toFixed(1) + 'mm;margin-top:1mm;text-transform:uppercase}' +
+    '.marca{font-size:' + Math.max(2.4, letra * 0.42).toFixed(1) + 'mm;font-weight:bold;letter-spacing:.6mm;margin-top:1mm}</style></head><body>' + pegs + '</body></html>';
+}
+// "Pegatinas" (Herramientas, herramientas = SI): PDF con una pegatina por máquina, en Drive (HERRAMIENTAS/PEGATINAS) y para descargar
+function pegatinas_(b) {
+  var t = exigirHerr_(b.auth), maqs = maquinasPegatina_(b.filtro);
+  if (!maqs.length) throw new Error('No hay máquinas con ese código o tipo');
+  var tam = tamPegatina_(), html = pegatinasHtml_(maqs, tam);
+  var nombre = 'PEGATINAS ' + Utilities.formatDate(new Date(), 'Atlantic/Canary', 'yyyy-MM-dd HHmm') + ' · ' + maqs.length + ' máquinas.pdf';
+  var pdf = HtmlService.createHtmlOutput(html).getBlob().getAs('application/pdf').setName(nombre), url = '';
+  var idCarpeta = config_('CARPETA_PARTES_ID');
+  if (idCarpeta) url = subcarpeta_(subcarpeta_(DriveApp.getFolderById(idCarpeta), 'HERRAMIENTAS'), 'PEGATINAS').createFile(pdf).getUrl();
+  return { ok: true, n: maqs.length, tam: tam.w + 'x' + tam.h, pdf_url: url, pdf: Utilities.base64Encode(pdf.getBytes()), nombre: nombre, hecho_por: t.nombre };
 }

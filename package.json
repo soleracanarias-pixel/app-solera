@@ -1,0 +1,11 @@
+{
+  "name": "app-solera",
+  "private": true,
+  "description": "Pruebas de la app SOLERA (el código se publica en GitHub Pages y Apps Script; esto es solo para npm test)",
+  "scripts": {
+    "test": "node tests/correr.js"
+  },
+  "devDependencies": {
+    "jsqr": "1.4.0"
+  }
+}
