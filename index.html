@@ -113,6 +113,10 @@ body:not(.es-admin):not(.es-encargado) .solo-gestion{display:none!important}   /
 .dq-botones button{min-height:56px;font-size:18px;font-weight:600;border-radius:10px;border:2px solid var(--azul);background:#fff;color:var(--azul);cursor:pointer}
 .dq-botones button.habitual{background:var(--ambar);border-color:var(--ambar);color:#343434}
 .dq-botones button.elegido{background:var(--azul);border-color:var(--azul);color:#fff}
+.nombres{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 8px}
+.nombres button{min-height:48px;padding:0 14px;font-size:16px;font-weight:600;border-radius:24px;border:2px solid var(--borde);background:#fff;color:var(--azul);cursor:pointer}
+.nombres button.cuadrilla{border-color:var(--ambar)}
+.nombres button.elegido{background:var(--azul);border-color:var(--azul);color:#fff}
 .enlace{display:inline-block;margin-top:8px;font-size:14px;color:var(--azul)}
 .campo-err{border-color:var(--rojo)!important;box-shadow:0 0 0 2px rgba(198,40,40,.25)!important}
 .err-msg{color:var(--rojo);font-size:14px;font-weight:600;margin:4px 0 6px}
@@ -134,6 +138,8 @@ body:not(.es-admin):not(.es-encargado) .solo-gestion{display:none!important}   /
 .vale-item .det td{border-top:1px solid var(--borde);padding:4px 6px}
 .anulado b{text-decoration:line-through;color:var(--gris)}
 .chip.anul{background:#ffebee;color:var(--rojo)}
+.ico{width:1.25em;height:1.25em;vertical-align:-.28em;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;margin-right:.4em;flex:0 0 auto}
+button.cam .ico,button.inv-foto .ico,button.otro-foto .ico{margin:0}
 .chip.revisar{background:var(--rojo);color:#fff;font-weight:700}
 .chips-vale{display:flex;flex-direction:column;gap:4px;align-items:flex-end}
 .nota-revisar{margin-top:6px;padding:8px;border-radius:8px;background:#f1f8e9;border:1px solid #c5e1a5}.nota-revisar.abierta{background:#ffebee;border-color:#ef9a9a}
@@ -265,6 +271,7 @@ a{color:var(--azul)}
 </style>
 </head>
 <body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="i-camara" viewBox="0 0 24 24"><path d="M3 8h4l2-3h6l2 3h4v12H3z"/><circle cx="12" cy="13" r="4"/></symbol><symbol id="i-lupa" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-5-5"/></symbol><symbol id="i-recibo" viewBox="0 0 24 24"><path d="M6 2h12v20l-3-2-3 2-3-2-3 2z"/><path d="M9 7h6M9 11h6M9 15h4"/></symbol><symbol id="i-traspaso" viewBox="0 0 24 24"><path d="M4 8h15l-4-4M20 16H5l4 4"/></symbol><symbol id="i-caja" viewBox="0 0 24 24"><path d="M3 7l9-4 9 4v10l-9 4-9-4z"/><path d="M3 7l9 4 9-4M12 11v10"/></symbol><symbol id="i-clip" viewBox="0 0 24 24"><path d="M21 11l-9 9a5 5 0 0 1-7-7l9-9a3.5 3.5 0 0 1 5 5l-9 9a2 2 0 0 1-3-3l8-8"/></symbol><symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 22s7-7 7-12a7 7 0 0 0-14 0c0 5 7 12 7 12z"/><circle cx="12" cy="10" r="2.5"/></symbol><symbol id="i-andamio" viewBox="0 0 24 24"><path d="M5 3v18M19 3v18M5 8h14M5 14h14M5 8l14 6M3 21h18"/></symbol><symbol id="i-llave" viewBox="0 0 24 24"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.4-.6-.6-2.4z"/></symbol><symbol id="i-firma" viewBox="0 0 24 24"><path d="M3 17c3-6 5-6 6-3s3 3 5-1 3-3 4 0M3 21h18"/></symbol><symbol id="i-descarga" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M4 21h16"/></symbol><symbol id="i-compartir" viewBox="0 0 24 24"><path d="M12 15V3M7 8l5-5 5 5M5 13v8h14v-8"/></symbol><symbol id="i-huella" viewBox="0 0 24 24"><path d="M12 11v4M8 7a6 6 0 0 1 10 4v2M6 11a6 6 0 0 1 .5-2.5M8 15v-4a4 4 0 0 1 8 0v5M12 21c-2-1-4-3-4-6"/></symbol><symbol id="i-persona" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></symbol><symbol id="i-personas" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2 21a7 7 0 0 1 14 0M16 4.5a3.5 3.5 0 0 1 0 7M18 14a7 7 0 0 1 4 7"/></symbol><symbol id="i-obra" viewBox="0 0 24 24"><path d="M3 18h18M5 18a7 7 0 0 1 14 0M10 11V6h4v5"/></symbol><symbol id="i-casa" viewBox="0 0 24 24"><path d="M3 9l9-6 9 6v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/><path d="M8 21v-8h8v8"/></symbol><symbol id="i-aviso" viewBox="0 0 24 24"><path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18v.5"/></symbol><symbol id="i-ok" viewBox="0 0 24 24"><path d="M4 12l5 5L20 6"/></symbol><symbol id="i-sale" viewBox="0 0 24 24"><path d="M12 20V5M5 12l7-7 7 7"/></symbol><symbol id="i-vuelve" viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/></symbol><symbol id="i-recarga" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5"/></symbol></svg>
 <div id="nuevaVersion" style="display:none">Hay una versión nueva de la app · <b>toca aquí para actualizar</b></div>
 <header>
   <div><h1>SOLERA</h1><div class="quien" id="quien"></div></div>
@@ -290,7 +297,7 @@ a{color:var(--azul)}
       <select id="loginTrab"></select>
     </div>
     <div id="huellaBloque" style="display:none">
-      <button class="btn verde" id="btnHuella">👆 Entrar con huella, cara o PIN del móvil</button>
+      <button class="btn verde" id="btnHuella"><svg class="ico"><use href="#i-huella"/></svg>Entrar con huella, cara o PIN del móvil</button>
       <a href="#" id="usarPinApp" class="ayuda">Entrar con el PIN de la app</a> ·
       <a href="#" id="quitarHuella" class="ayuda">Quitar la huella en este móvil</a>
     </div>
@@ -342,13 +349,13 @@ a{color:var(--azul)}
   <div class="tarjeta">
     <h2>Fotos de la obra</h2>
     <input type="file" id="fotoInput" accept="image/*" capture="environment" multiple style="display:none">
-    <button class="btn sec peq" id="btnFoto">📷 Hacer / elegir foto</button>
+    <button class="btn sec peq" id="btnFoto"><svg class="ico"><use href="#i-camara"/></svg>Hacer / elegir foto</button>
     <div class="fotos" id="fotos"></div>
   </div>
 
   <div class="tarjeta">
     <h2>Conforme del cliente</h2>
-    <label>Nombre de quien firma (opcional)</label>
+    <label>Nombre de quien firma · opcional</label>
     <input type="text" id="firmante" placeholder="Encargado de la tienda…" autocomplete="off">
     <div class="sugs" id="firmanteSugs" style="display:none"></div>
     <label>Correo para la copia</label>
@@ -356,7 +363,7 @@ a{color:var(--azul)}
     <div class="ayuda">Recibirá una copia del parte firmado</div>
     <div class="firma-prev" id="firmaPrev">Sin firma</div>
     <div class="fila">
-      <button class="btn sec peq" id="btnFirmar">✍️ Firmar</button>
+      <button class="btn sec peq" id="btnFirmar"><svg class="ico"><use href="#i-firma"/></svg>Firmar</button>
       <button class="btn sec peq" id="btnBorrarFirma" style="color:var(--rojo);border-color:var(--rojo)">Quitar firma</button>
     </div>
   </div>
@@ -368,16 +375,16 @@ a{color:var(--azul)}
 <!-- ALMACÉN -->
 <section class="pantalla" id="p-almacen">
   <div class="tarjeta botones-alm">
-    <button class="btn grande" id="btnSalida">⬆ ME LLEVO</button>
-    <button class="btn grande verde" id="btnDevolucion">↩ DEVUELVO</button>
-    <button class="btn peq sec" id="btnRecuperado" style="width:100%">🔎 ¿Ha aparecido material sin albarán?</button>
-    <button class="btn grande sec solo-admin" id="btnEntrada">🧾 COMPRA (admin)</button>
-    <button class="btn grande sec solo-gestion" id="btnTraspaso">🔁 TRASPASO</button>
+    <button class="btn grande" id="btnSalida"><svg class="ico"><use href="#i-sale"/></svg>ME LLEVO</button>
+    <button class="btn grande verde" id="btnDevolucion"><svg class="ico"><use href="#i-vuelve"/></svg>DEVUELVO</button>
+    <button class="btn peq sec" id="btnRecuperado" style="width:100%"><svg class="ico"><use href="#i-lupa"/></svg>¿Ha aparecido material sin albarán?</button>
+    <button class="btn grande sec solo-admin" id="btnEntrada"><svg class="ico"><use href="#i-recibo"/></svg>COMPRA · admin</button>
+    <button class="btn grande sec solo-gestion" id="btnTraspaso"><svg class="ico"><use href="#i-traspaso"/></svg>TRASPASO</button>
   </div>
   <div class="tarjeta" id="eanPendientes" style="display:none"></div>
   <div id="movSitioMAT"></div>
   <div class="tarjeta solo-stock">
-    <button class="btn peq sec" id="verStock" style="width:100%">📦 Ver stock</button>
+    <button class="btn peq sec" id="verStock" style="width:100%"><svg class="ico"><use href="#i-caja"/></svg>Ver stock</button>
     <div id="stockBloque" style="display:none">
       <div class="fila" style="margin-top:10px">
         <div style="flex:0 0 42%"><select id="stockAlmacen"></select></div>
@@ -392,7 +399,7 @@ a{color:var(--azul)}
     <div class="ayuda" id="movCuando"></div>
     <!-- vale sencillo (ME LLEVO, DEVUELVO, ENCONTRÉ): almacén y persona ya puestos, en una línea discreta -->
     <div class="aviso err" id="invEnCurso" style="display:none">⚠️ Inventario en curso en este almacén: este vale quedará marcado para revisarlo al cerrar el inventario.</div>
-    <div class="resumen" id="valeResumen" style="display:none"><span id="valeResumenTxt"></span> · <a href="#" id="valeCambiar">cambiar</a></div>
+    <div class="resumen" id="valeResumen" style="display:none"><span id="valeResumenTxt"></span> · <a href="#" id="valeCambiar">Lo apunto por un compañero</a></div>
     <div id="almBloque"><label id="almLabel">Almacén</label><select id="valeAlmacen"></select>
       <div id="destinoBloque" style="display:none"><label>Llevar al almacén</label><select id="valeAlmDestino"></select></div>
     </div>
@@ -403,7 +410,7 @@ a{color:var(--azul)}
       <label>Nº de albarán o ticket</label><input type="text" id="valeAlbaran">
       <div class="ayuda">Las facturas no se meten en la app.</div>
       <input type="file" id="valeAlbaranInput" accept="image/*,application/pdf,.pdf" style="display:none">
-      <button class="btn sec peq" id="valeBtnAlbaran">📎 Foto o fichero del albarán/ticket (jpg, png, pdf)</button>
+      <button class="btn sec peq" id="valeBtnAlbaran"><svg class="ico"><use href="#i-clip"/></svg>Foto o fichero del albarán o ticket · jpg, png, pdf</button>
       <div class="ayuda" id="valeAlbaranNombre"></div>
       <label class="interruptor" style="margin-top:8px"><input type="checkbox" id="valeSoloFoto"> Solo foto, las líneas las meto luego</label>
       <div class="ayuda" id="valeSoloFotoAyuda" style="display:none">Queda como albarán pendiente de leer: no entra en el stock hasta que le metas las líneas (Resumen → "Albaranes pendientes de leer").</div>
@@ -413,13 +420,15 @@ a{color:var(--azul)}
       <div id="valeLineas"></div>
       <button class="btn sec peq" id="valeOtraLinea">+ otra línea</button>
     </div>
+    <div id="origenBloque" style="display:none"><label>¿De dónde ha salido?</label><div class="dq-botones" id="origenBotones">
+      <button type="button" data-o="OBRA">Sobró de la obra</button><button type="button" data-o="MERCADONA">Lo dejó Mercadona</button><button type="button" data-o="ALMACEN">Apareció en el almacén</button></div></div>
     <div id="movObraBloque"><label id="movObraLabel">Obra</label><input type="text" id="movObraTxt" placeholder="Escribe la obra…" autocomplete="off"><div class="sugs" id="movObraSugs" style="display:none"></div><select id="movObra" style="display:none"></select>
-      <div id="personaBloque"><label id="movPersonaLabel">¿Quién se lo lleva?</label><input type="text" id="movPersonaTxt" autocomplete="off"><div class="sugs" id="movPersonaSugs" style="display:none"></div></div>
+      <div id="personaBloque"><label id="movPersonaLabel">¿Quién se lo lleva?</label><div class="nombres" id="movPersonaBotones"></div><input type="text" id="movPersonaTxt" autocomplete="off" placeholder="O escribe el nombre…"><div class="sugs" id="movPersonaSugs" style="display:none"></div></div>
     </div>
     <details id="movMas"><summary id="movMasTxt">Más: comentario y fotos</summary>
       <label id="movNotaLabel">Comentario</label><input type="text" id="movNota">
       <input type="file" id="movFotoInput" accept="image/*" multiple style="display:none">
-      <button class="btn sec peq" id="movBtnFoto">📷 Foto (albarán, material…)</button>
+      <button class="btn sec peq" id="movBtnFoto"><svg class="ico"><use href="#i-camara"/></svg>Foto · albarán, material…</button>
       <div class="fotos" id="movFotos"></div>
     </details>
     <button class="btn verde" id="movGuardar">GUARDAR</button>
@@ -436,15 +445,15 @@ a{color:var(--azul)}
   </div>
   <!-- máquinas una a una (control UNIDAD): un solo flujo para llevar, dejar, pasar, averiar o dar de alta -->
   <div class="tarjeta botones-alm">
-    <button class="btn grande" id="btnDondeQueda">📍 ¿Dónde queda una máquina?</button>
-    <button class="btn peq sec" id="btnAndamios" style="width:100%">🏗️ Andamios (por piezas)</button>
+    <button class="btn grande" id="btnDondeQueda"><svg class="ico"><use href="#i-pin"/></svg>¿Dónde queda una máquina?</button>
+    <button class="btn peq sec" id="btnAndamios" style="width:100%"><svg class="ico"><use href="#i-andamio"/></svg>Andamios · por piezas</button>
   </div>
   <div class="tarjeta" id="dqForm" style="display:none">
     <h2>📍 ¿Dónde queda?</h2>
     <div class="ayuda" id="dqCuando"></div>
     <div id="dqMaqBloque">
       <label>Máquina</label>
-      <div class="fila vlin"><div><div style="position:relative"><input type="text" id="dqMaqTxt" placeholder="Número o máquina (BAT-01, batidora…)" autocomplete="off"><div class="sugs" id="dqMaqSugs" style="display:none"></div></div><div class="nolista" id="dqNoLista"></div></div><button class="cam" id="dqCam" title="Escanear el código o el QR de la máquina">📷</button></div>
+      <div class="fila vlin"><div><div style="position:relative"><input type="text" id="dqMaqTxt" placeholder="Número o máquina (BAT-01, batidora…)" autocomplete="off"><div class="sugs" id="dqMaqSugs" style="display:none"></div></div><div class="nolista" id="dqNoLista"></div></div><button class="cam" id="dqCam" title="Escanear el código o el QR de la máquina"><svg class="ico"><use href="#i-camara"/></svg></button></div>
       <div class="ayuda" id="dqEstado"></div>
       <a href="#" id="dqSinNum" class="enlace">No tiene número → darle uno</a>
     </div>
@@ -452,7 +461,7 @@ a{color:var(--azul)}
       <label>Tipo de máquina</label><select id="dqTipo"></select>
       <div id="dqNumero" class="aviso" style="display:none;font-size:16px"></div>
       <input type="file" id="dqPlacaInput" accept="image/*" style="display:none">
-      <button class="btn sec peq" id="dqPlacaBtn">📷 Foto de la placa de características (opcional)</button>
+      <button class="btn sec peq" id="dqPlacaBtn"><svg class="ico"><use href="#i-camara"/></svg>Foto de la placa de características · opcional</button>
       <div class="fotos" id="dqPlaca"></div>
       <div><a href="#" id="dqConNum" class="enlace">← Ya tiene número</a></div>
     </div>
@@ -465,7 +474,7 @@ a{color:var(--azul)}
       <div id="dqCompBloque" style="display:none"><label>¿Con qué compañero?</label><div style="position:relative"><input type="text" id="dqPersonaTxt" placeholder="Escribe el nombre…" autocomplete="off"><div class="sugs" id="dqPersonaSugs" style="display:none"></div></div></div>
       <div id="dqFinBloque" style="display:none">
         <input type="file" id="dqFotoInput" accept="image/*" style="display:none">
-        <button class="btn sec peq" id="dqFoto">📷 Foto (opcional)</button>
+        <button class="btn sec peq" id="dqFoto"><svg class="ico"><use href="#i-camara"/></svg>Foto · opcional</button>
         <div class="fotos" id="dqFotos"></div>
         <button class="btn verde" id="dqGuardar">GUARDAR</button>
       </div>
@@ -480,11 +489,11 @@ a{color:var(--azul)}
     <label id="andAlmLabel">Sale del almacén</label><select id="andAlmacen"></select>
     <div id="andObraBloque"><label>Obra</label><div style="position:relative"><input type="text" id="andObraTxt" placeholder="Escribe la obra…" autocomplete="off"><div class="sugs" id="andObraSugs" style="display:none"></div></div><select id="andObra" style="display:none"></select>
       <label id="andPersonaLabel">¿Quién lo lleva?</label><div style="position:relative"><input type="text" id="andPersona" autocomplete="off"><div class="sugs" id="andPersonaSugs" style="display:none"></div></div></div>
-    <label>Piezas (vacío = 0)</label>
+    <label>Piezas · vacío = 0</label>
     <div id="andLista"></div>
     <button class="btn sec peq" id="andTipoNuevo">＋ Tipo de pieza nuevo</button>
     <input type="file" id="andFotoInput" accept="image/*" style="display:none">
-    <button class="btn sec peq" id="andFoto">📷 Foto general del conjunto (obligatoria)</button>
+    <button class="btn sec peq" id="andFoto"><svg class="ico"><use href="#i-camara"/></svg>Foto general del conjunto · obligatoria</button>
     <div class="fotos" id="andFotos"></div>
     <button class="btn verde" id="andGuardar">GUARDAR</button>
     <button class="btn peq sec" id="andCancelar" style="width:100%">Cancelar</button>
@@ -493,14 +502,14 @@ a{color:var(--azul)}
   <div class="tarjeta solo-herr" id="herrGestion">
     <h2>Reparaciones y altas</h2>
     <div class="fila">
-      <button class="btn peq" id="btnRepEntregar">🔧 Entregar a reparador</button>
-      <button class="btn peq sec" id="btnRepVuelta">↩ Vuelve de reparación</button>
+      <button class="btn peq" id="btnRepEntregar"><svg class="ico"><use href="#i-llave"/></svg>Entregar a reparador</button>
+      <button class="btn peq sec" id="btnRepVuelta"><svg class="ico"><use href="#i-vuelve"/></svg>Vuelve de reparación</button>
     </div>
     <div id="repForm" style="display:none">
       <label>Máquinas averiadas que se entregan</label><div id="repMaquinas"></div>
       <label>Reparador</label><select id="repReparador"></select>
       <label>Fecha</label><input type="date" id="repFecha">
-      <button class="btn sec peq" id="repFirmar">✍️ Firma del reparador (opcional)</button>
+      <button class="btn sec peq" id="repFirmar"><svg class="ico"><use href="#i-firma"/></svg>Firma del reparador · opcional</button>
       <div class="firma-prev" id="repFirmaPrev" style="display:none"></div>
       <button class="btn verde" id="repGuardar">Entregar y hacer recibo</button>
       <button class="btn peq sec" id="repCancelar" style="width:100%">Cancelar</button>
@@ -518,7 +527,7 @@ a{color:var(--azul)}
     <div id="herrTiposPend"></div>
   </div>
   <div class="tarjeta">
-    <button class="btn peq sec" id="verHerr" style="width:100%">🔧 ¿Dónde están las herramientas?</button>
+    <button class="btn peq sec" id="verHerr" style="width:100%"><svg class="ico"><use href="#i-llave"/></svg>¿Dónde están las herramientas?</button>
     <div id="herrBloque" style="display:none">
       <input type="text" id="buscarHerr" placeholder="Buscar herramienta…" style="margin-top:10px">
       <div class="lista" id="herrLista"></div>
@@ -536,7 +545,7 @@ a{color:var(--azul)}
       <label>Almacén</label><select id="nvAlmacen"></select>
       <label>Fecha</label><input type="date" id="nvFecha">
       <label>Nombre</label><input type="text" id="nvNombre">
-      <label>Quién cuenta cada categoría (cada una, una sola persona)</label>
+      <label>Quién cuenta cada categoría · cada una, una sola persona</label>
       <div id="nvAsig"></div>
       <button class="btn verde" id="nvGuardar">Abrir inventario</button>
       <button class="btn peq sec" id="nvCancelar" style="width:100%">Cancelar</button>
@@ -548,13 +557,13 @@ a{color:var(--azul)}
       <h2 id="invTitulo">Inventario</h2>
       <div class="aviso">⚠️ No borres los datos del navegador ni desinstales la app hasta que el inventario esté enviado.</div>
       <div class="ayuda listasFecha"></div>
-      <button class="btn peq sec preparar">📥 Preparar para ir sin cobertura</button>
+      <button class="btn peq sec preparar"><svg class="ico"><use href="#i-descarga"/></svg>Preparar para ir sin cobertura</button>
       <select id="invEvento" style="display:none;margin-top:8px"></select>
       <div class="ayuda" id="invInfo"></div>
     </div>
     <div class="tarjeta">
       <div class="fila">
-        <button class="btn peq" id="invEscanear">📷 Escanear</button>
+        <button class="btn peq" id="invEscanear"><svg class="ico"><use href="#i-camara"/></svg>Escanear</button>
         <button class="btn peq sec" id="invOtro">+ material que no está en la lista</button>
       </div>
       <div class="pestanas" id="invPestanas"><button id="invTabMat" class="activa">MATERIALES</button><button id="invTabMaq">MÁQUINAS</button></div>
@@ -571,8 +580,8 @@ a{color:var(--azul)}
       <input type="file" id="invFotoInput" accept="image/*" style="display:none">
     </div>
     <div class="tarjeta">
-      <label>Fotos generales (estanterías…)</label>
-      <button class="btn sec peq" id="invFotoGen">📷 Añadir foto</button>
+      <label>Fotos generales · estanterías…</label>
+      <button class="btn sec peq" id="invFotoGen"><svg class="ico"><use href="#i-camara"/></svg>Añadir foto</button>
       <div class="fotos" id="invFotosGen"></div>
       <div id="invEstado"></div>
       <button class="btn verde" id="invTerminar">He terminado</button>
@@ -584,7 +593,7 @@ a{color:var(--azul)}
 <!-- RESUMEN (admin, herramientas = SI o inventario = SI): la primera en el ordenador -->
 <section class="pantalla" id="p-resumen">
   <div class="tarjeta">
-    <div class="fila" style="align-items:center"><h2 style="margin:0">Resumen</h2><button class="btn peq sec" id="resumenActualizar" style="flex:0 0 auto">↻ Actualizar</button></div>
+    <div class="fila" style="align-items:center"><h2 style="margin:0">Resumen</h2><button class="btn peq sec" id="resumenActualizar" style="flex:0 0 auto"><svg class="ico"><use href="#i-recarga"/></svg>Actualizar</button></div>
     <div class="res-tarjetas" id="resTarjetas"><div class="aviso">Cargando…</div></div>
   </div>
   <div class="tarjeta">
@@ -603,7 +612,7 @@ a{color:var(--azul)}
       <div><label>Desde</label><input type="date" id="fDesde"></div>
       <div><label>Hasta</label><input type="date" id="fHasta"></div>
       <div><label>Trabajador</label><input type="text" id="fTrab" placeholder="Nombre…"></div>
-      <div><label>Tipo</label><select id="fTipo"><option value="">Todos</option><option value="SALIDA">ME LLEVO</option><option value="DEVOLUCION">DEVUELVO</option><option value="RECUPERADO">ENCONTRÉ MATERIAL</option><option value="ENTRADA">COMPRA</option><option value="COMPRA_OBRA">COMPRA A OBRA</option><option value="TRASPASO">TRASPASO</option><option value="AJUSTE">AJUSTE (inventario)</option><option value="PENDIENTE_LEER">ALBARANES PENDIENTES DE LEER</option></select></div>
+      <div><label>Tipo</label><select id="fTipo"><option value="">Todos</option><option value="SALIDA">ME LLEVO</option><option value="DEVOLUCION">DEVUELVO</option><option value="RECUPERADO">ENCONTRÉ MATERIAL</option><option value="ENTRADA">COMPRA</option><option value="COMPRA_OBRA">COMPRA A OBRA</option><option value="TRASPASO">TRASPASO</option><option value="AJUSTE">AJUSTE · inventario</option><option value="PENDIENTE_LEER">ALBARANES PENDIENTES DE LEER</option></select></div>
       <div><label>Almacén</label><select id="fAlm"><option value="">Todos</option></select></div>
       <div><label>Obra</label><input type="text" id="fObra" placeholder="maj, merc…"></div>
     </div>
@@ -622,7 +631,7 @@ a{color:var(--azul)}
   </div>
   <div class="tarjeta">
     <div class="ayuda listasFecha"></div>
-    <button class="btn peq sec preparar">📥 Preparar para ir sin cobertura</button>
+    <button class="btn peq sec preparar"><svg class="ico"><use href="#i-descarga"/></svg>Preparar para ir sin cobertura</button>
   </div>
   <div class="tarjeta">
     <div class="ayuda" id="duenoMovil"></div>
@@ -653,7 +662,7 @@ a{color:var(--azul)}
   <div class="caja">
     <div class="scan-marco"><video id="scanVideo" playsinline muted autoplay></video></div>
     <div class="ayuda" id="scanMsg">Apunta a las barras, con la línea roja cruzándolas.</div>
-    <label>O escribe el número que hay debajo de las barras (o la referencia del fabricante)</label>
+    <label>O escribe el número que hay debajo de las barras · o la referencia del fabricante</label>
     <input type="text" id="scanManual" autocomplete="off">
   </div>
   <div class="pie"><button class="btn sec" id="scanCancelar">Cancelar</button><button class="btn" id="scanOk">Usar el número</button></div>
@@ -666,7 +675,7 @@ a{color:var(--azul)}
     <label>¿Qué material es?</label>
     <div style="position:relative"><input type="text" id="eanMatTxt" placeholder="Escribe el material…" autocomplete="off"><div class="sugs" id="eanMatSugs" style="display:none"></div></div>
     <div id="eanMarcaBloque"><label>¿Qué marca?</label><input type="text" id="eanMarca" placeholder="PANDA, WEBER, SIKA…" autocomplete="off">
-    <label>Nombre del envase (opcional)</label><input type="text" id="eanEnvase" placeholder="Lo que pone en el saco o la caja"></div>
+    <label>Nombre del envase · opcional</label><input type="text" id="eanEnvase" placeholder="Lo que pone en el saco o la caja"></div>
   </div>
   <div class="pie"><button class="btn sec" id="eanCancelar">Cancelar</button><button class="btn verde" id="eanGuardar">Guardar</button></div>
 </div>
@@ -675,9 +684,9 @@ a{color:var(--azul)}
   <div class="cab"><b>Tipo de andamio nuevo</b></div>
   <div class="caja">
     <label>Material</label><select id="tnMaterial"><option>ALUMINIO</option><option>HIERRO</option><option>OTRO</option></select>
-    <label>Qué es (corto)</label><input type="text" id="tnDef" placeholder="Módulo 2 m, plataforma, rodapié…" autocomplete="off">
+    <label>Qué es · corto</label><input type="text" id="tnDef" placeholder="Módulo 2 m, plataforma, rodapié…" autocomplete="off">
     <input type="file" id="tnFotoInput" accept="image/*" style="display:none">
-    <button class="btn sec peq" id="tnFoto">📷 Foto (obligatoria)</button>
+    <button class="btn sec peq" id="tnFoto"><svg class="ico"><use href="#i-camara"/></svg>Foto · obligatoria</button>
     <div class="fotos" id="tnFotos"></div>
     <div class="ayuda">Queda pendiente hasta que el admin le ponga código y nombre; mientras, se puede usar.</div>
   </div>
@@ -690,7 +699,7 @@ a{color:var(--azul)}
     <label>Nombre</label><input type="text" id="otroNombre" autocomplete="off">
     <label>Unidad</label><select id="otroUnidad"><option>ud</option><option>saco</option><option>bolsa</option><option>rollo</option><option>bote</option><option>m</option><option>m2</option><option>m3</option></select>
     <label>Cantidad</label><input type="number" id="otroCant" inputmode="decimal" step="any" min="0">
-    <label>Marca (opcional)</label><input type="text" id="otroMarca" autocomplete="off">
+    <label>Marca · opcional</label><input type="text" id="otroMarca" autocomplete="off">
     <div class="ayuda">Queda como OTRO y sale en "pendientes de dar de alta en MATERIALES".</div>
   </div>
   <div class="pie"><button class="btn sec" id="otroCancelar">Cancelar</button><button class="btn verde" id="otroGuardar">Añadir</button></div>
@@ -714,7 +723,7 @@ a{color:var(--azul)}
 'use strict';
 var CFG = window.SOLERA_CONFIG || {};
 // número de esta versión de la app (el mismo que VERSION_SERVIDOR de Code.gs: se sube a la vez en cada publicación)
-var VERSION_WEB = 28;
+var VERSION_WEB = 29;
 var $ = function (id) { return document.getElementById(id); };
 
 // ---------------------------------------------------------------- almacenamiento local (IndexedDB)
@@ -841,6 +850,8 @@ function fechaES(iso) { var m = String(iso || '').match(/^(\d{4})-(\d{2})-(\d{2}
 function ahoraES() { var d = new Date(), z = function (n) { return String(n).padStart(2, '0'); }; return z(d.getDate()) + '/' + z(d.getMonth() + 1) + '/' + d.getFullYear() + ' ' + z(d.getHours()) + ':' + z(d.getMinutes()); }
 function normal(s) { return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').trim(); }
 function uid() { return Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8); }
+// icono SVG propio (los dibujos están en el <svg> de arriba del todo)
+function ico(n) { return '<svg class="ico" aria-hidden="true"><use href="#i-' + n + '"/></svg>'; }
 function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
 
 function estadoRed() {
@@ -1435,7 +1446,7 @@ function pintarStock() {
     var abierta = q.length > 0 || S.stockAbiertas[c];
     return '<details class="cat-stock" data-cat="' + esc(c) + '"' + (abierta ? ' open' : '') + '><summary><span>' + esc(c) + '</span><small>' + pos.length + ' con stock' + (neg.length ? ' · <span style="color:var(--rojo)">' + neg.length + ' en negativo</span>' : '') + '</small></summary>' +
       neg.map(linea).join('') + pos.map(linea).join('') +
-      (cero.length ? '<details class="ceros"' + (q.length ? ' open' : '') + '><summary>A cero (' + cero.length + ')</summary>' + cero.map(linea).join('') + '</details>' : '') + '</details>';
+      (cero.length ? '<details class="ceros"' + (q.length ? ' open' : '') + '><summary>A cero · ' + cero.length + '</summary>' + cero.map(linea).join('') + '</details>' : '') + '</details>';
   }).join('');
   $('stockLista').innerHTML = h || '<div class="aviso">' + (q.length ? 'Ningún material con ese nombre o código.' : 'Sin materiales. Pulsa "Actualizar listas" en Enviados.') + '</div>';
   $('stockLista').insertAdjacentHTML('afterbegin', otrosPendHtml());
@@ -1615,7 +1626,9 @@ function abrirMov(tipo) {
   $('movForm').classList.toggle('simple', simple); $('movForm').classList.remove('cambiando');
   $('invEnCurso').style.display = 'none';
   $('valeResumen').style.display = simple ? '' : 'none';
-  $('movMas').open = tipo === 'RECUPERADO' || !simple;   // el comentario de ENCONTRÉ es obligatorio
+  $('movMas').open = !simple;
+  // ENCONTRÉ: tres botones en vez del comentario obligatorio (con "Apareció en el almacén" la obra es opcional)
+  S.origen = ''; $('origenBloque').style.display = tipo === 'RECUPERADO' ? '' : 'none'; pintarOrigen();
   $('movMasTxt').textContent = 'Más: comentario y fotos';
   if (simple) DB.get('kv', 'ultimaObraVale-' + S.usuario.codigo).then(function (o) {   // la última obra usada, ya puesta (se puede cambiar)
     if (o && obras().some(function (x) { return String(x.codigo) === String(o); })) { $('movObra').value = String(o); verObra('movObra', 'movObraTxt'); }
@@ -1623,15 +1636,15 @@ function abrirMov(tipo) {
   $('valeLineas').innerHTML = ''; filaVale();
   $('valeProveedor').value = ''; $('valeAlbaran').value = ''; $('valeTipoDoc').value = 'ALBARAN'; S.albaranArchivo = null; $('valeAlbaranNombre').textContent = '';
   $('valeSoloFoto').checked = false; pintarSoloFoto();
-  $('movTitulo').textContent = TIPO_VALE[tipo] + (tipo === 'SALIDA' ? ' (salida a obra)' : tipo === 'DEVOLUCION' ? ' (vuelve al almacén)' : tipo === 'RECUPERADO' ? ' (material que aparece sin albarán)' : tipo === 'TRASPASO' ? ' (de un almacén a otro)' : ' (entrada con albarán o ticket)');
-  $('movObraLabel').textContent = tipo === 'RECUPERADO' ? 'Obra de procedencia' : 'Obra';
+  $('movTitulo').textContent = TIPO_VALE[tipo] + ' · ' + (tipo === 'SALIDA' ? 'salida a obra' : tipo === 'DEVOLUCION' ? 'vuelve al almacén' : tipo === 'RECUPERADO' ? 'material que aparece sin albarán' : tipo === 'TRASPASO' ? 'de un almacén a otro' : 'entrada con albarán o ticket');
+  $('movObraLabel').textContent = 'Obra';
   $('movPersonaLabel').textContent = { SALIDA: '¿Quién se lo lleva?', DEVOLUCION: '¿Quién lo devuelve?', RECUPERADO: '¿Quién lo encontró?' }[tipo] || '';
-  $('movPersonaTxt').value = S.usuario ? S.usuario.nombre : '';
-  $('movNotaLabel').textContent = tipo === 'RECUPERADO' ? 'Comentario: dónde y cómo se encontró (obligatorio)' : 'Comentario';
-  $('movBtnFoto').textContent = '📷 Foto (opcional)';
+  $('movPersonaTxt').value = S.usuario ? S.usuario.nombre : ''; pintarNombres();
+  $('movNotaLabel').textContent = tipo === 'RECUPERADO' ? 'Comentario · opcional' : 'Comentario';
+  $('movBtnFoto').innerHTML = ico('camara') + 'Foto · opcional';
   if (tipo === 'ENTRADA') pintarDestino();
 }
-var TIPO_VALE = { SALIDA: 'ME LLEVO', DEVOLUCION: 'DEVUELVO', RECUPERADO: 'ENCONTRÉ MATERIAL', ENTRADA: 'COMPRA', COMPRA_OBRA: 'COMPRA A OBRA', AJUSTE: 'AJUSTE (inventario)', TRASPASO: 'TRASPASO', TRASPASO_SALE: 'TRASPASO (sale)', TRASPASO_ENTRA: 'TRASPASO (entra)', AVISO: 'AVISO' };
+var TIPO_VALE = { SALIDA: 'ME LLEVO', DEVOLUCION: 'DEVUELVO', RECUPERADO: 'ENCONTRÉ MATERIAL', ENTRADA: 'COMPRA', COMPRA_OBRA: 'COMPRA A OBRA', AJUSTE: 'AJUSTE · inventario', TRASPASO: 'TRASPASO', TRASPASO_SALE: 'TRASPASO · sale', TRASPASO_ENTRA: 'TRASPASO · entra', AVISO: 'AVISO' };
 $('valeAlmacen').onchange = function () { recordarAlmacen(this.value); pintarResumen(); };
 // en los vales solo lo que pasa por el almacén (en_almacen = NO va directo a obra y solo sale en los partes)
 function matsAlmacen() {
@@ -1652,15 +1665,39 @@ function pintarResumen() {
   var quien = { SALIDA: 'se lo lleva', DEVOLUCION: 'lo devuelve', RECUPERADO: 'lo encontró' }[S.movTipo] || '';
   $('valeResumenTxt').textContent = nombreAlmacen($('valeAlmacen').value).split(' · ')[0] + (quien ? ' · ' + quien + ' ' + ($('movPersonaTxt').value.trim() || (S.usuario && S.usuario.nombre) || '') : '');
 }
-$('valeCambiar').onclick = function (e) { e.preventDefault(); $('movForm').classList.add('cambiando'); };
-$('movPersonaTxt').addEventListener('input', pintarResumen);
+$('valeCambiar').onclick = function (e) { e.preventDefault(); $('movForm').classList.add('cambiando'); pintarNombres(); $('personaBloque').scrollIntoView({ block: 'center' }); };
+$('movPersonaTxt').addEventListener('input', function () { pintarResumen(); pintarNombres(); });
+// "Lo apunto por un compañero": los nombres como botones, primero yo y los de mi cuadrilla (coincidieron en vales en 30 días)
+function pintarNombres() {
+  if (!S.usuario) return;
+  var yo = S.usuario.nombre, cuad = ((S.datos && S.datos.companeros) || {})[yo] || [], actual = $('movPersonaTxt').value.trim();
+  var todos = ((S.datos && S.datos.trabajadores) || []).map(function (t) { return t.nombre; }).filter(function (n) { return n && n !== yo; });
+  var primero = cuad.filter(function (n) { return todos.indexOf(n) >= 0; }), resto = todos.filter(function (n) { return primero.indexOf(n) < 0; }).sort();
+  var lista = [yo].concat(primero, resto);
+  $('movPersonaBotones').innerHTML = lista.map(function (n, i) {
+    return '<button type="button" data-n="' + esc(n) + '" class="' + (n === actual ? 'elegido' : i > 0 && i <= primero.length ? 'cuadrilla' : '') + '">' + (n === yo ? 'Yo · ' : '') + esc(n) + '</button>';
+  }).join('');
+}
+$('movPersonaBotones').onclick = function (e) {
+  var b = e.target.closest('[data-n]'); if (!b) return;
+  $('movPersonaTxt').value = b.dataset.n; $('movPersonaSugs').style.display = 'none'; pintarNombres(); pintarResumen();
+};
+var ORIGEN = { OBRA: 'Sobró de la obra', MERCADONA: 'Lo dejó Mercadona', ALMACEN: 'Apareció en el almacén' };
+function pintarOrigen() {
+  document.querySelectorAll('#origenBotones button').forEach(function (b) { b.className = b.dataset.o === S.origen ? 'elegido' : ''; });
+  $('movObraLabel').textContent = S.movTipo === 'RECUPERADO' && S.origen === 'ALMACEN' ? 'Obra · opcional' : 'Obra';
+}
+$('origenBotones').onclick = function (e) {
+  var b = e.target.closest('[data-o]'); if (!b) return;
+  S.origen = b.dataset.o; limpiarErrores($('origenBloque')); pintarOrigen();
+};
 function pintarDestino() {
   if (S.movTipo !== 'ENTRADA') return;
   var d = $('valeDestino').value;
   $('almBloque').style.display = d === 'ALMACEN' ? '' : 'none';
   $('movObraBloque').style.display = d === 'OBRA' ? '' : 'none';
   $('personaBloque').style.display = 'none';
-  $('movTitulo').textContent = d === 'OBRA' ? 'COMPRA A OBRA (no entra en el almacén)' : 'COMPRA (entrada con albarán o ticket)';
+  $('movTitulo').textContent = d === 'OBRA' ? 'COMPRA A OBRA · no entra en el almacén' : 'COMPRA · entrada con albarán o ticket';
 }
 $('valeDestino').onchange = function () { pintarDestino(); pintarInvEnCurso(); };
 // compra "solo foto": sin líneas; queda PENDIENTE_LEER y el admin las mete después desde Vales ("Completar líneas")
@@ -1678,7 +1715,7 @@ function filaVale(caja, lista) {
   var div = document.createElement('div'); div.className = 'fila vlin'; div.dataset.cod = '';
   div.innerHTML = '<div><div style="position:relative"><input type="text" class="v-txt" placeholder="Material…" autocomplete="off"><div class="sugs" style="display:none"></div></div>' +
     '<input type="text" class="v-marca" placeholder="Marca (opcional)" autocomplete="off"><small class="v-info"></small><div class="nolista"></div></div>' +
-    '<button class="cam" title="Escanear el código de barras">📷</button>' +
+    '<button class="cam" title="Escanear el código de barras"><svg class="ico"><use href="#i-camara"/></svg></button>' +
     '<div class="paso"><button type="button" class="menos" aria-label="menos">−</button><input type="number" class="v-c" inputmode="decimal" step="any" min="0" placeholder="Cant."><button type="button" class="mas" aria-label="más">+</button></div><button class="x">×</button>';
   div.querySelector('.cam').onclick = function () { escanearLinea(div); };
   var txt = div.querySelector('.v-txt'), nl = div.querySelector('.nolista');
@@ -1734,8 +1771,10 @@ function guardarVale() {
   var almacen = tipo === 'COMPRA_OBRA' ? '' : $('valeAlmacen').value, destino = tipo === 'TRASPASO' ? $('valeAlmDestino').value : '';
   if (!almacen && tipo !== 'COMPRA_OBRA') return errorEn($('valeAlmacen'), 'Elige el almacén');
   if (tipo === 'TRASPASO' && (!destino || destino === almacen)) return errorEn($('valeAlmDestino'), 'Elige otro almacén de destino');
-  if (conObra && !$('movObra').value) return errorEn($('movObraTxt'), 'Elige la obra');
-  if (tipo === 'RECUPERADO' && !nota) return errorEn($('movNota'), 'Escribe dónde y cómo se encontró');
+  if (tipo === 'RECUPERADO' && !S.origen) return errorEn($('origenBotones'), 'Elige de dónde ha salido');
+  var obraOpcional = tipo === 'RECUPERADO' && S.origen === 'ALMACEN';
+  if (conObra && !obraOpcional && !$('movObra').value) return errorEn($('movObraTxt'), 'Elige la obra');
+  if (tipo === 'RECUPERADO') nota = ORIGEN[S.origen] + (nota ? ' · ' + nota : '');
   var proveedor = $('valeProveedor').value.trim(), albaran = $('valeAlbaran').value.trim(), compra = tipo === 'ENTRADA' || tipo === 'COMPRA_OBRA';
   if (compra && !proveedor) return errorEn($('valeProveedor'), 'Escribe el proveedor');
   if (compra && !albaran) return errorEn($('valeAlbaran'), 'Escribe el nº de albarán o ticket');
@@ -1747,13 +1786,13 @@ function guardarVale() {
     if (ok) { S.otroOk = true; guardarVale(); }
   });
   S.otroOk = false;
-  var obraSel = $('movObra'), obraTxt = conObra ? obraSel.options[obraSel.selectedIndex].text : '';
+  var obraSel = $('movObra'), obraTxt = conObra && obraSel.value && obraSel.selectedIndex >= 0 ? obraSel.options[obraSel.selectedIndex].text : '';
   var vale = { id: uid(), tipo: 'vale', valeTipo: tipo, obra: obraTxt, persona: conObra && !compra ? ($('movPersonaTxt').value.trim() || S.usuario.nombre) : '',
     nota: nota, fotos: S.movFotos.slice(), albaranArchivo: compra ? S.albaranArchivo : null, proveedor: compra ? proveedor : '',
-    albaran: compra ? albaran : '', tipoDoc: compra ? $('valeTipoDoc').value : '', soloFoto: sf, lineas: lineas, fecha: isoDe(S.movCuando), hora: S.movCuando.slice(11), usuario: S.usuario.nombre, creadoEn: new Date().toISOString(), movilDe: movilDe(),
+    origen: tipo === 'RECUPERADO' ? S.origen : '', albaran: compra ? albaran : '', tipoDoc: compra ? $('valeTipoDoc').value : '', soloFoto: sf, lineas: lineas, fecha: isoDe(S.movCuando), hora: S.movCuando.slice(11), usuario: S.usuario.nombre, creadoEn: new Date().toISOString(), movilDe: movilDe(),
     almacen: almacen, almacenDestino: destino };
   if (almacen) recordarAlmacen(almacen);
-  if (conObra && tipo !== 'COMPRA_OBRA') DB.put('kv', $('movObra').value, 'ultimaObraVale-' + S.usuario.codigo);
+  if (conObra && tipo !== 'COMPRA_OBRA' && $('movObra').value) DB.put('kv', $('movObra').value, 'ultimaObraVale-' + S.usuario.codigo);
   // la compra y el traspaso van con el código y PIN de quien los hace: el servidor comprueba que es admin
   var conPin = compra || tipo === 'TRASPASO';
   (conPin ? DB.get('kv', 'pin-' + S.usuario.codigo) : Promise.resolve(null)).then(function (pin) {
@@ -1987,7 +2026,7 @@ function pintarPendientesEan() {
   var ver = puedeInventario() && l.length > 0;
   $('eanPendientes').style.display = ver ? '' : 'none';
   if (!ver) return;
-  $('eanPendientes').innerHTML = '<h2>Códigos pendientes de asociar (' + l.length + ')</h2><div class="lista">' + l.map(function (p) {
+  $('eanPendientes').innerHTML = '<h2>Códigos pendientes de asociar · ' + l.length + '</h2><div class="lista">' + l.map(function (p) {
     return '<div class="item"><div><b>' + esc(p.ean) + '</b><small>' + (p.sugerido ? 'eligieron ' + esc(nombre(p.sugerido)) : '') + (p.visto_en ? ' · ' + esc(p.visto_en) : '') + '</small></div>' +
       '<button class="btn peq" data-ean="' + esc(p.ean) + '" data-sug="' + esc(p.sugerido) + '">Asociar</button></div>';
   }).join('') + '</div>';
@@ -2071,7 +2110,7 @@ function htmlMat(m) {
     en.map(function (e, i) {
       return '<div class="inv-ent" data-i="' + i + '"><input type="text" class="inv-marca" placeholder="Marca (opcional)" value="' + esc(e.marca || '') + '" autocomplete="off">' +
         '<input type="number" class="inv-c" inputmode="decimal" step="any" min="0" placeholder="Contado" value="' + esc(e.contado == null ? '' : e.contado) + '">' +
-        (e.foto ? '<span class="inv-mini"><img src="' + e.foto + '" data-quitar="1" title="Quitar foto"></span>' : '<button class="inv-foto" title="Foto">📷</button>') + '</div>';
+        (e.foto ? '<span class="inv-mini"><img src="' + e.foto + '" data-quitar="1" title="Quitar foto"></span>' : '<button class="inv-foto" title="Foto"><svg class="ico"><use href="#i-camara"/></svg></button>') + '</div>';
     }).join('') + '<button class="inv-mas">+ otra marca</button></div>';
 }
 function pintarInv() {
@@ -2164,7 +2203,7 @@ $('invMaqLista').oninput = function (e) {
 function pintarOtros() {
   $('invOtros').innerHTML = S.inv.otros.length ? '<div class="inv-cat">A mano (no están en la lista)</div>' + S.inv.otros.map(function (o) {
     return '<div class="inv-mat" data-otro="' + esc(o.id) + '"><div class="inv-cab"><b>' + esc(o.nombre) + '</b><small>' + esc(o.cantidad) + ' ' + esc(o.unidad) + (o.marca ? ' · ' + esc(o.marca) : '') + '</small></div>' +
-      '<div class="inv-ent">' + (o.foto ? '<span class="inv-mini"><img src="' + o.foto + '"></span>' : '<button class="otro-foto">📷</button>') + '<button class="otro-quitar" style="color:var(--rojo)">×</button></div></div>';
+      '<div class="inv-ent">' + (o.foto ? '<span class="inv-mini"><img src="' + o.foto + '"></span>' : '<button class="otro-foto"><svg class="ico"><use href="#i-camara"/></svg></button>') + '<button class="otro-quitar" style="color:var(--rojo)">×</button></div></div>';
   }).join('') : '';
 }
 $('invOtros').onclick = function (e) {
@@ -2298,12 +2337,12 @@ function pintarRevision(j) {
         (l.corregido !== '' ? ' · corregido por ' + esc(l.corregido_por) + ' (contó ' + esc(l.contado) + ')' : '') + '</small>' + l.fotos.map(function (u) { return ' <a href="' + esc(u) + '" target="_blank">📷</a>'; }).join('') + '</div>';
     }).join('') + '</td><td>' + esc(m.stock) + ' ' + esc(m.unidad) + '</td><td class="' + (m.diferencia ? 'dif' : '') + '">' + (m.diferencia > 0 ? '+' : '') + esc(m.diferencia) + '</td></tr>';
   }).join('') + '</table>';
-  if (j.otros.length) h += '<label>OTRO nuevos (a mano)</label>' + j.otros.map(function (o) { return '<div>⚠️ ' + esc(o.material) + ' · ' + esc(o.valor) + ' ' + esc(o.unidad) + (o.marca ? ' · ' + esc(o.marca) : '') + ' · ' + esc(o.quien) + '</div>'; }).join('');
+  if (j.otros.length) h += '<label>OTRO nuevos · a mano</label>' + j.otros.map(function (o) { return '<div>⚠️ ' + esc(o.material) + ' · ' + esc(o.valor) + ' ' + esc(o.unidad) + (o.marca ? ' · ' + esc(o.marca) : '') + ' · ' + esc(o.quien) + '</div>'; }).join('');
   if (j.maquinas.length) h += '<label>Máquinas</label>' + j.maquinas.map(function (q) {
     var faltan = Math.max(0, q.contado - q.en_almacen);
     return '<div>' + esc(q.material) + ': ' + q.contado + ' (bien ' + q.bien + ', regular ' + q.regular + ', averiada ' + q.averiada + ') · en la app ' + q.en_almacen + (faltan ? ' · <b>' + faltan + ' alta(s) nueva(s)</b>' : '') + ' · ' + esc(q.quien) + '</div>';
   }).join('');
-  if (j.vales.length) h += '<label>Vales hechos durante el inventario (revisar)</label>' + j.vales.map(function (v) { return '<div' + (v.anulado ? ' class="anulado"' : '') + '>⚠️ Nº ' + esc(v.numero) + ' · ' + esc(TIPO_VALE[v.tipo] || v.tipo) + ' · ' + esc(v.fecha) + ' ' + esc(v.hora) + ' · ' + esc(v.obra || '') + ' · ' + esc(v.usuario) + '</div>'; }).join('');
+  if (j.vales.length) h += '<label>Vales hechos durante el inventario · revisar</label>' + j.vales.map(function (v) { return '<div' + (v.anulado ? ' class="anulado"' : '') + '>⚠️ Nº ' + esc(v.numero) + ' · ' + esc(TIPO_VALE[v.tipo] || v.tipo) + ' · ' + esc(v.fecha) + ' ' + esc(v.hora) + ' · ' + esc(v.obra || '') + ' · ' + esc(v.usuario) + '</div>'; }).join('');
   h += '<button class="btn verde" id="revCerrar">Cerrar y ajustar</button><button class="btn peq sec" id="revAnular" style="width:100%">Anular este inventario (sin ajustar)</button>';
   $('invRevision').innerHTML = h;
   $('revCerrar').onclick = function () {
@@ -2344,12 +2383,12 @@ function esCodigoMaquina(t) { return /^[A-Z]{2,4}-\d{2,}$/i.test(String(t || '')
 function pintarHerrGestion() {
   if (!puedeHerr()) return;
   var tp = ((S.datos && S.datos.herrTipos) || []).filter(function (t) { return t.estado === 'PENDIENTE'; });
-  $('herrTiposPend').innerHTML = tp.length ? '<label>Tipos nuevos pendientes (' + tp.length + ')</label><div class="lista">' + tp.map(function (t) {
+  $('herrTiposPend').innerHTML = tp.length ? '<label>Tipos nuevos pendientes · ' + tp.length + '</label><div class="lista">' + tp.map(function (t) {
     return '<div class="item" data-tipo="' + esc(t.prefijo) + '"><div><b>' + esc(t.nombre) + '</b><div class="fila" style="margin-top:4px"><div style="flex:0 0 80px"><input type="text" class="tpPref" placeholder="Código" maxlength="4"></div>' +
       '<div><input type="text" class="tpNombre" placeholder="Nombre definitivo"></div><button class="btn peq verde tpOk" style="flex:0 0 auto">Aprobar</button></div></div></div>';
   }).join('') + '</div>' : '';
   var pend = herrLocal().filter(function (h) { return h.ok === 'PENDIENTE'; });
-  $('herrPendOk').innerHTML = pend.length ? '<label>Máquinas pendientes de OK (' + pend.length + ')</label><div class="lista">' + pend.map(function (h) {
+  $('herrPendOk').innerHTML = pend.length ? '<label>Máquinas pendientes de OK · ' + pend.length + '</label><div class="lista">' + pend.map(function (h) {
     return '<div class="item" data-ok="' + esc(h.codigo) + '"><div><b>' + esc(h.nombre) + '</b><small>alta de ' + esc(h.quien) + (h.desde ? ' · ' + esc(h.desde) : '') + (h.foto ? ' · <a href="' + esc(h.foto) + '" target="_blank">📷 foto</a>' : '') + '</small>' +
       '<div class="fila" style="margin-top:4px"><div><input type="text" class="motivoRech" placeholder="Motivo si se rechaza"></div><button class="btn peq verde okSi" style="flex:0 0 auto">OK</button><button class="btn peq rojo okNo" style="flex:0 0 auto">Rechazar</button></div></div></div>';
   }).join('') + '</div>' : '';
@@ -2395,7 +2434,7 @@ $('repGuardar').onclick = function () {
     .then(function (r) {
       S.recibo = r; $('repForm').style.display = 'none';
       $('repResultado').innerHTML = '<div class="aviso ok">Recibo <b>' + esc(r.recibo) + '</b> hecho y guardado en Drive (HERRAMIENTAS/REPARACIONES).</div>' +
-        '<button class="btn" id="repCompartir">📤 Compartir PDF</button>' + (r.pdf_url ? '<a class="btn peq sec" style="width:100%;text-align:center;text-decoration:none" href="' + esc(r.pdf_url) + '" target="_blank">Ver en Drive</a>' : '');
+        '<button class="btn" id="repCompartir"><svg class="ico"><use href="#i-compartir"/></svg>Compartir PDF</button>' + (r.pdf_url ? '<a class="btn peq sec" style="width:100%;text-align:center;text-decoration:none" href="' + esc(r.pdf_url) + '" target="_blank">Ver en Drive</a>' : '');
       $('repCompartir').onclick = compartirRecibo;
       return cargarDatos(true);
     }).then(function () { pintarHerr(); }).catch(function (er) { toast(er.message, 'err'); });
@@ -2500,15 +2539,16 @@ $('andGuardar').onclick = function () {
 function pintarMisHerr() {
   var yo = S.usuario ? S.usuario.nombre : '', mias = herrLocal().filter(function (h) { return h.estado === 'CON PERSONA' && h.quien === yo; });
   $('misHerr').innerHTML = mias.length ? mias.map(function (h) {
-    return '<div class="item"><div><b>' + esc(h.nombre) + '</b><small>desde ' + esc(h.desde || '') + (h.ok === 'PENDIENTE' ? ' · PENDIENTE DE OK' : '') + '</small></div><button class="btn peq sec dqMia" data-cod="' + esc(h.codigo) + '" style="flex:0 0 auto">📍 ¿Dónde queda?</button></div>';
-  }).join('') : '<div class="ayuda">No tienes ninguna a tu cargo. Si tienes una en la mano: "¿Dónde queda una máquina?" → 👤 Conmigo.</div>';
+    return '<div class="item"><div><b>' + esc(h.nombre) + '</b><small>desde ' + esc(h.desde || '') + (h.ok === 'PENDIENTE' ? ' · PENDIENTE DE OK' : '') + '</small></div><button class="btn peq sec dqMia" data-cod="' + esc(h.codigo) + '" style="flex:0 0 auto"><svg class="ico"><use href="#i-pin"/></svg>¿Dónde queda?</button></div>';
+  }).join('') : '<div class="ayuda">No tienes ninguna a tu cargo. Si tienes una en la mano: "¿Dónde queda una máquina?" → Conmigo.</div>';
 }
 $('misHerr').onclick = function (e) { var b = e.target.closest('.dqMia'); if (b) abrirDq(b.dataset.cod); };
 
 // ---------------------------------------------------------------- ¿Dónde queda una máquina? (control UNIDAD)
 // Un solo flujo: se elige o escanea la máquina (o se le da número: alta) y dónde queda.
 // Conmigo / A un compañero → ASIGNAR · En obra → SALIDA · En almacén → DEVOLUCION (ENTRADA si es nueva) · Averiada → AVERIA
-var DQ = { YO: '👤 Conmigo', OBRA: '🏗️ En obra', ALM: '🏠 En almacén', AVERIA: '⚠️ Averiada', COMP: '👥 A un compañero' };
+var DQ_ICO = { YO: 'persona', OBRA: 'obra', ALM: 'casa', AVERIA: 'aviso', COMP: 'personas' };
+var DQ = { YO: 'Conmigo', OBRA: 'En obra', ALM: 'En almacén', AVERIA: 'Averiada', COMP: 'A un compañero' };
 var DQ_TIT = { YO: 'CONMIGO', OBRA: 'EN OBRA', ALM: 'EN ALMACÉN', AVERIA: 'AVERÍA', COMP: 'A UN COMPAÑERO' };
 function tipoHerr(p) { return ((S.datos && S.datos.herrTipos) || []).filter(function (t) { return t.prefijo === p; })[0]; }
 function tiposUnidad() { return ((S.datos && S.datos.herrTipos) || []).filter(function (t) { return t.control !== 'CANTIDAD'; }); }
@@ -2555,7 +2595,7 @@ function pintarDq() {
   // el habitual según va_con, relleno de color; los demás con borde; ninguno bloqueado
   var habitual = dqVaCon() === 'PERSONA' ? 'YO' : 'OBRA';
   $('dqBotones').innerHTML = Object.keys(DQ).map(function (k) {
-    return '<button type="button" data-d="' + k + '" class="' + (k === d ? 'elegido' : k === habitual ? 'habitual' : '') + '">' + DQ[k] + (k === d ? ' ✓' : '') + '</button>';
+    return '<button type="button" data-d="' + k + '" class="' + (k === d ? 'elegido' : k === habitual ? 'habitual' : '') + '">' + ico(DQ_ICO[k]) + DQ[k] + (k === d ? ico('ok') : '') + '</button>';
   }).join('');
   $('dqObraBloque').style.display = d === 'OBRA' ? '' : 'none';
   $('dqAlmBloque').style.display = d === 'ALM' ? '' : 'none';
@@ -2563,7 +2603,7 @@ function pintarDq() {
   $('dqCompBloque').style.display = d === 'COMP' ? '' : 'none';
   $('dqFinBloque').style.display = d ? '' : 'none';
   // foto obligatoria solo en el alta y en la avería
-  $('dqFoto').textContent = S.dqAlta ? '📷 Foto de la máquina con el número (obligatoria)' : d === 'AVERIA' ? '📷 Foto de la máquina y de la avería (obligatoria)' : '📷 Foto (opcional)';
+  $('dqFoto').innerHTML = ico('camara') + (S.dqAlta ? 'Foto de la máquina con el número · obligatoria' : d === 'AVERIA' ? 'Foto de la máquina y de la avería · obligatoria' : 'Foto · opcional');
 }
 $('btnDondeQueda').onclick = function () { abrirDq(); };
 $('dqCancelar').onclick = function () { $('dqForm').style.display = 'none'; };
@@ -2727,7 +2767,7 @@ function pintarVales() {
   var v = S.vales || [];
   $('valesLista').innerHTML = v.length ? v.map(function (x, i) {
     return '<div class="item toca vale-item' + (x.anulado ? ' anulado' : '') + '" data-i="' + i + '"><div><b>Nº ' + esc(x.numero) + ' · ' + esc(TIPO_VALE[x.tipo] || x.tipo) + ' · ' + esc(x.fecha) + ' ' + esc(x.hora) + '</b><small>' +
-      lugarVale(x) + (x.proveedor ? ' · ' + esc(x.proveedor) : '') + (x.persona ? ' · ' + esc(x.persona) : '') + ' · anotado por ' + esc(x.usuario) + (x.movil_de ? ' <i>desde el móvil de ' + esc(x.movil_de) + '</i>' : '') + ' · ' + x.n_lineas + ' línea(s)' + (x.fotos.length ? ' · 📷 ' + x.fotos.length : '') + '</small>' +
+      lugarVale(x) + (x.proveedor ? ' · ' + esc(x.proveedor) : '') + (x.persona ? ' · ' + esc(x.persona) : '') + ' · anotado por ' + esc(x.usuario) + (x.movil_de ? ' <i>desde el móvil de ' + esc(x.movil_de) + '</i>' : '') + ' · ' + lineasTxt(x.n_lineas, 'línea') + (x.fotos.length ? ' · 📷 ' + x.fotos.length : '') + '</small>' +
       (x.lineas.length ? '<div class="vale-l1">' + esc(x.lineas[0].material) + (x.lineas[0].marca ? ' · ' + esc(x.lineas[0].marca) : '') + ' · ' + esc(x.lineas[0].cantidad) + ' ' + esc(x.lineas[0].unidad || '') + (x.lineas.length > 1 ? ' <small>(+' + (x.lineas.length - 1) + ' más)</small>' : '') + '</div>' : '') + '</div>' +
       '<span class="chips-vale">' + (x.revisar === 'SI' ? '<span class="chip revisar">REVISAR</span>' : '') +
       (x.anulado ? '<span class="chip anul">ANULADO</span>' : x.estado === 'PENDIENTE_LEER' ? '<span class="chip pend">PENDIENTE DE LEER</span>' : '') + '</span></div>';
@@ -2806,7 +2846,7 @@ function actualizarPend() {
   return DB.all('cola').then(function (c) {
     var n = c.length, p = $('pendNum'); p.textContent = n; p.style.display = n ? '' : 'none';
     var malos = c.filter(function (it) { return it.errServidor; }).length, b = $('bandaCola');
-    b.textContent = '⚠️ ' + malos + (malos === 1 ? ' no se ha podido enviar' : ' no se han podido enviar') + ' · toca para ver';
+    b.innerHTML = ico('aviso') + malos + (malos === 1 ? ' no se ha podido enviar' : ' no se han podido enviar') + ' · toca para ver';
     b.style.display = malos && S.usuario ? '' : 'none';
     document.documentElement.style.setProperty('--alto-cab', document.querySelector('header').offsetHeight + 'px');
     if (S.pantalla === 'enviados') pintarEnviados();
@@ -2839,7 +2879,7 @@ function sincronizar() {
           .catch(function (e) { return fallo(it, e); });
         if (it.tipo === 'invEntrega') return api('invEntrega', { entrega: it.entrega, auth: it.auth }).then(function () {
           delete pendientes['inv:' + it.inventario]; toast('Inventario entregado: ' + it.nombre, 'ok');
-          return DB.put('hist', { id: it.id, tipo: 'vale', fecha: it.fecha, numero: '', resumen: 'Inventario entregado · ' + it.nombre + ' · ' + it.entrega.lineas.length + ' línea(s)', hora: it.hora, enviadoEn: new Date().toISOString() })
+          return DB.put('hist', { id: it.id, tipo: 'vale', fecha: it.fecha, numero: '', resumen: 'Inventario entregado · ' + it.nombre + ' · ' + lineasTxt(it.entrega.lineas.length, 'línea'), hora: it.hora, enviadoEn: new Date().toISOString() })
             .then(function () { return DB.del('cola', it.id); });
         }).catch(function (e) {
           if (esFalloServidor(e)) toast('El inventario no se ha entregado: ' + e.message, 'err');
@@ -2862,7 +2902,7 @@ function sincronizar() {
           : it.tipo === 'vale'
           ? api('vale', { vale: { id: it.id, tipo: it.valeTipo, obra: it.obra, persona: it.persona, nota: it.nota, fotos: it.fotos || [], albaranArchivo: it.albaranArchivo || null,
               proveedor: it.proveedor, albaran: it.albaran, tipoDoc: it.tipoDoc || '', soloFoto: !!it.soloFoto, lineas: it.lineas, fecha: it.fecha, hora: it.hora, usuario: it.usuario, auth: it.auth || null, almacen: it.almacen || '', almacenDestino: it.almacenDestino || '',
-              maquinas: it.maquinas || [], inicio: it.inicio || '', cierre: it.cierre || '', movilDe: it.movilDe || '' } })
+              maquinas: it.maquinas || [], inicio: it.inicio || '', cierre: it.cierre || '', movilDe: it.movilDe || '', origen: it.origen || '' } })
           : api('movimiento', { mov: { id: it.id, tipo: it.movTipo, material: it.material, cantidad: it.cantidad, obra: it.obra, nota: it.nota, fotos: it.fotos || [], fecha: it.fecha, usuario: it.usuario, materialNombre: it.materialNombre, hora: it.hora, clase: it.clase || 'MAT', persona: it.persona || '', tipoHer: it.tipoHer || '', codigoNuevo: it.codigoNuevo || '', almacen: it.almacen || '', fotoPlaca: it.fotoPlaca || '', movilDe: it.movilDe || '' } });
         return llamada.then(function (j) {
           enviados++;
@@ -2929,10 +2969,10 @@ $('colaLista').onclick = function (e) {
 function tituloCola(it) {
   if (it.tipo === 'andamios') return 'Andamios · ' + esc(({ SALIDA: 'a obra', DEVOLUCION: 'recogidos de obra', ENTRADA: 'entrada en almacén' })[it.mov.tipo]) + (it.mov.obra ? ' · ' + esc(it.mov.obra) : '');
   if (it.tipo === 'herrTipoNuevo') return 'Tipo de andamio nuevo · ' + esc(it.nombre);
-  if (it.tipo === 'invEntrega') return 'Inventario · ' + esc(it.nombre) + ' · He terminado · ' + it.entrega.lineas.length + ' línea(s)';
+  if (it.tipo === 'invEntrega') return 'Inventario · ' + esc(it.nombre) + ' · He terminado · ' + lineasTxt(it.entrega.lineas.length, 'línea');
   if (it.tipo === 'eans') return 'Código de barras nuevo · ' + esc(it.eans.map(function (e) { return e.ean + (e.marca ? ' · ' + e.marca : ''); }).join(', '));
   if (it.tipo === 'parte') return 'Parte · ' + esc(it.obraNombre);
-  if (it.tipo === 'vale') return (it.valeTipo === 'AJUSTE' ? 'Inventario · ' + esc(nombreAlmacen(it.almacen).split(' · ')[0]) + ' · ' + (it.nFotos || 0) + ' foto(s)' : 'Vale · ' + TIPO_VALE[it.valeTipo]) + ' · ' + (it.soloFoto ? 'solo foto' : it.lineas.length + ' línea(s)') + (it.obra ? ' · ' + esc(it.obra) : '');
+  if (it.tipo === 'vale') return (it.valeTipo === 'AJUSTE' ? 'Inventario · ' + esc(nombreAlmacen(it.almacen).split(' · ')[0]) + ' · ' + lineasTxt(it.nFotos || 0, 'foto') : 'Vale · ' + TIPO_VALE[it.valeTipo]) + ' · ' + (it.soloFoto ? 'solo foto' : lineasTxt(it.lineas.length, 'línea')) + (it.obra ? ' · ' + esc(it.obra) : '');
   return (it.clase === 'HER' ? 'Herramientas · ' : 'Almacén · ') + esc(it.movTipo) + ' ' + it.cantidad + ' ' + esc(it.materialNombre || it.material);
 }
 // "Me he equivocado": solo en los vales de almacén de hoy que anotó quien ha entrado (el servidor lo vuelve a comprobar)

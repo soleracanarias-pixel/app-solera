@@ -67,7 +67,7 @@ function movFilas_(c) {
 }
 var ESQUEMA = '22';   // 22: revisar y nota_revisar en VALES
 // número de la versión publicada en Apps Script (subirlo en cada publicación, igual que VERSION_WEB de index.html)
-var VERSION_SERVIDOR = 28;            // subir cuando cambien las columnas de HOJAS
+var VERSION_SERVIDOR = 29;            // subir cuando cambien las columnas de HOJAS
 var EMAIL_COPIA = 'soleracanarias@gmail.com';
 var CSV_NOMBRE = 'PARTES APP 2026.csv';  // se crea en la carpeta CARPETA_CSV_ID de CONFIG (CLIENTES\PARTES\APP)
 var CSV_COLUMNAS = ['N_PARTE','FECHA','DIA_SEMANA','CLIENTE','OBRA','COD_OBRA_APP','RESP_CLIENTE','RESP_CERT','RESP_SOLERA','MATRICULA',
@@ -788,8 +788,10 @@ function vale_(v, interno) {
     destino = comprobarAlmacen_(v.almacenDestino || 'falta');
     if (destino === almacen) throw new Error('El traspaso tiene que ser a otro almacén');
   }
-  if (['ENTRADA', 'TRASPASO', 'AJUSTE'].indexOf(tipo) < 0 && !String(v.obra || '').trim()) throw new Error('Falta la obra');
-  if (tipo === 'RECUPERADO' && !String(v.nota || '').trim()) throw new Error('Falta el comentario (dónde se encontró)');
+  // ENCONTRÉ: "Sobró de la obra", "Lo dejó Mercadona" o "Apareció en el almacén" (origen; con ALMACEN la obra es opcional)
+  var sinObra = tipo === 'RECUPERADO' && String(v.origen || '') === 'ALMACEN';
+  if (['ENTRADA', 'TRASPASO', 'AJUSTE'].indexOf(tipo) < 0 && !sinObra && !String(v.obra || '').trim()) throw new Error('Falta la obra');
+  if (tipo === 'RECUPERADO' && !String(v.nota || '').trim()) throw new Error('Falta de dónde ha salido el material');
   var mats = {}; filas_('MATERIALES').forEach(function (f) { mats[String(f.codigo)] = f; });
   var lineas, cambios = [], maquinas = [];
   if (tipo === 'AJUSTE') {
