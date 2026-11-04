@@ -17,9 +17,8 @@ Cosas pedidas que todavía NO se han hecho. Se borran de aquí cuando estén hec
   trabajo: a veces un peón hace de oficial y al revés. Por defecto, la de la hoja TRABAJADORES. Es solo para
   el cliente (PDF y facturación), NO cuenta para nóminas ni cambia TRABAJADORES. *(Pedido 30/10/2026, esperar OK.)*
 - Publicado hasta la versión 22 (31/10/2026): revisión UX, 48 px, letra de almacén, − y +, Letra grande, HUELLA y PARTES_ACTIVOS (NO), ver_stock, Resumen, Buscar en Vales, movil_de y fecha del formulario. Probarlo en un móvil real.
-- **Versión 23 (04/11/2026, sin publicar aún):** permisos propios del encargado (TRASPASO y Vales de su cuadrilla). Publicar Code.gs y subir la versión en Apps Script.
+- **Sin publicar aún (04/11/2026):** v23 permisos propios del encargado (TRASPASO y Vales de su cuadrilla); v24 COMPRA "solo foto" (PENDIENTE_LEER + Completar líneas). Publicar Code.gs y subir la versión en Apps Script.
 - Activar los partes para todos (CONFIG PARTES_ACTIVOS = SI) cuando Mateo lo decida; la huella (HUELLA = SI) cuando se vea el fallo en un móvil real.
-- Compras: estado PENDIENTE_LEER (albaranes que se meten sin líneas para leerlos después); hoy todo CONFIRMADA.
 - Probar la huella en los móviles reales con HUELLA = SI (si da error, la app enseña el motivo: pasárselo a Claude).
 - Foto para reconocer el material (propuesta; decidir con Fable si se hace y con qué servicio).
 - Herramientas: de momento se numeran con ROTULADOR (Edding 750 / uni PX-20) al hacer la foto.
