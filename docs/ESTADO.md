@@ -8,8 +8,8 @@ La app está **EN PRUEBAS** (ver `CLAUDE.md`). Lo pendiente está en `PENDIENTES
 - `index.html`: la app entera. **Un solo icono instalable: "SOLERA"** (`manifest.json`). `?modo=almacen` sigue funcionando por compatibilidad (arranca en Almacén, sin Parte); `almacen/` ya no se ofrece para instalar, pero sigue abriendo la app para quien lo tenga instalado.
 - `sw.js`: guarda la app en el móvil para abrirla sin cobertura (incluye `lib/`).
 - `lib/zxing-0.21.3.min.js`: lector de códigos de barras para iPhone (Apache 2.0), dentro de la app.
-- `backend/Code.gs`: servidor (Apps Script de la hoja "APP SOLERA"). Repositorio en la **versión 31** (`ESQUEMA = '22'`); publicada en Apps Script la 22 (de la 23 a la 31, pendientes de publicar a mano: en esta sesión no hay clasp).
-- **Versión a la vista:** abajo, en pequeño, en la entrada y en la app: "web v31 · servidor 31 · esquema 22". `VERSION_WEB` (index.html) y `VERSION_SERVIDOR` (Code.gs) = nº de versión publicada en Apps Script; se suben a la vez en cada publicación. Si no coinciden, sale "⚠️ actualiza la app" (al tocarlo, recarga).
+- `backend/Code.gs`: servidor (Apps Script de la hoja "APP SOLERA"). Repositorio en la **versión 32** (`ESQUEMA = '22'`); publicada en Apps Script la 22 (de la 23 a la 32, pendientes de publicar a mano: en esta sesión no hay clasp).
+- **Versión a la vista:** abajo, en pequeño, en la entrada y en la app: "web v32 · servidor 32 · esquema 22". `VERSION_WEB` (index.html) y `VERSION_SERVIDOR` (Code.gs) = nº de versión publicada en Apps Script; se suben a la vez en cada publicación. Si no coinciden, sale "⚠️ actualiza la app" (al tocarlo, recarga).
 - `docs/MATERIALES_PROPUESTA.csv`: lista de materiales aprobada (sin precios).
 
 ## Interruptores (pestaña CONFIG; se crean a NO)
@@ -25,6 +25,10 @@ La app está **EN PRUEBAS** (ver `CLAUDE.md`). Lo pendiente está en `PENDIENTES
 - **Para revisar:** en Vales, chip rojo REVISAR y casilla "Solo para revisar"; al abrir el vale, la nota y (admin) "Revisado" con texto opcional (acción `valeRevisado`): `revisar` pasa a REVISADO y se apunta quién y cuándo, sin borrar nada. En el Resumen, tarjeta "Para revisar" (lleva a Vales con la casilla puesta).
 - **"Letra grande"** en Enviados: lo sube todo un 15 % (se guarda en el móvil).
 - **En el ordenador (pantalla de más de 900 px)**, "Ver stock" y "¿Dónde están las herramientas?" salen como **tabla ordenable** (tocar una cabecera ordena; otra vez, al revés) con botón **"Copiar tabla"** (tabulado: se pega en Excel tal cual). En el stock: categoría, material, código, unidad, stock del almacén elegido (o una columna por almacén y el total con "Todos"), mínimo y aviso; al tocar una fila, sus marcas y últimos movimientos. En herramientas: código, máquina, estado, dónde, cantidad (andamios), quién, desde, avería, recibo y OK, con el enlace Historial. En el móvil no cambia nada.
+
+## Copia de seguridad (servidor)
+- Disparador diario a las **23:00**: `copiaSeguridad()` (envoltorio de `copiaSeguridad_()`; se puede lanzar a mano desde el editor). Cada pestaña de HOJAS a un CSV (con BOM, valores tal como se ven) en `BACKUP APP SOLERA/aaaa-mm-dd`, dentro de la carpeta CARPETA_PARTES_ID. Se conservan 30 días: las carpetas de fecha más viejas van a la **papelera** de Drive (se pueden recuperar). Lanzarla dos veces el mismo día reescribe esos CSV. Apunta en CONFIG **ULTIMA_COPIA** la fecha, cuántas pestañas y lo que fue a la papelera. Ojo: el CSV de TRABAJADORES lleva los PIN, como la hoja.
+- Los disparadores (resumen 18:30 y copia 23:00) se crean con `instalarDisparadores()` desde el editor (una vez, después de publicar).
 
 ## Ayuda
 - Pestaña **Ayuda** (para todos; va dentro de index.html y funciona sin cobertura): ME LLEVO y DEVUELVO, ¿Dónde queda una máquina?, Andamios y Sin cobertura, en lenguaje de obra y con dibujos SVG sencillos. En móviles estrechos el admin (8 pestañas) no la ve abajo: está también en Enviados, botón "Ayuda".

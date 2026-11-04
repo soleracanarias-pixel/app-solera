@@ -67,7 +67,7 @@ function movFilas_(c) {
 }
 var ESQUEMA = '22';   // 22: revisar y nota_revisar en VALES
 // número de la versión publicada en Apps Script (subirlo en cada publicación, igual que VERSION_WEB de index.html)
-var VERSION_SERVIDOR = 31;            // subir cuando cambien las columnas de HOJAS
+var VERSION_SERVIDOR = 32;            // subir cuando cambien las columnas de HOJAS
 var EMAIL_COPIA = 'soleracanarias@gmail.com';
 var CSV_NOMBRE = 'PARTES APP 2026.csv';  // se crea en la carpeta CARPETA_CSV_ID de CONFIG (CLIENTES\PARTES\APP)
 var CSV_COLUMNAS = ['N_PARTE','FECHA','DIA_SEMANA','CLIENTE','OBRA','COD_OBRA_APP','RESP_CLIENTE','RESP_CERT','RESP_SOLERA','MATRICULA',
@@ -133,13 +133,44 @@ function instalar() {
 }
 // disparadores diarios (se pueden rehacer a mano desde el editor): 18:30 resumen por correo
 function instalarDisparadores() {
-  var quiero = { resumenDiario: { hora: 18, minuto: 30 } };
+  var quiero = { resumenDiario: { hora: 18, minuto: 30 }, copiaSeguridad: { hora: 23, minuto: 0 } };
   ScriptApp.getProjectTriggers().forEach(function (t) { if (quiero[t.getHandlerFunction()]) ScriptApp.deleteTrigger(t); });
   Object.keys(quiero).forEach(function (fn) {
     ScriptApp.newTrigger(fn).timeBased().atHour(quiero[fn].hora).nearMinute(quiero[fn].minuto).everyDays(1).inTimezone('Atlantic/Canary').create();
   });
 }
 function resumenDiario() { return resumenDiario_(); }   // el disparador llama a esta (las funciones con _ no salen en el editor)
+function copiaSeguridad() { return copiaSeguridad_(); }   // disparador diario de las 23:00 (y se puede lanzar a mano desde el editor)
+
+// ---------------------------------------------------------------- copia de seguridad diaria
+// Cada pestaña de datos de la hoja APP SOLERA (las de HOJAS) a un CSV en "BACKUP APP SOLERA/aaaa-mm-dd", dentro de la carpeta
+// de Drive de la app (CARPETA_PARTES_ID). Se conservan COPIA_DIAS días: las carpetas más viejas van a la papelera (no se borran
+// del todo). Si se lanza dos veces el mismo día, se reescriben los CSV de ese día. Apunta la fecha en CONFIG ULTIMA_COPIA.
+var COPIA_DIAS = 30;
+function csvCelda_(v) { v = String(v == null ? '' : v); return /[",;\r\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
+function copiaSeguridad_() {
+  var id = config_('CARPETA_PARTES_ID');
+  if (!id) throw new Error('Falta CARPETA_PARTES_ID en CONFIG');
+  var raiz = subcarpeta_(DriveApp.getFolderById(id), 'BACKUP APP SOLERA');
+  var hoy = Utilities.formatDate(new Date(), 'Atlantic/Canary', 'yyyy-MM-dd'), dia = subcarpeta_(raiz, hoy);
+  var ss = SpreadsheetApp.getActiveSpreadsheet(), hechas = [];
+  Object.keys(HOJAS).forEach(function (nombre) {
+    var h = ss.getSheetByName(nombre); if (!h) return;
+    var filas = h.getLastRow(), cols = h.getLastColumn();
+    var datos = filas && cols ? h.getRange(1, 1, filas, cols).getDisplayValues() : [];
+    var csv = '\ufeff' + datos.map(function (f) { return f.map(csvCelda_).join(','); }).join('\r\n') + '\r\n';   // con BOM: Excel lo abre con tildes
+    var fich = nombre + '.csv', ya = dia.getFilesByName(fich);
+    if (ya.hasNext()) ya.next().setContent(csv); else dia.createFile(fich, csv, MimeType.CSV);
+    hechas.push(nombre);
+  });
+  // lo de hace más de COPIA_DIAS días, a la papelera
+  var limite = new Date(); limite.setDate(limite.getDate() - COPIA_DIAS);
+  var corte = Utilities.formatDate(limite, 'Atlantic/Canary', 'yyyy-MM-dd'), viejas = [];
+  var it = raiz.getFolders();
+  while (it.hasNext()) { var c = it.next(), n = c.getName(); if (/^\d{4}-\d{2}-\d{2}$/.test(n) && n < corte && !c.isTrashed()) { c.setTrashed(true); viejas.push(n); } }
+  setConfig_('ULTIMA_COPIA', ahora_() + ' · ' + hechas.length + ' pestañas' + (viejas.length ? ' · a la papelera: ' + viejas.sort().join(', ') : ''));
+  return { ok: true, carpeta: hoy, pestanas: hechas, papelera: viejas };
+}
 
 // crea las pestañas que falten y añade al final las columnas nuevas (p. ej. FIRMANTES, firmado_en)
 function asegurarHojas_(forzar) {
