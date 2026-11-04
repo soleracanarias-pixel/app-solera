@@ -67,7 +67,7 @@ function movFilas_(c) {
 }
 var ESQUEMA = '22';   // 22: revisar y nota_revisar en VALES
 // número de la versión publicada en Apps Script (subirlo en cada publicación, igual que VERSION_WEB de index.html)
-var VERSION_SERVIDOR = 26;            // subir cuando cambien las columnas de HOJAS
+var VERSION_SERVIDOR = 27;            // subir cuando cambien las columnas de HOJAS
 var EMAIL_COPIA = 'soleracanarias@gmail.com';
 var CSV_NOMBRE = 'PARTES APP 2026.csv';  // se crea en la carpeta CARPETA_CSV_ID de CONFIG (CLIENTES\PARTES\APP)
 var CSV_COLUMNAS = ['N_PARTE','FECHA','DIA_SEMANA','CLIENTE','OBRA','COD_OBRA_APP','RESP_CLIENTE','RESP_CERT','RESP_SOLERA','MATRICULA',
@@ -923,8 +923,7 @@ function avisoCola_(b) {
   var n = Number(config_('SIGUIENTE_MOV')) || 1; setConfig_('SIGUIENTE_MOV', n + 1);
   var numero = 'A' + ('000' + n).slice(-4), creadoEn = ahora_(), fecha = it.fecha || new Date().toISOString();
   var motivo = String(b.motivo || 'no aceptado por el servidor').trim(), texto = String(b.texto || '').trim();
-  var que = esVale ? '' : (it.tipo === 'andamios' ? 'Andamios ' + (it.mov && it.mov.tipo || '') + ' ' + ((it.mov && it.mov.lineas) || []).map(function (l) { return l.cantidad + ' ' + l.prefijo; }).join(', ')
-    : 'Máquina ' + (it.movTipo || '') + ' ' + (it.materialNombre || it.material || '') + (it.codigoNuevo ? ' (' + it.codigoNuevo + ')' : ''));
+  var que = queAviso_(it);
   var notaRev = 'AVISO de ' + t.nombre + ': ' + (texto || 'no se pudo enviar') + ' · El servidor dijo: ' + motivo + (que ? ' · ' + que : '');
   var hora = it.hora ? "'" + it.hora : '', almacen = String(it.almacen || ''), obra = String(it.obra || (it.mov && it.mov.obra) || '');
   var mats = {}; filas_('MATERIALES').forEach(function (f) { mats[String(f.codigo)] = f; });
@@ -939,6 +938,19 @@ function avisoCola_(b) {
     movil_de: String(it.movilDe || ''), recibido_en: creadoEn, tipo_doc: '', estado: '', almacen: almacen, almacen_destino: String(it.almacenDestino || ''),
     inicio: '', cierre: '', inventario: '', revisar: 'SI', nota_revisar: notaRev });
   return { ok: true, numero: numero };
+}
+// qué era lo que no se pudo enviar (para la nota del aviso); el vale ya lleva sus líneas
+function queAviso_(it) {
+  var mov = it.mov || {};
+  switch (it.tipo) {
+    case 'vale': return '';
+    case 'andamios': return 'Andamios ' + (mov.tipo || '') + ' ' + (mov.lineas || []).map(function (l) { return l.cantidad + ' ' + l.prefijo; }).join(', ');
+    case 'parte': return 'Parte de ' + (it.obraNombre || it.obra || '') + ' del ' + fechaES_(it.fecha || '');
+    case 'eans': return 'Código de barras ' + (it.eans || []).map(function (e) { return e.ean + ' → ' + (e.material || ''); }).join(', ');
+    case 'herrTipoNuevo': return 'Tipo de andamio nuevo ' + (it.nombre || '');
+    case 'invEntrega': return 'Inventario ' + (it.nombre || '') + ' · He terminado';
+    default: return (it.clase === 'HER' ? 'Máquina ' : 'Almacén ') + (it.movTipo || '') + ' ' + (it.clase === 'HER' ? '' : (it.cantidad || '') + ' ') + (it.materialNombre || it.material || '') + (it.codigoNuevo ? ' · ' + it.codigoNuevo : '');
+  }
 }
 // compras metidas "solo foto" que aún no tienen líneas (para el Resumen y el aviso diario)
 function albaranesPendientes_() {

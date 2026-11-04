@@ -8,8 +8,8 @@ La app está **EN PRUEBAS** (ver `CLAUDE.md`). Lo pendiente está en `PENDIENTES
 - `index.html`: la app entera. **Un solo icono instalable: "SOLERA"** (`manifest.json`). `?modo=almacen` sigue funcionando por compatibilidad (arranca en Almacén, sin Parte); `almacen/` ya no se ofrece para instalar, pero sigue abriendo la app para quien lo tenga instalado.
 - `sw.js`: guarda la app en el móvil para abrirla sin cobertura (incluye `lib/`).
 - `lib/zxing-0.21.3.min.js`: lector de códigos de barras para iPhone (Apache 2.0), dentro de la app.
-- `backend/Code.gs`: servidor (Apps Script de la hoja "APP SOLERA"). Repositorio en la **versión 26** (`ESQUEMA = '21'`); publicada en Apps Script la 22 (pendiente de publicar).
-- **Versión a la vista:** abajo, en pequeño, en la entrada y en la app: "web v26 · servidor 26 · esquema 21". `VERSION_WEB` (index.html) y `VERSION_SERVIDOR` (Code.gs) = nº de versión publicada en Apps Script; se suben a la vez en cada publicación. Si no coinciden, sale "⚠️ actualiza la app" (al tocarlo, recarga).
+- `backend/Code.gs`: servidor (Apps Script de la hoja "APP SOLERA"). Repositorio en la **versión 27** (`ESQUEMA = '22'`); publicada en Apps Script la 22 (de la 23 a la 27, pendientes de publicar a mano: en esta sesión no hay clasp).
+- **Versión a la vista:** abajo, en pequeño, en la entrada y en la app: "web v27 · servidor 27 · esquema 22". `VERSION_WEB` (index.html) y `VERSION_SERVIDOR` (Code.gs) = nº de versión publicada en Apps Script; se suben a la vez en cada publicación. Si no coinciden, sale "⚠️ actualiza la app" (al tocarlo, recarga).
 - `docs/MATERIALES_PROPUESTA.csv`: lista de materiales aprobada (sin precios).
 
 ## Interruptores (pestaña CONFIG; se crean a NO)
@@ -20,6 +20,7 @@ La app está **EN PRUEBAS** (ver `CLAUDE.md`). Lo pendiente está en `PENDIENTES
 - Todo lo pulsable mide al menos 48 px de alto (botones, desplegables, campos, enlaces, la barra inferior 56 px).
 - Cuando la app va como almacén (PARTES_ACTIVOS = NO o `?modo=almacen`): letra base 18 px, títulos de campo 15 px y ayudas 14 px.
 - Cantidades (vales, materiales del parte y andamios) con botones − y + de 48 px a los lados.
+- **Lo que el servidor no acepta** (albarán repetido, material que ya no existe, PIN cambiado…; no la falta de cobertura ni los atascos del servidor, que se reintentan solos): queda marcado en la cola y ya no se reintenta solo. Banda amarilla fija bajo la cabecera "⚠️ n no se han podido enviar · toca para ver" → Enviados, donde sale arriba con el motivo en lenguaje llano y dos botones: **Reintentar** (vuelve a la cola, con el PIN actual) y **Avisar a Mateo** (texto opcional; acción `avisoCola` con código + PIN). El servidor lo apunta en VALES como vale **anulado** (no entra en el stock; tipo AVISO si no era un vale) con `revisar = SI` y `nota_revisar` "AVISO de …: … · El servidor dijo: …"; en el móvil sale de la cola (con sus fotos) y pasa a enviados con la etiqueta "avisado". Ya no hay botón "quitar".
 - **"Letra grande"** en Enviados: lo sube todo un 15 % (se guarda en el móvil).
 - **En el ordenador (pantalla de más de 900 px)**, "Ver stock" y "¿Dónde están las herramientas?" salen como **tabla ordenable** (tocar una cabecera ordena; otra vez, al revés) con botón **"Copiar tabla"** (tabulado: se pega en Excel tal cual). En el stock: categoría, material, código, unidad, stock del almacén elegido (o una columna por almacén y el total con "Todos"), mínimo y aviso; al tocar una fila, sus marcas y últimos movimientos. En herramientas: código, máquina, estado, dónde, cantidad (andamios), quién, desde, avería, recibo y OK, con el enlace Historial. En el móvil no cambia nada.
 

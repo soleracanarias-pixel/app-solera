@@ -73,6 +73,11 @@ textarea{min-height:80px;resize:vertical}
 .modal .pie .btn{margin:0}
 .lista .item{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--borde);gap:8px}
 .lista .item:last-child{border:0}
+#bandaCola{position:sticky;top:var(--alto-cab,56px);z-index:4;background:#ffe08a;color:#343434;border-bottom:1px solid #e0b84a;text-align:center;padding:12px 14px;font-size:15px;font-weight:600;cursor:pointer;min-height:48px;box-sizing:border-box}
+.cola-err{display:block;color:var(--rojo);margin-top:4px}
+.cola-bot{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}.cola-bot .btn{flex:1;min-width:130px;margin:0}
+.lista .item.err-serv{flex-direction:column;align-items:stretch}
+#dlgEntrada{width:100%;box-sizing:border-box;min-height:80px;margin:6px 0;font:inherit;padding:8px;border:1px solid var(--borde);border-radius:8px}
 #nuevaVersion{position:sticky;top:0;z-index:30;background:var(--ambar);color:#343434;text-align:center;padding:10px;font-size:14px;cursor:pointer}
 .modo-almacen nav button[data-p="parte"],.sin-partes nav button[data-p="parte"]{display:none}
 /* todo lo pulsable, mínimo 48 px de alto */
@@ -265,6 +270,7 @@ a{color:var(--azul)}
     <button id="btnSalir" class="x" style="display:none;color:#fff;background:none;border-color:rgba(255,255,255,.4);width:auto;padding:0 10px;font-size:13px;height:30px">Salir</button>
   </div>
 </header>
+<div id="bandaCola" style="display:none" role="button"></div>
 
 <main>
 <!-- LOGIN -->
@@ -696,7 +702,7 @@ a{color:var(--azul)}
 </div>
 
 <div class="toast" id="toast"></div>
-<div class="dlg" id="dlg"><div class="dlg-caja"><p id="dlgTxt"></p><div class="fila"><button class="btn peq sec" id="dlgNo">No</button><button class="btn peq verde" id="dlgSi">Sí</button></div></div></div>
+<div class="dlg" id="dlg"><div class="dlg-caja"><p id="dlgTxt"></p><textarea id="dlgEntrada" style="display:none"></textarea><div class="fila"><button class="btn peq sec" id="dlgNo">No</button><button class="btn peq verde" id="dlgSi">Sí</button></div></div></div>
 
 <script src="config.js"></script>
 <script>
@@ -704,7 +710,7 @@ a{color:var(--azul)}
 'use strict';
 var CFG = window.SOLERA_CONFIG || {};
 // número de esta versión de la app (el mismo que VERSION_SERVIDOR de Code.gs: se sube a la vez en cada publicación)
-var VERSION_WEB = 26;
+var VERSION_WEB = 27;
 var $ = function (id) { return document.getElementById(id); };
 
 // ---------------------------------------------------------------- almacenamiento local (IndexedDB)
@@ -745,11 +751,13 @@ function toast(msg, tipo) {
   clearTimeout(t._t); t._t = setTimeout(function () { t.classList.remove('ver'); }, tipo ? 4500 : 2600);
 }
 // pregunta dentro de la app; devuelve una promesa con true (Sí) o false (No)
-function preguntar(texto, si, no) {
+function preguntar(texto, si, no, conTexto) {
   return new Promise(function (res) {
     $('dlgTxt').textContent = texto; $('dlgSi').textContent = si || 'Sí'; $('dlgNo').textContent = no || 'No';
+    var ent = $('dlgEntrada'); ent.value = ''; ent.style.display = conTexto ? '' : 'none'; ent.placeholder = conTexto || '';
     $('dlg').classList.add('ver');
-    var fin = function (v) { $('dlg').classList.remove('ver'); res(v); };
+    // con conTexto (el texto de ayuda de la casilla), "Sí" devuelve lo escrito (puede ir vacío) y "No", false
+    var fin = function (v) { $('dlg').classList.remove('ver'); res(v && conTexto ? { texto: ent.value.trim() } : v); };
     $('dlgSi').onclick = function () { fin(true); }; $('dlgNo').onclick = function () { fin(false); };
   });
 }
@@ -842,7 +850,34 @@ function api(action, extra) {
   var body = Object.assign({ action: action, token: CFG.TOKEN }, extra || {});
   return fetch(CFG.API_URL, { method: 'POST', body: JSON.stringify(body), headers: { 'Content-Type': 'text/plain;charset=utf-8' } })
     .then(function (r) { return r.json(); })
-    .then(function (j) { if (!j.ok) throw new Error(j.error || 'Error del servidor'); return j; });
+    .then(function (j) { if (!j.ok) { var e = new Error(j.error || 'Error del servidor'); e.servidor = true; throw e; } return j; });
+}
+// el servidor contestó que NO (albarán repetido, material que no existe…): no es falta de cobertura y no se arregla reintentando sola.
+// Los atascos del propio servidor (lock, demasiadas llamadas) sí se reintentan solos.
+function esFalloServidor(e) {
+  return !!(e && e.servidor) && !/lock|timed? ?out|tiempo de espera|too many|invoked|Service|ocupad/i.test(e.message || '');
+}
+// lo que dijo el servidor, en lenguaje de obra
+function motivoLlano(m) {
+  m = String(m || '');
+  var r = [
+    [/Vuelve a entrar con tu PIN|PIN/i, 'Tu PIN ha cambiado o no está guardado en este móvil. Sal, vuelve a entrar con tu PIN y dale a Reintentar.'],
+    [/Solo el administrador|Solo Mateo|Solo Gregorio|Solo quien|encargado puede/i, 'Esto solo lo puede hacer otra persona (Mateo o un encargado). Avisa a Mateo.'],
+    [/Material no encontrado|Material no válido/i, 'Ese material ya no está en la lista de la app. Avisa a Mateo.'],
+    [/Máquina no encontrada|Herramienta no encontrada/i, 'Esa máquina no está en la lista de la app. Avisa a Mateo.'],
+    [/EN REPARACI|de BAJA|está AVERIADA|no está averiada|no está en reparación/i, 'La máquina está en un estado que no permite esto (' + m + '). Avisa a Mateo.'],
+    [/inventario ya no está abierto|ya está cerrado|No participas/i, 'El inventario ya está cerrado o no te toca. Avisa a Mateo.'],
+    [/ajustes solo/i, 'Los ajustes solo se hacen cerrando un inventario.'],
+    [/Trabajador no válido/i, 'Tu código no está activo en la app. Avisa a Mateo.'],
+    [/sin id|Tipo de vale no válido|Acción desconocida/i, 'La app de este móvil es antigua o el envío está roto. Actualiza la app y dale a Reintentar; si no, avisa a Mateo.']
+  ];
+  for (var i = 0; i < r.length; i++) if (r[i][0].test(m)) return r[i][1];
+  return 'El servidor no lo ha aceptado: ' + m;
+}
+// apunta el fallo en el pendiente; si es del servidor, deja de reintentarse solo (sale en la banda amarilla)
+function fallo(it, e, sinMarca) {
+  it.error = e.message; it.errServidor = !sinMarca && esFalloServidor(e); it.intentos = (it.intentos || 0) + 1;
+  return DB.put('cola', it);
 }
 
 function cargarDatos(silencioso) {
@@ -896,7 +931,7 @@ function entrar() {
 function salir() {
   S.usuario = null; DB.del('kv', 'usuario');
   if (S.datos) { S.datos.stock = []; S.datos.otros = []; DB.put('kv', S.datos, 'datos'); }   // el stock no se queda en el móvil para el siguiente
-  mostrarLogin();
+  mostrarLogin(); actualizarPend();
 }
 
 // ---------------------------------------------------------------- dueño del móvil y huella
@@ -1021,7 +1056,7 @@ function mostrarApp() {
   pintarRol();
   $('btnSalir').style.display = ''; $('nav').style.display = '';
   $('quien').textContent = S.usuario.nombre;
-  cambiar(pantallaInicio());
+  cambiar(pantallaInicio()); actualizarPend();
   nuevoParte();
 }
 function cambiar(p) {
@@ -1592,7 +1627,7 @@ function abrirMov(tipo) {
   $('movBtnFoto').textContent = '📷 Foto (opcional)';
   if (tipo === 'ENTRADA') pintarDestino();
 }
-var TIPO_VALE = { SALIDA: 'ME LLEVO', DEVOLUCION: 'DEVUELVO', RECUPERADO: 'ENCONTRÉ MATERIAL', ENTRADA: 'COMPRA', COMPRA_OBRA: 'COMPRA A OBRA', AJUSTE: 'AJUSTE (inventario)', TRASPASO: 'TRASPASO', TRASPASO_SALE: 'TRASPASO (sale)', TRASPASO_ENTRA: 'TRASPASO (entra)' };
+var TIPO_VALE = { SALIDA: 'ME LLEVO', DEVOLUCION: 'DEVUELVO', RECUPERADO: 'ENCONTRÉ MATERIAL', ENTRADA: 'COMPRA', COMPRA_OBRA: 'COMPRA A OBRA', AJUSTE: 'AJUSTE (inventario)', TRASPASO: 'TRASPASO', TRASPASO_SALE: 'TRASPASO (sale)', TRASPASO_ENTRA: 'TRASPASO (entra)', AVISO: 'AVISO' };
 $('valeAlmacen').onchange = function () { recordarAlmacen(this.value); pintarResumen(); };
 // en los vales solo lo que pasa por el almacén (en_almacen = NO va directo a obra y solo sale en los partes)
 function matsAlmacen() {
@@ -2755,6 +2790,10 @@ var sincronizando = false;
 function actualizarPend() {
   return DB.all('cola').then(function (c) {
     var n = c.length, p = $('pendNum'); p.textContent = n; p.style.display = n ? '' : 'none';
+    var malos = c.filter(function (it) { return it.errServidor; }).length, b = $('bandaCola');
+    b.textContent = '⚠️ ' + malos + (malos === 1 ? ' no se ha podido enviar' : ' no se han podido enviar') + ' · toca para ver';
+    b.style.display = malos && S.usuario ? '' : 'none';
+    document.documentElement.style.setProperty('--alto-cab', document.querySelector('header').offsetHeight + 'px');
     if (S.pantalla === 'enviados') pintarEnviados();
     return n;
   });
@@ -2770,38 +2809,39 @@ function sincronizar() {
     cola.forEach(function (it) { if (it.tipo === 'vale') pendientes[it.id] = true; if (it.tipo === 'invEntrega') pendientes['inv:' + it.inventario] = true; });
     cola.forEach(function (it) {
       p = p.then(function () {
-        if (it.tipo === 'foto' && pendientes[it.valeId]) return;   // la foto espera a que llegue su inventario
+        if (it.errServidor) return;   // el servidor ya dijo que no: espera a "Reintentar" o "Avisar a Mateo"
+        if (it.tipo === 'foto' && pendientes[it.valeId]) return;   // la foto espera a que llegue su vale
         if (it.tipo === 'fotoInv' && pendientes['inv:' + it.inventario]) return;
         if (it.tipo === 'andamios') return api('andamios', { mov: it.mov }).then(function (j) {
           if (!numeroGuardado(it.id, 'Nº ' + j.numero)) toast('Andamios ' + j.numero + ' guardados', 'ok');
           return DB.put('hist', { id: it.id, tipo: 'vale', fecha: it.fecha, numero: j.numero, resumen: 'Andamios · ' + ({ SALIDA: 'a obra', DEVOLUCION: 'recogidos de obra', ENTRADA: 'entrada en almacén' })[it.mov.tipo] + (it.mov.obra ? ' · ' + it.mov.obra : '') + ' · ' + it.mov.lineas.map(function (l) { return l.cantidad; }).reduce(function (a, b) { return a + b; }, 0) + ' piezas', hora: it.hora, enviadoEn: new Date().toISOString() })
             .then(function () { return DB.del('cola', it.id); });
         }).catch(function (e) {
-          if (navigator.onLine && !/fetch|network|Failed/i.test(e.message)) { numeroGuardado(it.id, '⚠️ No se ha guardado: ' + e.message, true); toast('Los andamios no se han guardado: ' + e.message, 'err'); }
-          it.error = e.message; it.intentos = (it.intentos || 0) + 1; return DB.put('cola', it);
+          if (esFalloServidor(e)) { numeroGuardado(it.id, '⚠️ No se ha guardado: ' + e.message, true); toast('Los andamios no se han guardado: ' + e.message, 'err'); }
+          return fallo(it, e);
         });
         if (it.tipo === 'herrTipoNuevo') return api('herrTipoNuevo', { tipo: it.tipoNuevo, auth: it.auth }).then(function () { return DB.del('cola', it.id); })
-          .catch(function (e) { it.error = e.message; it.intentos = (it.intentos || 0) + 1; return DB.put('cola', it); });
+          .catch(function (e) { return fallo(it, e); });
         if (it.tipo === 'invEntrega') return api('invEntrega', { entrega: it.entrega, auth: it.auth }).then(function () {
           delete pendientes['inv:' + it.inventario]; toast('Inventario entregado: ' + it.nombre, 'ok');
           return DB.put('hist', { id: it.id, tipo: 'vale', fecha: it.fecha, numero: '', resumen: 'Inventario entregado · ' + it.nombre + ' · ' + it.entrega.lineas.length + ' línea(s)', hora: it.hora, enviadoEn: new Date().toISOString() })
             .then(function () { return DB.del('cola', it.id); });
         }).catch(function (e) {
-          if (navigator.onLine && !/fetch|network|Failed/i.test(e.message)) toast('El inventario no se ha entregado: ' + e.message, 'err');
-          it.error = e.message; it.intentos = (it.intentos || 0) + 1; return DB.put('cola', it);
+          if (esFalloServidor(e)) toast('El inventario no se ha entregado: ' + e.message, 'err');
+          return fallo(it, e);
         });
         if (it.tipo === 'fotoInv') return api('fotoInv', { foto: { inventario: it.inventario, lineaId: it.lineaId, fotoId: it.fotoId, dato: it.dato } })
           .then(function () { return DB.del('cola', it.id).then(function () { if (S.pantalla === 'enviados') pintarEnviados(); }); })
-          .catch(function (e) { it.error = e.message; it.intentos = (it.intentos || 0) + 1; return DB.put('cola', it); });
+          .catch(function (e) { return fallo(it, e, true); });
         if (it.tipo === 'eans') return api('eans', { eans: it.eans, auth: it.auth }).then(function (j) {
           var subidos = it.eans.map(function (e) { return e.ean; });
           S.eansLocal = (S.eansLocal || []).filter(function (e) { return subidos.indexOf(e.ean) < 0; });
           (j.eans || []).forEach(function (r) { if (r.estado === 'otro') toast('El código ' + r.ean + ' ya estaba asociado a otro material: se deja el primero', 'err'); });
           return DB.put('kv', S.eansLocal, 'eansLocal').then(function () { return DB.del('cola', it.id); });
-        }).catch(function (e) { it.error = e.message; it.intentos = (it.intentos || 0) + 1; return DB.put('cola', it); });
+        }).catch(function (e) { return fallo(it, e); });
         if (it.tipo === 'foto') return api('fotoVale', { foto: { valeId: it.valeId, clave: it.clave, fotoId: it.fotoId, dato: it.dato } })
           .then(function () { return DB.del('cola', it.id).then(function () { if (S.pantalla === 'enviados') pintarEnviados(); }); })
-          .catch(function (e) { it.error = e.message; it.intentos = (it.intentos || 0) + 1; return DB.put('cola', it); });   // se reintenta en la siguiente vuelta
+          .catch(function (e) { return fallo(it, e, true); });   // las fotos se reintentan solas en la siguiente vuelta
         var llamada = it.tipo === 'parte'
           ? api('crearParte', { parte: it })
           : it.tipo === 'vale'
@@ -2827,11 +2867,11 @@ function sincronizar() {
           return DB.put('hist', h).then(function () { return DB.del('cola', it.id); });
         }).catch(function (e) {
           // sin cobertura se queda en cola; si el servidor lo rechaza, se avisa
-          if ((it.tipo === 'vale' || it.tipo === 'mov') && navigator.onLine && !/fetch|network|Failed/i.test(e.message)) {
+          if ((it.tipo === 'vale' || it.tipo === 'mov') && esFalloServidor(e)) {
             numeroGuardado(it.id, '⚠️ No se ha guardado: ' + e.message, true);
             toast((it.tipo === 'vale' ? 'El vale' : 'El movimiento') + ' no se ha guardado: ' + e.message, 'err');
           }
-          it.error = e.message; it.intentos = (it.intentos || 0) + 1; return DB.put('cola', it);
+          return fallo(it, e);
         });
       });
     });
@@ -2840,16 +2880,46 @@ function sincronizar() {
     .then(function (n) { if (n === 0 && navigator.onLine) cargarDatos(true); })
     .catch(function () { sincronizando = false; });
 }
+$('bandaCola').onclick = function () { cambiar('enviados'); };
+// lo que no se pudo enviar: Reintentar (vuelve a la cola) o Avisar a Mateo (queda en VALES como anulado para revisar y sale de la cola)
 $('colaLista').onclick = function (e) {
-  var b = e.target.closest('.descartar'); if (!b) return;
-  preguntar('¿Quitar este pendiente del móvil?\nNo se enviará. Úsalo solo si el servidor lo rechaza (por ejemplo, albarán ya registrado).', 'Quitar', 'Cancelar').then(function (ok) {
-    if (!ok) return;
-    DB.all('cola').then(function (c) {
-      var fuera = [b.dataset.id].concat(c.filter(function (it) { return it.tipo === 'foto' && it.valeId === b.dataset.id; }).map(function (it) { return it.id; }));
-      return Promise.all(fuera.map(function (id) { return DB.del('cola', id); }));
-    }).then(function () { actualizarPend(); pintarEnviados(); toast('Pendiente quitado'); });
+  var b = e.target.closest('[data-cola]'); if (!b) return;
+  var id = b.dataset.id;
+  DB.get('cola', id).then(function (it) {
+    if (!it) return pintarEnviados();
+    if (b.dataset.cola === 'reintentar') {
+      if (!navigator.onLine) return toast('Sin conexión: se reintentará cuando vuelva');
+      return DB.get('kv', 'pin-' + S.usuario.codigo).then(function (pin) {
+        if (it.auth && pin && String(it.auth.codigo) === String(S.usuario.codigo)) it.auth.pin = pin;   // por si ha cambiado el PIN
+        it.errServidor = false; it.error = '';
+        return DB.put('cola', it);
+      }).then(function () { toast('Reintentando…'); return actualizarPend(); }).then(sincronizar);
+    }
+    return preguntar('Avisar a Mateo de que esto no se ha podido enviar.\nQueda apuntado para que lo revise (no cuenta en el stock) y sale de pendientes.', 'Avisar', 'Cancelar', '¿Qué ha pasado? (opcional)').then(function (r) {
+      if (!r) return;
+      if (!navigator.onLine) return toast('Sin conexión: avisa cuando vuelva la cobertura', 'err');
+      // sin fotos ni firma: solo los datos para que Mateo vea qué era
+      var item = JSON.parse(JSON.stringify(it, function (k, v) { return ['fotos', 'albaranArchivo', 'firma', 'fotoPlaca', 'dato', 'auth', 'foto'].indexOf(k) >= 0 ? undefined : v; }));
+      return authAdmin().then(function (auth) { return api('avisoCola', { auth: auth, item: item, motivo: it.error || '', texto: r.texto }); }).then(function (j) {
+        var h = { id: it.id, tipo: 'vale', fecha: it.fecha, numero: j.numero, aviso: true, resumen: 'Avisado a Mateo · ' + tituloCola(it).replace(/<[^>]+>/g, '') + ' · no entra en el stock', hora: it.hora || '', enviadoEn: new Date().toISOString() };
+        return DB.put('hist', h).then(function () { return DB.all('cola'); }).then(function (c) {
+          var fuera = [it.id].concat(c.filter(function (x) { return (x.tipo === 'foto' && x.valeId === it.id); }).map(function (x) { return x.id; }));
+          return Promise.all(fuera.map(function (x) { return DB.del('cola', x); }));
+        }).then(function () { toast('Aviso enviado a Mateo · ' + j.numero, 'ok'); actualizarPend(); });
+      }).catch(function (er) { toast('No se pudo avisar: ' + er.message, 'err'); });
+    });
   });
 };
+// título de un pendiente en Enviados
+function tituloCola(it) {
+  if (it.tipo === 'andamios') return 'Andamios · ' + esc(({ SALIDA: 'a obra', DEVOLUCION: 'recogidos de obra', ENTRADA: 'entrada en almacén' })[it.mov.tipo]) + (it.mov.obra ? ' · ' + esc(it.mov.obra) : '');
+  if (it.tipo === 'herrTipoNuevo') return 'Tipo de andamio nuevo · ' + esc(it.nombre);
+  if (it.tipo === 'invEntrega') return 'Inventario · ' + esc(it.nombre) + ' · He terminado · ' + it.entrega.lineas.length + ' línea(s)';
+  if (it.tipo === 'eans') return 'Código de barras nuevo · ' + esc(it.eans.map(function (e) { return e.ean + (e.marca ? ' · ' + e.marca : ''); }).join(', '));
+  if (it.tipo === 'parte') return 'Parte · ' + esc(it.obraNombre);
+  if (it.tipo === 'vale') return (it.valeTipo === 'AJUSTE' ? 'Inventario · ' + esc(nombreAlmacen(it.almacen).split(' · ')[0]) + ' · ' + (it.nFotos || 0) + ' foto(s)' : 'Vale · ' + TIPO_VALE[it.valeTipo]) + ' · ' + (it.soloFoto ? 'solo foto' : it.lineas.length + ' línea(s)') + (it.obra ? ' · ' + esc(it.obra) : '');
+  return (it.clase === 'HER' ? 'Herramientas · ' : 'Almacén · ') + esc(it.movTipo) + ' ' + it.cantidad + ' ' + esc(it.materialNombre || it.material);
+}
 function pintarEnviados() {
   pintarListasFecha();
   Promise.all([DB.all('cola'), DB.all('hist')]).then(function (r) {
@@ -2863,18 +2933,19 @@ function pintarEnviados() {
         (err ? '<span style="color:var(--rojo)">' + esc(err.error) + ' · se reintenta sola</span>' : 'se suben una a una cuando hay cobertura') + '</small></div><span class="chip pend">fotos</span></div>';
     }).join('');
     c = c.filter(function (it) { return it.tipo !== 'foto' && it.tipo !== 'fotoInv'; });
+    // primero lo que el servidor no ha aceptado
+    c.sort(function (x, y) { return (y.errServidor ? 1 : 0) - (x.errServidor ? 1 : 0); });
     $('colaLista').innerHTML = (c.length || htmlFotos) ? htmlFotos + c.map(function (it) {
-      if (it.tipo === 'andamios') return '<div class="item"><div><b>Andamios · ' + esc(({ SALIDA: 'a obra', DEVOLUCION: 'recogidos de obra', ENTRADA: 'entrada en almacén' })[it.mov.tipo]) + (it.mov.obra ? ' · ' + esc(it.mov.obra) : '') + '</b><small>' + fechaES(it.fecha) + ' ' + esc(it.hora || '') + (it.error ? ' · <span style="color:var(--rojo)">' + esc(it.error) + '</span>' : '') + '</small></div>' + (it.error ? '<button class="chip err descartar" data-id="' + esc(it.id) + '">quitar</button>' : '<span class="chip pend">pendiente</span>') + '</div>';
-      if (it.tipo === 'herrTipoNuevo') return '<div class="item"><div><b>Tipo de andamio nuevo · ' + esc(it.nombre) + '</b><small>' + fechaES(it.fecha) + (it.error ? ' · <span style="color:var(--rojo)">' + esc(it.error) + '</span>' : '') + '</small></div><span class="chip pend">pendiente</span></div>';
-      if (it.tipo === 'invEntrega') return '<div class="item"><div><b>Inventario · ' + esc(it.nombre) + ' · He terminado · ' + it.entrega.lineas.length + ' línea(s)</b><small>' + fechaES(it.fecha) + ' ' + esc(it.hora || '') + (it.error ? ' · <span style="color:var(--rojo)">' + esc(it.error) + '</span>' : '') + '</small></div><span class="chip pend">pendiente</span></div>';
-      if (it.tipo === 'eans') return '<div class="item"><div><b>Código de barras nuevo · ' + esc(it.eans.map(function (e) { return e.ean + (e.marca ? ' (' + e.marca + ')' : ''); }).join(', ')) + '</b><small>' + fechaES(it.fecha) + (it.error ? ' · <span style="color:var(--rojo)">' + esc(it.error) + '</span>' : '') + '</small></div><span class="chip pend">pendiente</span></div>';
-      return '<div class="item"><div><b>' + (it.tipo === 'parte' ? 'Parte · ' + esc(it.obraNombre) : it.tipo === 'vale' ? (it.valeTipo === 'AJUSTE' ? 'Inventario · ' + esc(nombreAlmacen(it.almacen).split(' · ')[0]) + ' · ' + (it.nFotos || 0) + ' foto(s)' : 'Vale · ' + TIPO_VALE[it.valeTipo]) + ' · ' + (it.soloFoto ? 'solo foto' : it.lineas.length + ' línea(s)') + (it.obra ? ' · ' + esc(it.obra) : '') : (it.clase === 'HER' ? 'Herramientas · ' : 'Almacén · ') + esc(it.movTipo) + ' ' + it.cantidad + ' ' + esc(it.materialNombre || it.material)) + '</b><small>' + fechaES(it.fecha) + (it.hora ? ' ' + esc(it.hora) : '') + (it.error ? ' · <span style="color:var(--rojo)">' + esc(it.error) + '</span>' : '') + '</small></div>' + (it.error ? '<button class="chip err descartar" data-id="' + esc(it.id) + '">quitar</button>' : '<span class="chip pend">pendiente</span>') + '</div>';
+      var cuando = fechaES(it.fecha) + (it.hora ? ' ' + esc(it.hora) : '');
+      if (it.errServidor) return '<div class="item err-serv"><div><b>' + tituloCola(it) + '</b><small>' + cuando + '<span class="cola-err">⚠️ No se ha podido enviar. ' + esc(motivoLlano(it.error)) + '</span></small></div>' +
+        '<div class="cola-bot"><button class="btn peq sec" data-cola="reintentar" data-id="' + esc(it.id) + '">Reintentar</button><button class="btn peq" data-cola="avisar" data-id="' + esc(it.id) + '">Avisar a Mateo</button></div></div>';
+      return '<div class="item"><div><b>' + tituloCola(it) + '</b><small>' + cuando + (it.error ? ' · <span style="color:var(--gris)">no ha llegado · se reintenta solo</span>' : '') + '</small></div><span class="chip pend">pendiente</span></div>';
     }).join('') : '<div class="aviso ok">Todo enviado.</div>';
   });
   DB.all('hist').then(function (h) {
     h.sort(function (a, b) { return a.enviadoEn < b.enviadoEn ? 1 : -1; }); h = h.slice(0, 50);
     $('histLista').innerHTML = h.length ? h.map(function (it) {
-      if (it.tipo === 'mov' || it.tipo === 'vale') return '<div class="item"><div><b>' + (it.numero ? 'Nº ' + esc(it.numero) + ' · ' : 'Almacén · ') + esc(it.resumen) + '</b><small>' + fechaES(it.fecha) + (it.hora ? ' ' + esc(it.hora) : '') + '</small></div><span class="chip ok">ok</span></div>';
+      if (it.tipo === 'mov' || it.tipo === 'vale') return '<div class="item"><div><b>' + (it.numero ? 'Nº ' + esc(it.numero) + ' · ' : 'Almacén · ') + esc(it.resumen) + '</b><small>' + fechaES(it.fecha) + (it.hora ? ' ' + esc(it.hora) : '') + '</small></div>' + (it.aviso ? '<span class="chip pend">avisado</span>' : '<span class="chip ok">ok</span>') + '</div>';
       return '<div class="item"><div><b>Nº ' + esc(it.numero) + ' · ' + esc(it.obra) + '</b><small>' + fechaES(it.fecha) + (it.firmado ? ' · firmado' : ' · sin firma') + (it.copia ? ' · copia enviada a ' + esc(it.copia) : '') + (it.copiaError ? ' · <span style="color:var(--rojo)">copia no enviada</span>' : '') + '</small></div>' + (it.pdf_url ? '<a class="chip ok" href="' + esc(it.pdf_url) + '" target="_blank">PDF</a>' : '<span class="chip ok">ok</span>') + '</div>';
     }).join('') : '<div class="aviso">Aún no hay partes enviados desde este móvil.</div>';
   });
